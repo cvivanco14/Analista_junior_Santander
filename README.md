@@ -19,3 +19,19 @@ python eee/graficos.py    # genera eee/output/*.png y eee_inflacion_deciles.csv
   en `eee/raw/`, o pasa otra carpeta: `python eee/graficos.py ruta/a/planillas`.
 - `eee/output/eee_inflacion_deciles.csv`: serie mensual por horizonte (11m, 23m) con
   mediana, decil 1, decil 9, rango 9−1 y archivo de origen.
+
+## EOF: operadores con inflación a 2 años sobre/bajo umbrales
+
+Con la hoja "Distribución" de cada [Encuesta de Operadores Financieros](https://www.bcentral.cl/encuestas-economicas/resultados-anteriores-eof)
+(pregunta de inflación en los siguientes 12 meses, 13 al 24) cuenta cuántos operadores
+responden **sobre 3,0%**, **sobre 3,2%** y **bajo 2,8%** (desigualdades estrictas), desde agosto de 2013.
+
+```bash
+python descargar_bcch.py eof   # baja las planillas a eof/raw/
+python eof/graficos.py         # genera eof/output/*.png y eof_inflacion_2a_umbrales.csv
+```
+
+- Cada encuesta es un punto: quincenal hasta 2018, y luego Pre RPM y Post RPM.
+- La fecha es la de cierre que aparece en la planilla.
+- `eof/output/eof_inflacion_2a_umbrales.csv` trae el total de respuestas, los conteos y los
+  porcentajes por umbral, el tipo de encuesta y el archivo de origen.

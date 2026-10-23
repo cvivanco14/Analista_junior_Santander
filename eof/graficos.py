@@ -147,8 +147,9 @@ def graficar(serie, col, etiqueta, archivo):
 
     ult = s.iloc[-1]
     ax.annotate(f"{int(ult[col])}/{int(ult['n'])}\n({ult[f'pct_{col}']:.0f}%)",
-                xy=(pct.index[-1], pct.iloc[-1]), xytext=(-6, 8), textcoords="offset points",
-                ha="right", fontsize=9, color=COLORES["serie"], fontweight="bold")
+                xy=(pct.index[-1], pct.iloc[-1]), xytext=(-8, 18), textcoords="offset points",
+                ha="right", va="bottom", fontsize=9, color=COLORES["serie"], fontweight="bold",
+                bbox={"boxstyle": "round,pad=0.25", "fc": "white", "ec": "none", "alpha": 0.9})
 
     ax.set_ylim(0, 100)
     ax.yaxis.set_major_formatter(lambda v, _: f"{v:.0f}")
@@ -159,7 +160,7 @@ def graficar(serie, col, etiqueta, archivo):
     ax.spines["bottom"].set_color("#7F7F7F")
     ax.grid(axis="y", color="#E5E5E5", lw=0.6)
     ax.set_axisbelow(True)
-    ax.xaxis.set_major_locator(mdates.YearLocator(2 if pct.index[0].year < pct.index[-1].year - 10 else 1))
+    ax.xaxis.set_major_locator(mdates.YearLocator())
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%y"))
     ax.set_xlim(pct.index.min() - pd.Timedelta(days=30), pct.index.max() + pd.Timedelta(days=30))
 
