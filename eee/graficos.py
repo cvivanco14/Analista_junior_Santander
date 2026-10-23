@@ -49,8 +49,10 @@ def leer_planilla(path):
     """Devuelve {horizonte: (mediana, decil1, decil9)} de la hoja resumen."""
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        df = pd.read_excel(path, sheet_name=0, header=None)
+        hojas = pd.read_excel(path, sheet_name=None, header=None)
     res = {}
+    # El resumen suele ser la primera hoja, pero hay archivos con hojas vacías antes.
+    df = next((h for h in hojas.values() if not h.empty), pd.DataFrame())
     for _, fila in df.iterrows():
         celdas = list(fila)
         for i, c in enumerate(celdas):
@@ -115,16 +117,16 @@ def graficar(serie, horizonte, titulo, archivo):
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%y"))
     ax.set_xlim(s.index.min() - pd.Timedelta(days=20), s.index.max() + pd.Timedelta(days=20))
 
-    fig.suptitle(titulo, color=COLORES["titulo"], fontsize=14, y=0.97)
-    ax.set_title("(variación anual, porcentaje)", fontsize=10.5, pad=10)
+    fig.text(0.5, 0.965, titulo, color=COLORES["titulo"], fontsize=14, ha="center", va="top")
+    fig.text(0.5, 0.915, "(variación anual, porcentaje)", fontsize=10.5, ha="center", va="top")
     lineas = ax2.get_legend_handles_labels()[0] + ax.get_legend_handles_labels()[0]
     orden = [0, 2, 3, 1]  # Decil 9 - 1, Mediana, Decil 1, Decil 9
     fig.legend([lineas[i] for i in orden], ["Decil 9 - 1", "Mediana", "Decil 1", "Decil 9"],
-               loc="lower center", ncol=4, frameon=False, fontsize=9)
+               loc="lower center", bbox_to_anchor=(0.5, 0.03), ncol=4, frameon=False, fontsize=9)
     ultima = s.index.max()
     fig.text(0.01, 0.01, f"Fuente: Banco Central de Chile, EEE. Último dato: {ultima:%m-%Y}.",
              fontsize=7, color="#595959")
-    fig.tight_layout(rect=(0, 0.06, 1, 0.95))
+    fig.tight_layout(rect=(0, 0.08, 1, 0.87))
     fig.savefig(archivo)
     plt.close(fig)
 
