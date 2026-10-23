@@ -218,3 +218,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Planillas EEE descargadas (se regeneran con eee/descargar.py)
+eee/raw/
