@@ -9,11 +9,11 @@ del Banco Central de Chile, desde enero de 2014.
 
 ```bash
 pip install -r requirements.txt
-python eee/descargar.py   # baja las planillas a eee/raw/ (usa Chromium vía Playwright)
+python descargar_bcch.py eee   # baja las planillas a eee/raw/ (usa Chromium vía Playwright)
 python eee/graficos.py    # genera eee/output/*.png y eee_inflacion_deciles.csv
 ```
 
-- `eee/descargar.py`: el sitio está protegido por Incapsula, así que las planillas se bajan
+- `descargar_bcch.py`: el sitio está protegido por Incapsula, así que las planillas se bajan
   con un navegador headless. Solo descarga las que faltan en `eee/raw/`.
 - Si un mes aún no está en la página, deja el Excel ("Datos mensuales <mes> <año>.xlsx")
   en `eee/raw/`, o pasa otra carpeta: `python eee/graficos.py ruta/a/planillas`.

@@ -221,3 +221,4 @@ __marimo__/
 
 # Planillas EEE descargadas (se regeneran con eee/descargar.py)
 eee/raw/
+eof/raw/
