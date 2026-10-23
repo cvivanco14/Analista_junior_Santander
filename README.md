@@ -31,7 +31,9 @@ python descargar_bcch.py eof   # baja las planillas a eof/raw/
 python eof/graficos.py         # genera eof/output/*.png y eof_inflacion_2a_umbrales.csv
 ```
 
-- Cada encuesta es un punto: quincenal hasta 2018, y luego Pre RPM y Post RPM.
-- La fecha es la de cierre que aparece en la planilla.
-- `eof/output/eof_inflacion_2a_umbrales.csv` trae el total de respuestas, los conteos y los
-  porcentajes por umbral, el tipo de encuesta y el archivo de origen.
+- Los gráficos muestran un dato por mes: el promedio de los porcentajes de las encuestas que
+  cerraron ese mes (las dos quincenales hasta 2018; luego Pre RPM y Post RPM). Noviembre de
+  2021 queda vacío porque no hubo encuesta que cerrara ese mes.
+- `eof/output/eof_inflacion_2a_umbrales_mensual.csv`: promedio mensual y n° de encuestas promediadas.
+- `eof/output/eof_inflacion_2a_umbrales.csv`: detalle por encuesta (fecha de cierre, tipo,
+  total de respuestas, conteos y porcentajes por umbral, archivo de origen).

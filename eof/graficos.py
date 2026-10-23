@@ -7,7 +7,13 @@ operadores responden:
 
     > 3,0%   > 3,2%   < 2,8%
 
-Guarda la serie en eof/output/eof_inflacion_2a_umbrales.csv y un gráfico por umbral:
+Promedia los porcentajes de todas las encuestas que cerraron en cada mes (Pre y
+Post RPM, o las dos quincenales) para dejar un dato por mes. Un mes sin encuestas
+queda vacío (nov-2021: la Post RPM cerró en octubre y la siguiente en diciembre).
+
+Guarda la serie por encuesta en eof/output/eof_inflacion_2a_umbrales.csv, el
+promedio mensual en eof/output/eof_inflacion_2a_umbrales_mensual.csv y un gráfico
+mensual por umbral:
 
     eof/output/eof_sobre_3_0.png
     eof/output/eof_sobre_3_2.png
@@ -124,7 +130,8 @@ def construir_serie(carpetas):
             if not dist:
                 print(f"aviso: {path.name} sin distribución 13-24 meses")
                 continue
-            fila = {"fecha": fecha_encuesta(hojas, path.name), "tipo": tipo_encuesta(path.name),
+            fecha = fecha_encuesta(hojas, path.name)
+            fila = {"fecha": fecha, "mes": fecha.to_period("M").to_timestamp(), "tipo": tipo_encuesta(path.name),
                     "n": sum(n for _, n in dist), "archivo": path.name}
             for col, _, cond, _ in UMBRALES:
                 fila[col] = sum(n for nivel, n in dist if cond(nivel))
@@ -136,8 +143,17 @@ def construir_serie(carpetas):
     return serie
 
 
-def graficar(serie, col, etiqueta, archivo):
-    s = serie.set_index("fecha")
+def promedio_mensual(serie):
+    cols = [f"pct_{col}" for col, *_ in UMBRALES]
+    mensual = serie.groupby("mes").agg(n_encuestas=("archivo", "size"), **{c: (c, "mean") for c in cols})
+    meses = pd.date_range(mensual.index.min(), mensual.index.max(), freq="MS", name="mes")
+    mensual = mensual.reindex(meses)
+    mensual["n_encuestas"] = mensual["n_encuestas"].fillna(0).astype(int)
+    return mensual.round(1).reset_index()
+
+
+def graficar(mensual, col, etiqueta, archivo):
+    s = mensual.set_index("mes")
     pct = s[f"pct_{col}"]
 
     fig, ax = plt.subplots(figsize=(6.4, 5.2), dpi=200)
@@ -146,7 +162,7 @@ def graficar(serie, col, etiqueta, archivo):
     ax.axhline(50, color=COLORES["ref"], lw=0.8, ls="--")
 
     ult = s.iloc[-1]
-    ax.annotate(f"{int(ult[col])}/{int(ult['n'])}\n({ult[f'pct_{col}']:.0f}%)",
+    ax.annotate(f"{pct.iloc[-1]:.0f}%",
                 xy=(pct.index[-1], pct.iloc[-1]), xytext=(-8, 18), textcoords="offset points",
                 ha="right", va="bottom", fontsize=9, color=COLORES["serie"], fontweight="bold",
                 bbox={"boxstyle": "round,pad=0.25", "fc": "white", "ec": "none", "alpha": 0.9})
@@ -166,10 +182,11 @@ def graficar(serie, col, etiqueta, archivo):
 
     fig.text(0.5, 0.965, f"EOF: Inflación a 2 años {etiqueta}", color=COLORES["titulo"],
              fontsize=14, ha="center", va="top")
-    fig.text(0.5, 0.915, "(porcentaje de operadores, inflación 13 a 24 meses adelante)",
+    fig.text(0.5, 0.915, "(porcentaje de operadores, promedio mensual de encuestas)",
              fontsize=10.5, ha="center", va="top")
-    fig.text(0.01, 0.01, f"Fuente: Banco Central de Chile, EOF. Último dato: {ult['tipo']} "
-             f"{pct.index[-1]:%d-%m-%Y}.", fontsize=7, color="#595959")
+    encuestas = "1 encuesta" if ult["n_encuestas"] == 1 else f"promedio de {ult['n_encuestas']:.0f} encuestas"
+    fig.text(0.01, 0.01, "Fuente: Banco Central de Chile, EOF. Inflación 13 a 24 meses adelante. "
+             f"Último dato: {pct.index[-1]:%m-%Y} ({encuestas}).", fontsize=7, color="#595959")
     fig.tight_layout(rect=(0, 0.03, 1, 0.87))
     fig.savefig(archivo)
     plt.close(fig)
@@ -179,11 +196,13 @@ def main():
     carpetas = [RAW] + [Path(c) for c in sys.argv[1:]]
     OUT.mkdir(exist_ok=True)
     serie = construir_serie(carpetas)
+    mensual = promedio_mensual(serie)
     serie.to_csv(OUT / "eof_inflacion_2a_umbrales.csv", index=False, date_format="%Y-%m-%d")
+    mensual.to_csv(OUT / "eof_inflacion_2a_umbrales_mensual.csv", index=False, date_format="%Y-%m")
     for col, etiqueta, _, archivo in UMBRALES:
-        graficar(serie, col, etiqueta, OUT / archivo)
-    print(serie.tail(3).to_string())
-    print(f"{len(serie)} encuestas, {serie['fecha'].min():%Y-%m-%d} a {serie['fecha'].max():%Y-%m-%d}")
+        graficar(mensual, col, etiqueta, OUT / archivo)
+    print(mensual.tail(4).to_string())
+    print(f"{len(serie)} encuestas en {len(mensual)} meses, {mensual['mes'].min():%Y-%m} a {mensual['mes'].max():%Y-%m}")
 
 
 if __name__ == "__main__":
