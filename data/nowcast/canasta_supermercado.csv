@@ -1,0 +1,36 @@
+codigo_ipc,glosa,bloque,termino_busqueda,debe_contener
+11131,PAN,Alim_SV,pan marraqueta|pan hallulla|pan molde,pan
+11211,CARNE DE VACUNO,alim_rest_vol,posta negra|lomo vetado|carne molida vacuno|asiento picana,
+11221,CECINAS,alim_rest_vol,jamon|salchicha|vienesa|longaniza,
+11212,CARNE DE POLLO,alim_rest_vol,pechuga pollo|trutro pollo|pollo entero,pollo
+11441,QUESOS,alim_rest_vol,queso gauda|queso mantecoso|queso laminado,queso
+12511,BEBIDAS GASEOSAS,Alim_SV,bebida gaseosa|coca cola|fanta|sprite,
+11911,PLATOS PREPARADOS ADQUIRIDOS EN TIENDAS Y SUPERMERCADOS,Alim_SV,comida preparada|plato preparado,
+11132,PRODUCTOS DE REPOSTERÍA,Alim_SV,queque|kuchen|torta,
+11213,CARNE DE CERDO,alim_rest_vol,chuleta cerdo|lomo cerdo|costillar cerdo,cerdo
+11471,HUEVOS,alim_rest_vol,huevos,huevo
+11133,GALLETAS,Alim_SV,galletas,galleta
+11611,PALTAS,fyv,palta hass,palta
+11721,PAPAS,fyv,papa granel|papa malla,papa
+11411,LECHE LÍQUIDA,alim_rest_vol,leche entera|leche descremada|leche semidescremada,leche
+11311,PESCADOS FRESCOS O REFRIGERADOS,alim_rest_vol,salmon fresco|merluza|reineta,
+11841,CHOCOLATES,Alim_SV,chocolate,chocolate
+11451,YOGURES Y PRODUCTOS SIMILARES,Alim_SV,yogurt,yog
+11712,TOMATES,fyv,tomate granel|tomate,tomate
+11511,ACEITE VEGETAL Y DE MARAVILLA,alim_rest_vol,aceite maravilla|aceite vegetal,aceite
+12111,JUGOS LÍQUIDOS,Alim_SV,jugo liquido|nectar,
+12411,AGUA EMBOTELLADA,alim_rest_vol,agua mineral|agua purificada,agua
+11151,PASTAS,alim_rest_vol,fideos|spaghetti|tallarines,
+11321,PESCADOS EN CONSERVA,alim_rest_vol,atun|jurel en conserva,
+11111,ARROZ,alim_rest_vol,arroz grado 1|arroz grado 2,arroz
+12211,CAFÉ Y SUCEDÁNEOS,alim_rest_vol,cafe instantaneo|cafe molido,cafe
+11521,MANTEQUILLA,alim_rest_vol,mantequilla,mantequilla
+11613,PLÁTANOS,fyv,platano,platano
+11713,LECHUGAS,fyv,lechuga,lechuga
+11614,LIMONES,fyv,limon,limon
+11714,CEBOLLAS Y CEBOLLINES,fyv,cebolla,cebolla
+11811,AZÚCAR,Alim_SV,azucar,azucar
+11616,MANZANAS,fyv,manzana,manzana
+11615,NARANJAS,fyv,naranja,naranja
+11716,ZANAHORIAS,fyv,zanahoria,zanahoria
+11121,HARINA DE TRIGO,alim_rest_vol,harina,harina

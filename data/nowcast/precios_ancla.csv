@@ -1,0 +1,4 @@
+producto,fecha,precio_clp_litro,fuente
+gasolina,2026-09-29,1459,"https://servidos.ar/calculadora-costo-viaje-chile (datos CNE/Bencina en Línea, bencina 93)"
+diesel,2026-10-25,1586,"https://preciocombustible.cl/ (promedio nacional, datos CNE)"
+kerosene,2026-10-25,1349,"https://preciocombustible.cl/parafina/ (promedio nacional, datos CNE)"

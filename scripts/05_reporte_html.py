@@ -202,6 +202,36 @@ ax.legend(fontsize=8.5, loc="upper left")
 ax.set_title("Error fuera de muestra, orígenes jul-23 a ago-26", loc="left", fontsize=11, color=TINTA)
 figs["rmse"] = png(fig)
 
+# 6. nowcast ENAP: precio diario reconstruido
+NCD = os.path.join(OUT, "nowcast")
+pd_enap = pd.read_csv(os.path.join(NCD, "enap_precio_diario.csv"), index_col=0, parse_dates=True)
+bt = pd.read_csv(os.path.join(NCD, "enap_backtest.csv"))
+pte = pd.read_csv(os.path.join(NCD, "puente_ipc.csv"))
+enap_p = pd.read_csv(os.path.join(NCD, "enap_productos.csv"))
+pcomb_nc = pd.read_csv(os.path.join(NCD, "pesos_comb.csv"))
+estado_super = pd.read_csv(os.path.join(NCD, "supermercados_estado.csv")).estado.iloc[0]
+inf_enap = pd.read_csv(os.path.join(ROOT, "data", "nowcast", "enap_informes.csv"), parse_dates=["fecha_vigencia"])
+fig, ax = plt.subplots(figsize=(8.6, 3.8))
+for prod, color, lab in [("gasolina", AZUL, "Gasolina 93"), ("diesel", NARANJA, "Diésel")]:
+    sb = pd_enap[f"{prod} | Base: repite último alza"]
+    s0 = pd_enap[f"{prod} | Sin nuevas alzas"]
+    corte = pd.Timestamp.today().normalize()
+    ax.plot(sb.loc[:corte].index, sb.loc[:corte], color=color, lw=2, label=f"{lab} (ENAP + ancla CNE)")
+    ax.plot(sb.loc[corte:].index, sb.loc[corte:], color=color, lw=2, ls=(0, (3, 2)))
+    ax.plot(s0.loc[corte:].index, s0.loc[corte:], color=color, lw=1.2, ls=(0, (1, 2)))
+for per in pd.period_range("2026-06", "2026-12", freq="M"):
+    ax.axvline(per.to_timestamp(), color=GRILLA, lw=0.8)
+ax.axvline(pd.Timestamp.today().normalize(), color=TINTA2, lw=0.8)
+ax.annotate("hoy", (pd.Timestamp.today().normalize(), ax.get_ylim()[0]), xytext=(3, 4), textcoords="offset points",
+            fontsize=8, color=TINTA2)
+ax.set_ylabel("Pesos por litro")
+meses_tk = pd.date_range("2026-06-01", "2027-01-01", freq="MS")
+ax.set_xticks(meses_tk, [MESES[m.month - 1] for m in meses_tk])
+ax.legend(fontsize=8.5, loc="upper left")
+ax.set_title("Precio a público reconstruido (discontinua: escenario base; punteada: sin nuevas alzas)",
+             loc="left", fontsize=10, color=TINTA)
+figs["enap"] = png(fig)
+
 # ------------------------------------------------------------------ tablas
 filas = []
 for _, rr in proy.iterrows():
@@ -321,6 +351,44 @@ t_sup = tabla_md(pd.DataFrame({
     "Imacec desest. (var. 12m)": (sup.ima.pct_change(12) * 100).loc[sup_m.index].iloc[[0, 1, 2, 3, 6, 9, 15]].map(f),
 }))
 
+PROD_TXT = {"gasolina": "Gasolina", "diesel": "Diésel", "kerosene": "Parafina"}
+t_bt = tabla_md(pd.DataFrame({"Producto": bt.producto.map(PROD_TXT), "Mes": pd.to_datetime(bt.periodo).map(mes_txt),
+                              "Nowcast ENAP (% m/m)": bt.var_mm_enap.map(lambda v: f(v, 2)),
+                              "INE efectivo (% m/m)": bt.var_mm_ine.map(lambda v: f(v, 2)),
+                              "Error (pp)": bt.error_pp.map(lambda v: f(v, 2))}))
+mae_bt = bt[bt.producto != "kerosene"].error_pp.abs().mean()
+ep = enap_p[(enap_p.periodo >= "2026-10")]
+t_enap_prod = tabla_md(pd.DataFrame({"Escenario": ep.escenario, "Producto": ep.producto.map(PROD_TXT),
+                                     "Mes": pd.to_datetime(ep.periodo).map(mes_txt),
+                                     "Precio promedio (pesos/l)": ep.precio_promedio.map(lambda v: f(v, 0)),
+                                     "Var. m/m (%)": ep.var_mm_enap.map(lambda v: f(v, 2))}))
+inf_rec = inf_enap[inf_enap.fecha_vigencia >= "2026-06-01"].pivot_table(
+    index="fecha_vigencia", columns="producto", values="variacion_clp_litro", aggfunc="sum").reindex(
+    columns=["gasolina", "diesel", "kerosene"])
+t_inf = tabla_md(pd.DataFrame({"Vigencia": inf_rec.index.strftime("%d-%m-%Y"),
+                               "Gasolina (pesos/l)": inf_rec.gasolina.map(lambda v: f(v, 1)),
+                               "Diésel (pesos/l)": inf_rec.diesel.map(lambda v: f(v, 1)),
+                               "Parafina (pesos/l)": inf_rec.kerosene.map(lambda v: f(v, 1))}))
+pt = pte[pte.periodo <= "2027-12"].copy()
+pt = pt[pt.periodo.isin(["2026-10", "2026-11", "2026-12", "2027-06", "2027-12"])]
+t_puente = tabla_md(pd.DataFrame({
+    "Escenario": pt.escenario, "Mes": pd.to_datetime(pt.periodo).map(mes_txt),
+    "Combustibles m/m: modelo": pt.comb_mm_modelo.map(lambda v: f(v, 2)),
+    "Combustibles m/m: nowcast": pt.comb_mm_nowcast.map(lambda v: f(v, 2)),
+    "IPC m/m: modelo": pt.IPC_mm_modelo.map(lambda v: f(v, 2)), "IPC m/m: con nowcast": pt.IPC_mm_nowcast.map(lambda v: f(v, 2)),
+    "IPC 12m: modelo": pt.IPC_12m_modelo.map(f), "IPC 12m: con nowcast": pt.IPC_12m_nowcast.map(f)}))
+PB = pte[pte.escenario.str.startswith("Base")].set_index("periodo")
+PS = pte[pte.escenario.str.startswith("Sin")].set_index("periodo")
+nc_oct, nc_nov, nc_dic = PB.loc["2026-10", "IPC_mm_nowcast"], PB.loc["2026-11", "IPC_mm_nowcast"], PB.loc["2026-12", "IPC_mm_nowcast"]
+nc_dic26_b, nc_dic26_s = PB.loc["2026-12", "IPC_12m_nowcast"], PS.loc["2026-12", "IPC_12m_nowcast"]
+nc_dic27_b, nc_dic27_s = PB.loc["2027-12", "IPC_12m_nowcast"], PS.loc["2027-12", "IPC_12m_nowcast"]
+comb_oct_mod, comb_oct_nc = PB.loc["2026-10", "comb_mm_modelo"], PB.loc["2026-10", "comb_mm_nowcast"]
+cs = pd.read_csv(os.path.join(ROOT, "data", "nowcast", "canasta_supermercado.csv"))
+pond_f = pd.read_csv(os.path.join(ROOT, "data", "pesos_bloques.csv")).set_index("bloque").peso_2023
+cob_super = cs.merge(pd.read_csv(os.path.join(ROOT, "data", "insumos", "matriz_productos.csv"))[["codigo", "ponderacion"]],
+                     left_on="codigo_ipc", right_on="codigo", how="left").ponderacion.sum()
+w_alim = pond_f[["Alim_SV", "alim_rest_vol", "fyv"]].sum()
+
 ms = pares.comparte_tendencia.sum()
 fecha_hoy = pd.Timestamp.today()
 
@@ -337,7 +405,8 @@ md = f"""
 > las tendencias comunes detectadas por pares.
 >
 > Último IPC efectivo: **{mes_txt(ULT)}** (IPC {f(ipc_sep_12)}% a/a; IPC SV {f(sv_sep_12)}% a/a). Es un ejercicio
-> mecánico de modelos: no incorpora juicio sobre decretos tarifarios, impuestos ni información de precios de alta frecuencia.
+> mecánico de modelos, complementado con un **nowcast de combustibles** a partir de los informes semanales de ENAP (§3.5).
+> No incorpora juicio sobre decretos tarifarios ni impuestos.
 
 ------------------------------------------------------------------------
 
@@ -353,6 +422,7 @@ md = f"""
 | ¿Qué tan bueno es? | Fuera de muestra (orígenes 2020-26) el combinado le gana al AR sobre el IPC agregado y al paseo aleatorio en el dato mensual (Diebold-Mariano, p < 0,05). Desde jul-23 empata con el modelo de tendencia común y le gana a ambos benchmarks. La EEE sigue siendo mejor en el dato del mes. |
 | ¿Qué lo mueve? | El salto de **combustibles** (dólar de {f(tcn_sep, 0)} a {f(tcn_oct, 0)} pesos y WTI de {f(wti_sep, 0)} a {f(wti_oct, 0)} US$/bbl entre septiembre y octubre) y la persistencia de **servicios** indexados. |
 | ¿Contra el mercado? | Sobre la EEE de octubre (4,6% a dic-26, 3,0% a dic-27). Para sep-27 ({f(P.loc['2027-09', 'IPC_var_12m'])}%) coincide con la compensación inflacionaria swap a 1 año ({f(comp.compensacion_swap_1a.dropna().iloc[0], 2)}%). |
+| ¿Y con datos de alta frecuencia? | El nowcast con los informes de ENAP eleva octubre a **{f(nc_oct, 2)}%** m/m (combustibles {f(comb_oct_nc, 1)}% vs {f(comb_oct_mod, 1)}% del modelo). Si el MEPCO repite el último alza el 12-nov, 3-dic y 24-dic, el IPC cerraría 2026 en **{f(nc_dic26_b)}%** ({f(nc_dic26_s)}% sin nuevas alzas). El scraping de supermercados está implementado, pero no pudo correr: el entorno bloquea esos sitios. |
 | ¿Riesgos? | Sesgo al alza: en los episodios de shock (2021-22) todos los modelos subestimaron la inflación, y hoy hay un shock de petróleo en curso. |
 
 ------------------------------------------------------------------------
@@ -382,6 +452,9 @@ sirven para completar el **mes en curso** con el promedio de los días disponibl
 | `historico_bcch_indices.csv` | Validación de la historia de los bloques en 2010-2023 (§1.5). |
 | `difusion_historica.csv` | Rango histórico mensual del índice de difusión (§5.4). |
 | `ipc_base2018_alimentos.csv` | Contexto (división 1 y restaurantes en base 2018). No entra a los modelos. |
+| `data/nowcast/enap_informes.csv` | Variaciones de los informes semanales de ENAP (may-oct 2026), recopiladas desde la prensa con la URL de cada dato (§3.5). |
+| `data/nowcast/precios_ancla.csv` | Precio promedio a público de cada combustible en una fecha (datos CNE / Bencina en Línea vía agregadores). |
+| `data/nowcast/canasta_supermercado.csv` | Mapeo de 35 productos de alimentos del IPC a términos de búsqueda en supermercados online. |
 | `Apuntes_IPC_Chile.html` | Plantilla de formato de este documento y marco conceptual (pesos efectivos, arrastre, estacionalidad). |
 
 ### 1.3 Los 11 bloques
@@ -520,6 +593,87 @@ La dispersión entre modelos es en sí misma información. Los modelos con impul
 traspasan más el shock de dólar y petróleo, y fueron los mejores en 2020-22. El M3 funciona como **escenario alto**. Los
 modelos puramente estadísticos (M0, M1) convergen más rápido a la meta y funcionan como **escenario bajo**.
 
+### 3.5 Nowcasting de corto plazo: ENAP y supermercados
+
+Los modelos de §2 usan datos mensuales. Para los meses en curso (oct-dic 2026) hay información de **alta frecuencia** que
+anticipa parte del IPC, como sugieren los apuntes (§10.2 y §10.5):
+
+- precios semanales de combustibles (ENAP y CNE);
+- precios online de supermercados.
+
+**Combustibles (ENAP).** ENAP publica cada miércoles un informe con la variación del precio mayorista de las gasolinas, el
+diésel, la parafina y el GLP vehicular. Con el MEPCO, gasolinas y diésel se ajustan cada tres semanas. Como el sitio de
+ENAP no es accesible desde este entorno, los informes se recopilaron desde la prensa (fuente de cada dato en
+`data/nowcast/enap_informes.csv`):
+
+{t_inf}
+
+Método:
+
+1. Se fija un precio a público ancla por producto (datos CNE; por ejemplo, gasolina 93 a \\$1.459 el 29-09-2026).
+2. Se reconstruye el **precio diario** sumando y restando las variaciones de ENAP en su fecha de vigencia, con traspaso 1 a 1
+   en pesos por litro.
+3. La variación del **promedio del mes** aproxima la del INE, que recolecta combustibles todas las semanas (§5.5 de los
+   apuntes).
+
+![]({figs['enap']})
+
+**Backtest jul-sep 2026** contra los micro-índices del INE:
+
+{t_bt}
+
+El error absoluto medio en gasolina y diésel es de **{f(mae_bt, 2)} pp**, contra un error típico del bloque combustibles en
+los modelos de ~2,4 pp a un mes (orígenes 2020-26). El traspaso 1 a 1 desde ENAP replica bien al INE. La parafina tuvo precio estabilizado hasta
+septiembre; desde octubre se liberó (+\\$281,8 el 1-oct).
+
+**Nowcast por producto** (oct-dic). Para nov-dic hay dos escenarios para los próximos ajustes del MEPCO (12-nov, 3-dic y
+24-dic): repetir el último alza (+\\$41,3 en gasolinas y +\\$91,5 en diésel) o sin nuevas alzas. El gas licuado y el gas por red no
+dependen de ENAP; se proyectan con su variación promedio de los últimos 12 meses.
+
+{t_enap_prod}
+
+**Puente al IPC.** Se reemplaza el bloque combustibles de la proyección combinada en oct-dic por el nowcast. Los pesos
+dentro del bloque son efectivos: gasolina {f(100 * pcomb_nc.set_index('producto').loc['Gasolina'].peso_efectivo_en_bloque, 0)}%,
+gas licuado {f(100 * pcomb_nc.set_index('producto').loc['Gas licuado'].peso_efectivo_en_bloque, 0)}%,
+diésel {f(100 * pcomb_nc.set_index('producto').loc['Petróleo diésel'].peso_efectivo_en_bloque, 0)}%. Desde enero de 2027 se
+mantienen las tasas del modelo sobre el nuevo nivel.
+
+{t_puente}
+
+**Lectura.**
+
+- **Octubre.** El modelo subestimaba combustibles. El alza de ENAP del 1-oct (+\\$39,4 en gasolinas, +\\$95 en diésel) y la del
+  22-oct suben el bloque {f(comb_oct_nc, 1)}% en el mes (el modelo daba {f(comb_oct_mod, 1)}%). Con eso, el IPC de octubre
+  pasa de {f(oct_mm, 2)}% a **{f(nc_oct, 2)}%**, sobre el rango de 0,3%-0,6% de los economistas consultados por la prensa.
+- **Arrastre.** El alza del 22-oct afecta solo 10 días de octubre, así que deja ~1,9% de arrastre en gasolinas para
+  noviembre aunque no haya nuevas alzas.
+- **Diciembre.** El cierre de 2026 queda entre {f(nc_dic26_s)}% (sin nuevas alzas) y {f(nc_dic26_b)}% (si el MEPCO sigue
+  subiendo al ritmo actual hasta diciembre). Ambos están sobre la proyección del modelo ({f(dic26)}%) y la EEE (4,6%).
+- **2027.** El mayor nivel de combustibles eleva la inflación en 12 meses de ene-27 a sep-27: jun-27 queda en
+  {f(PS.loc['2027-06', 'IPC_12m_nowcast'])}%-{f(PB.loc['2027-06', 'IPC_12m_nowcast'])}%, frente a
+  {f(PB.loc['2027-06', 'IPC_12m_modelo'])}% en el modelo. Dic-27 no cambia ({f(nc_dic27_b)}%), porque compara contra un
+  dic-26 que ya incluye el alza.
+- **Riesgo puntual.** Si el INE no recolecta parafina en octubre, la contribución de su alza (~0,04 pp) no aparecería.
+
+**Supermercados (scraping).** `scripts/06_scraper_supermercados.py` toma una foto diaria de precios en las tiendas online
+(API pública de catálogo VTEX de Jumbo, Santa Isabel y Unimarc) para 35 productos de alimentos del IPC. Esos productos
+pesan {f(cob_super, 1)}% del IPC, de un total de {f(w_alim, 1)}% en los tres bloques de alimentos. Con esas fotos,
+`07_nowcast.py` sigue el método del INE:
+
+1. promedio mensual por SKU;
+2. relativo mes a mes por SKU;
+3. media geométrica (Jevons) por producto;
+4. agregación a los bloques Alimentos no volátiles, Alimentos volátiles resto y Frutas y verduras con pesos efectivos; los
+   productos sin cobertura usan el modelo.
+
+**Estado:** {estado_super} Para activarlo hay que permitir esos dominios en la red del entorno y correr el scraper a diario.
+Con dos meses de fotos, el nowcast de alimentos se incorpora solo al puente.
+
+Mientras tanto, la evidencia de prensa apunta a presiones al alza en alimentos frescos en octubre: la papa acumula un alza de
+62% en el año por las lluvias, y las alzas de diésel encarecen el transporte. Coincide con el modelo, que proyecta
+{f(P.loc['2026-10', 'Alimentos volátiles_mm'], 2)}% m/m para alimentos
+volátiles en octubre.
+
 ------------------------------------------------------------------------
 
 ## 4. Evaluación fuera de muestra
@@ -558,8 +712,8 @@ futura del dólar ni del petróleo. Los errores se miden contra el IPC efectivo.
 
 {t_comp}
 
-- **Oct-26.** Proyectamos {f(oct_mm, 2)}% contra 0,4% de la EEE. La diferencia está casi toda en combustibles (+2,2% m/m,
-  {f(inc_i.loc['comb', 'incid_12m_dic26'], 2)} pp de incidencia anual a diciembre). Esta proyección incorpora el dólar y el WTI
+- **Oct-26.** El modelo proyecta {f(oct_mm, 2)}% y el nowcast con ENAP {f(nc_oct, 2)}%, contra 0,4% de la EEE. La diferencia
+  está casi toda en combustibles ({f(comb_oct_mod, 1)}% m/m en el modelo y {f(comb_oct_nc, 1)}% con ENAP). El modelo incorpora el dólar y el WTI
   de octubre completos hasta el día {pd.read_csv(os.path.join(ROOT, 'data', 'bde', 'bde_diario.csv')).dropna(subset=['tcn_d']).fecha.iloc[-1][-2:]};
   la EEE se levantó a inicios de mes, cuando parte de esa alza no ocurría.
 - **2027.** Proyectamos {f(dic27)}%, sobre el 3,0% de la EEE, pero en línea con la compensación inflacionaria a un año. Según
@@ -598,8 +752,9 @@ un IPC SV estable.
    traspaso puede durar más. Si el petróleo revierte, el escenario baja rápido. Como cada 10% de petróleo en pesos se traspasa
    ~1,4% a combustibles en dos meses, eso equivale a ~0,1 pp de IPC.
 2. **Tarifas eléctricas.** La regla semestral es un supuesto. Hay que reemplazarla por el calendario de decretos tarifarios.
-3. **Nowcasting.** Para el dato del mes, conviene complementar con los precios semanales de combustibles (ENAP/CNE), el
-   scraping de supermercados y la EEE/EOF (§10.5 de los apuntes). Esa es la brecha frente a la EEE en h=1.
+3. **Nowcasting.** El nowcast de combustibles (§3.5) depende de informes recopilados desde la prensa y de un precio ancla de
+   agregadores de la CNE. Conviene reemplazarlos por la descarga directa de ENAP y de la API de la CNE. El de supermercados
+   requiere habilitar la red y acumular al menos dos meses de fotos diarias.
 4. **Tendencias comunes.** El test ADF por pares tiene poca potencia en muestras de ~200 meses. Además, en la evaluación los
    grupos se fijaron con la muestra completa (leve ventaja informativa). Se impone el vector (1, −1), es decir, precios
    relativos con tendencia determinística.
@@ -616,6 +771,8 @@ python scripts/01_descarga_bde.py            # descarga 46 series mensuales y 7 
 python scripts/02_base.py                    # bloques + pesos + macro → data/base_modelo.csv
 python scripts/03_modelo.py                  # tendencias comunes, evaluación recursiva y proyección
 python scripts/04_resultados.py              # tablas + output/Base_Proyeccion_IPC.xlsx
+python scripts/06_scraper_supermercados.py   # foto diaria de precios de supermercados (requiere red habilitada)
+python scripts/07_nowcast.py                 # nowcast ENAP + supermercados y puente a la proyección
 python scripts/05_reporte_html.py            # este documento
 ```
 
@@ -638,6 +795,12 @@ resto se recalcula solo. El último IPC se detecta desde la BDE.
 - Diebold, F. y Mariano, R. (1995). Comparing Predictive Accuracy. *Journal of Business & Economic Statistics*, 13(3).
 - INE (2024). *Manual Metodológico Índice de Precios al Consumidor, Base Anual 2023=100*, v2.0.
 - Banco Central de Chile. Base de Datos Estadísticos (si3.bcentral.cl) y Encuesta de Expectativas Económicas.
+- ENAP. Informes semanales de precios de combustibles (may-oct 2026), vía prensa: Meganoticias, T13, BioBioChile, Radio
+  U. de Chile, Epicentro, Emol, Redimin y Radio Concierto (URL de cada dato en `data/nowcast/enap_informes.csv`).
+- Chilevisión (2026). *Precio de la papa acumula un alza de 62% en 2026*.
+  (<a href="https://www.chilevision.cl/noticias/economia/precio-de-la-papa-acumula-un-alza-de-62-en-2026-intensas-lluvias-complican-cosechas">enlace</a>)
+- La Tercera (2026). *Combustible y alimentos presionarán al IPC de octubre*.
+  (<a href="https://www.latercera.com/pulso/noticia/combustible-y-alimentos-presionaran-al-ipc-de-octubre-y-expectativas-para-el-ano-se-acercan-a-5/">enlace</a>)
 """
 
 # ------------------------------------------------------------------ pandoc + plantilla
