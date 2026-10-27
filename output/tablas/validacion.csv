@@ -1,0 +1,12 @@
+bloque,serie_historico_bcch,corr_var12m_2010_2023,dif_media_abs_pp
+Alimentos no volátiles,Alimentos no volátiles,0.9986196073964093,0.06296161797805466
+Bienes SV excl. alimentos,Bienes sv. ex. alim.,0.9999181355013298,0.010393491087853776
+Servicios SV administrados e indexados,Servicios_A&I_sv,0.99328248247392,0.05192585566746123
+Servicios SV resto,Servicios_ Resto_sv,0.9997918070655296,0.013622384942654383
+Electricidad,Electricidad_v,0.9999983854267415,0.0033822050969037052
+Combustibles,Combustible_v,0.9998201933420403,0.04293739107548113
+Alimentos volátiles resto,Alim. Resto_v,0.9976831917880304,0.10576487627917762
+Frutas y verduras,FyV (proxy)_v,0.9991349818132012,0.06392435156363944
+Bienes volátiles,Bienes volát.,0.9820204645367318,0.17625771083644512
+Servicios volátiles adm. e indexados,Servicios_A&I_v,0.9994779464724899,0.041152092003798796
+Servicios volátiles resto,Servicios_Resto_v,0.9744779746533009,0.3924771033868803

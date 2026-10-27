@@ -1,0 +1,54 @@
+variable,codigo_bde,descripcion,grupo,titulo_bde,desde,hasta,n_obs,frecuencia
+ipc,G073.IPC.IND.2023.M,"IPC general, empalme BCCh",Precios,"General (empalme BCCh) | IPC Analíticos, índice empalmado BCCh, base 2023 = 100 | Mensual",1998-12-01,2026-09-01,334,Mensual
+ipc_sv,G073.IPCSV.IND.2023.M,IPC sin volátiles,Precios,"Sin volátiles | IPC Analíticos, índice empalmado BCCh, base 2023 = 100 | Mensual",1998-12-01,2026-09-01,334,Mensual
+bs_sv,G073.IPCBSV.IND.2023.M,Bienes sin volátiles,Precios,"Bienes sin volátiles | IPC Analíticos, índice empalmado BCCh, base 2023 = 100 | Mensual",1998-12-01,2026-09-01,334,Mensual
+ss_sv,G073.IPCSSV.IND.2023.M,Servicios sin volátiles,Precios,"Servicios sin volátiles | IPC Analíticos, índice empalmado BCCh, base 2023 = 100 | Mensual",1998-12-01,2026-09-01,334,Mensual
+ipc_vol,G073.IPCV.IND.2023.M,IPC volátiles,Precios,"Volátiles | IPC Analíticos, índice empalmado BCCh, base 2023 = 100 | Mensual",1998-12-01,2026-09-01,334,Mensual
+alim_vol,G073.IPCAV.IND.2023.M,Alimentos volátiles,Precios,"Alimentos volátiles | IPC Analíticos, índice empalmado BCCh, base 2023 = 100 | Mensual",1998-12-01,2026-09-01,334,Mensual
+ene_vol,G073.IPCEN.IND.2023.M,Energía volátiles,Precios,"Energía volátiles | IPC Analíticos, índice empalmado BCCh, base 2023 = 100 | Mensual",1998-12-01,2026-09-01,334,Mensual
+resto_vol,G073.IPCRV.IND.2023.M,Resto volátiles,Precios,"Resto volátiles | IPC Analíticos, índice empalmado BCCh, base 2023 = 100 | Mensual",1998-12-01,2026-09-01,334,Mensual
+ipc_ine,F074.IPC.IND.Z.EP23.C.M,"IPC INE empalmado dic-2009, base 2023",Precios,"Serie Empalmada IPC Diciembre 2009 a la fecha, base 2023 = 100",2009-12-01,2026-09-01,202,Mensual
+ipc_sae,F074.IPCSAE.IND.Z.EP23.Z.M,IPC SAE (INE),Precios,"Sin alimentos y energía | IPC Analíticos, índice empalmado (Cifras oficiales INE), base 2023 = 100 | Mensual",2009-12-01,2026-09-01,202,Mensual
+ipc_alim,F074.IPCA.IND.Z.EP23.Z.M,IPC Alimentos (INE),Precios,"Alimentos | IPC Analíticos, índice empalmado (Cifras oficiales INE), base 2023 = 100 | Mensual",2009-12-01,2026-09-01,202,Mensual
+ipc_ene,F074.IPCE.IND.Z.EP23.Z.M,IPC Energía (INE),Precios,"Energía | IPC Analíticos, índice empalmado (Cifras oficiales INE), base 2023 = 100 | Mensual",2009-12-01,2026-09-01,202,Mensual
+ipc_fyv,F074.IPCFV.IND.Z.EP23.Z.M,IPC Frutas y verduras frescas (INE),Precios,"Frutas y verduras frescas | IPC Analíticos, índice empalmado (Cifras oficiales INE), base 2023 = 100 | Mensual",2009-12-01,2026-09-01,202,Mensual
+ipc_bienes,F074.IPCB.IND.Z.EP23.Z.M,IPC Bienes (INE),Precios,"Bienes | IPC Analíticos, índice empalmado (Cifras oficiales INE), base 2023 = 100 | Mensual",2009-12-01,2026-09-01,202,Mensual
+ipc_serv,F074.IPCS.IND.Z.EP23.Z.M,IPC Servicios (INE),Precios,"Servicios | IPC Analíticos, índice empalmado (Cifras oficiales INE), base 2023 = 100 | Mensual",2009-12-01,2026-09-01,202,Mensual
+ipc_trans,F074.IPCT.IND.Z.EP23.Z.M,IPC Transables (INE),Precios,"Transables | IPC Analíticos, índice empalmado (Cifras oficiales INE), base 2023 = 100 | Mensual",2009-12-01,2026-09-01,202,Mensual
+ipc_notrans,F074.IPCN.IND.Z.EP23.Z.M,IPC No transables (INE),Precios,"No transables | IPC Analíticos, índice empalmado (Cifras oficiales INE), base 2023 = 100 | Mensual",2009-12-01,2026-09-01,202,Mensual
+ipp,F075.IPP.IND.P0551.2019.Z.M,IPP general industrias (2019=100),Precios,IPP general industrias (índice promedio 2019=100),2019-01-01,2026-09-01,93,Mensual
+imacec,F032.IMC.IND.Z.Z.EP18.Z.Z.0.M,"Imacec, serie original (2018=100)",Actividad,"Imacec empalmado, serie original (índice 2018=100)",1998-12-01,2026-08-01,333,Mensual
+imacec_sa,F032.IMC.IND.Z.Z.EP18.Z.Z.1.M,Imacec desestacionalizado (2018=100),Actividad,"Imacec empalmado, desestacionalizado (índice 2018=100)",1998-12-01,2026-08-01,333,Mensual
+imacec_nm_sa,F032.IMC.IND.Z.Z.EP18.N03.Z.1.M,Imacec no minero desestacionalizado,Actividad,"Imacec no minero desestacionalizado, serie empalmada (Índice 2018=100)",1998-12-01,2026-08-01,333,Mensual
+desempleo_sa,F049.DES.TAS.INE.10.M,"Tasa de desocupación, ajustada estacionalmente (%)",Mercado laboral,"Tasa de desocupación, total | Ajustada estacionalmente | INE | Mensual | Porcentaje",2010-03-01,2026-08-01,198,Mensual
+desempleo_hist,F049.DES.TAS.HIST.10.M,"Tasa de desocupación, serie histórica (%)",Mercado laboral,"Tasas de desocupación, nacional, serie histórica",1998-12-01,2026-08-01,333,Mensual
+rem_nom,G049.RMM.IND.INE23.NE.M,"Índice nominal de remuneraciones, empalmado (2023=100)",Mercado laboral,"Índice nominal de remuneraciones, serie empalmada, base 2023=100, INE",2009-12-01,2026-08-01,201,Mensual
+tpm,F022.TPM.TIN.D001.NO.Z.M,Tasa de política monetaria (%),Monetario,Tasa de política monetaria (promedio simple) - TPM,1998-12-01,2026-09-01,334,Mensual
+tcn,F073.TCO.PRE.HIST.M,"Dólar observado, promedio mensual ($/US$)",Externo,"Tipo de cambio del dólar observado diario, serie histórica",1998-12-01,2026-09-01,334,Mensual
+tcr,F073.TCR.IND.199101.M,Tipo de cambio real (1986=100),Externo,Índice de tipo de cambio real - TCR (promedio 1986=100),1998-12-01,2026-09-01,334,Mensual
+ipe,F073.IPE.IND.198601.M,Índice de precios externos (1986=100),Externo,Índice de precios externos - IPE (promedio 1986=100),1998-12-01,2026-09-01,334,Mensual
+brent,F019.PPB.PRE.41AB.M,Petróleo Brent (US$/barril),Externo,Precio del petróleo Brent (dólares/barril),1998-12-01,2026-09-01,334,Mensual
+wti,F019.PPB.PRE.41B.M,Petróleo WTI (US$/barril),Externo,Precio del petróleo WTI (dólares/barril),1998-12-01,2026-09-01,334,Mensual
+gasolina_us,F019.PPB.PRE.42.M,Gasolina EE.UU. (US$/m3),Externo,"Precio de la gasolina en EE.UU. (dólares/m3)(valores referenciales, obtenidas de fuentes internacionales para apoyo al análisis económico)",1998-12-01,2026-09-01,334,Mensual
+diesel_us,F019.PPB.PRE.35B.M,Diésel (US$/galón),Externo,Precio del diesel  (dólares/galón)     ,2006-06-01,2026-09-01,244,Mensual
+cobre,F019.PPB.PRE.40.M,Cobre BML (US$/libra),Externo,"Precio del cobre refinado BML (dólares/libra) (valores referenciales, obtenidas de fuentes internacionales para apoyo al análisis económico)",1998-12-01,2026-09-01,334,Mensual
+fao,F019.PPBA.INP.46T.M,Índice FAO de alimentos (2014-16=100),Externo,"Precio de productos básicos total (Índice 2014-2016=100), FAO, Mensual, Índice",1998-12-01,2026-09-01,334,Mensual
+core_us_a,F019.IPS.V12.10.M,Inflación subyacente EE.UU. (% a/a),Externo,"Inflación Estados Unidos, Inflación excluye alimentos y energía. NSA",1998-12-01,2026-08-01,332,Mensual
+eee_mm_mes,F089.IPC.VAR.11.M,EEE: inflación del mes (% m/m),Expectativas,"Expectativas de inflación en el mes (variación mensual, mediana)",2000-02-01,2026-10-01,321,Mensual
+eee_mm_sig,F089.IPC.VAR.24.M,EEE: inflación del mes siguiente (% m/m),Expectativas,"Expectativas de inflación en el mes siguiente (variación mensual, mediana)",2010-02-01,2026-10-01,201,Mensual
+eee_11m,F089.IPC.V12.14.M,EEE: inflación en 11 meses (% a/a),Expectativas,"Expectativas de inflación en 11 meses (variación 12 meses, mediana)",2001-01-01,2026-10-01,303,Mensual
+eee_23m,F089.IPC.V12.15.M,EEE: inflación en 23 meses (% a/a),Expectativas,"Expectativas de inflación en 23 meses (variación 12 meses, mediana)",2001-01-01,2026-10-01,303,Mensual
+eee_dic26,F089.IPC.V12.2026.M,EEE: inflación diciembre 2026 (% a/a),Expectativas,"Inflación, diciembre 2026",2024-11-01,2026-10-01,24,Mensual
+eee_dic27,F089.IPC.V12.2027.M,EEE: inflación diciembre 2027 (% a/a),Expectativas,"Inflación, diciembre 2027",2025-11-01,2026-10-01,12,Mensual
+eee_sv_mes,F089.IPCSV.VAR.11.M,EEE: IPC SV del mes (% m/m),Expectativas,En el mes; Expectativas de inflación sin volátiles; índice; mensual; porcentaje; BCCh,2023-04-01,2026-10-01,43,Mensual
+eee_sv_sig,F089.IPCSV.VAR.24.M,EEE: IPC SV del mes siguiente (% m/m),Expectativas,El mes siguiente; Expectativas de inflación sin volátiles; índice; mensual; porcentaje; BCCh,2023-04-01,2026-10-01,43,Mensual
+eee_sv_dic26,F089.IPCSV.V12.2026.M,EEE: IPC SV diciembre 2026 (% a/a),Expectativas,"Inflación sin vólatiles, diciembre 2026",2024-11-01,2026-10-01,24,Mensual
+eee_sv_dic27,F089.IPCSV.V12.2027.M,EEE: IPC SV diciembre 2027 (% a/a),Expectativas,"Inflación sin vólatiles, diciembre 2027",2025-11-01,2026-10-01,12,Mensual
+eee_tpm_11m,F089.TPM.TAS.14.M,EEE: TPM en 11 meses (%),Expectativas,"Expectativas tasa de política monetaria , dentro de 11 meses, mediana",2001-09-01,2026-10-01,302,Mensual
+tcn_d,F073.TCO.PRE.Z.D,Dólar observado ($/US$),Externo,Tipo de cambio nominal (dólar observado $CLP/USD)\ tipo de cambio \ precio \ diario \ BCCh,2022-01-03,2026-10-27,1199,Diaria
+wti_d,F019.PPB.PRE.41B.D,Petróleo WTI (US$/barril),Externo,"Precio del petróleo WTI, diario (dólares/barril)",2022-01-03,2026-10-20,1153,Diaria
+cobre_d,F019.PPB.PRE.100.D,Cobre BML (US$/libra),Externo,Precio del cobre refinado BML (dólares/libra) | Diario ,2022-01-03,2026-10-27,1199,Diaria
+bei_swap_1a,F022.SWSP.TAS.AN01.Z.Z.D,"Compensación inflacionaria swaps, spot 1 año (%)",Expectativas,"Compensación inflacionaria Swaps promedio cámara , Spot 1 año",2022-01-03,2026-10-26,1199,Diaria
+bei_swap_2a,F022.SWSP.TAS.AN02.Z.Z.D,"Compensación inflacionaria swaps, spot 2 años (%)",Expectativas,"Compensación inflacionaria Swaps promedio cámara , Spot 2 años",2022-01-03,2026-10-26,1199,Diaria
+bei_bono_2a,F022.BOSP.TAS.AN02.Z.Z.D,"Compensación inflacionaria bonos BCCh, spot 2 años (%)",Expectativas,"Compensación inflacionaria bonos BCCh , Spot 2 años",2023-07-03,2026-10-21,203,Diaria
+bei_fw_1x1,F022.SWFW.TAS.E1X1.Z.Z.D,"Compensación inflacionaria swaps, forward 1 en 1 (%)",Expectativas,"Compensación inflacionaria Swaps promedio cámara , Forward BEI 1 en 1",2022-01-03,2026-10-26,1199,Diaria

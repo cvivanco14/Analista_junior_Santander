@@ -1,0 +1,12 @@
+bloque,nombre,agregado,agregado_sup,peso_2023,n_productos
+Alim_SV,Alimentos no volátiles,Bienes SV,IPC SV,7.51151,22
+Bs_sv_ex_alim,Bienes SV excl. alimentos,Bienes SV,IPC SV,19.45547,80
+ss_sv_ai,Servicios SV administrados e indexados,Servicios SV,IPC SV,24.32853,25
+ss_sv_ex_ai,Servicios SV resto,Servicios SV,IPC SV,10.759089999999999,21
+elec,Electricidad,Energía volátil,IPC volátiles,2.209589999999999,1
+comb,Combustibles,Energía volátil,IPC volátiles,6.072370000000001,5
+alim_rest_vol,Alimentos volátiles resto,Alimentos volátiles,IPC volátiles,10.95162,38
+fyv,Frutas y verduras,Alimentos volátiles,IPC volátiles,3.69035,21
+bs_vol,Bienes volátiles,Resto volátiles,IPC volátiles,8.3763,53
+ss_v_ai,Servicios volátiles adm. e indexados,Resto volátiles,IPC volátiles,2.8902900000000002,7
+ss_v_ex_ai,Servicios volátiles resto,Resto volátiles,IPC volátiles,3.75488,10

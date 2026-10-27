@@ -1,0 +1,12 @@
+bloque,comparte_tendencia_con,n
+Alim_SV,Bs_sv_ex_alim,1
+Bs_sv_ex_alim,"Alim_SV, ss_v_ai",2
+ss_sv_ai,,0
+ss_sv_ex_ai,,0
+elec,ss_v_ex_ai,1
+comb,,0
+alim_rest_vol,,0
+fyv,,0
+bs_vol,,0
+ss_v_ai,Bs_sv_ex_alim,1
+ss_v_ex_ai,elec,1
