@@ -1,18 +1,18 @@
 """
-macro.py - Datos y graficos de la Gerencia de Estudios (Santander Chile)
+formato_graficos.py - Datos y graficos de la Gerencia de Estudios (Santander Chile)
 
 Uso basico:
-    import macro
-    df = macro.bde(["F073.TCO.PRE.Z.D"], nombres=["Dolar observado"], desde="2025-01-01")
-    macro.grafico_lineas(df, titulo="El dolar sube", unidad="CLP por USD",
-                         fuente="Banco Central de Chile", archivo="graficos.pptx")
+    import formato_graficos as fg
+    df = fg.bde(["F073.TCO.PRE.Z.D"], nombres=["Dolar observado"], desde="2025-01-01")
+    fg.grafico_lineas(df, titulo="El dolar sube", unidad="CLP por USD",
+                      fuente="Banco Central de Chile", archivo="graficos.pptx")
 
 Para armar presentaciones de varias laminas (ej. chartpacks):
-    prs = macro.nueva_presentacion()
-    macro.portada(prs, "octubre de 2026")
-    lam = macro.lamina(prs, "IMCE", numero=2)
-    macro.agregar_grafico(lam, df, x, y, ancho, alto, titulo=..., unidad=...)
-    macro.pie(lam, x, y, ancho, fuente="Banco Central de Chile", nota=...)
+    prs = fg.nueva_presentacion()
+    fg.portada(prs, "octubre de 2026")
+    lam = fg.lamina(prs, "IMCE", numero=2)
+    fg.agregar_grafico(lam, df, x, y, ancho, alto, titulo=..., unidad=...)
+    fg.pie(lam, x, y, ancho, fuente="Banco Central de Chile", nota=...)
 
 Requisitos (una vez, en la terminal de VS Code):
     python -m pip install bcchapi pandas openpyxl requests python-pptx matplotlib
@@ -26,7 +26,12 @@ Reglas que respeta este modulo (manual de estilo de Estudios):
     - Ninguna transformacion se aplica en silencio: cada funcion de transformacion
       devuelve tambien el texto de nota metodologica que corresponde.
     - No desestacionaliza, no deflacta, no empalma, no interpola, no imputa.
-    - Graficos nativos de PowerPoint (editables), formato Santander.
+    - Graficos nativos de PowerPoint (editables), formato Santander:
+        lineas de 2,25 pt (series mensuales o menos frecuentes) y 1,75 pt (diarias);
+        fechas del eje X horizontales; numeros sin ceros sobrantes (2 y no 2,0);
+        etiqueta del ultimo dato (en series diarias incluye el dia);
+        descriptor de la serie (entre parentesis) en tamano 11;
+        nota y fuente en Santander Text Light tamano 9.
 """
 import copy
 import datetime as dt
@@ -236,13 +241,19 @@ GRIS_TEXTO = (89, 89, 89)
 FUENTES_SANTANDER = {
     "titulo": "Santander Headline",
     "ejes": "Santander Micro Text",
-    "fuente": "Santander Text",
+    "fuente": "Santander Text Light",
 }
 FUENTE_RESPALDO = "Arial"   # siempre instalada en Windows, sans serif neutra
 FORMATO_FECHA = "mmm.yy"    # ene.26 (meses en minusculas con Office en espanol)
 # fija el idioma de los formatos en espanol (Chile) aunque el Office este en otro idioma
 IDIOMA_FORMATO = "[$-340A]"
 ANCHO_CM, ALTO_CM = 15, 11
+GROSOR_MENSUAL = 2.25       # pt, series mensuales (o menos frecuentes)
+GROSOR_DIARIO = 1.75        # pt, series diarias
+TAM_UNIDAD = 11             # descriptor de la serie, ej. "(Var. anual, %)"
+TAM_FUENTE = 9              # nota y fuente
+TAM_ETIQUETA = 10           # etiqueta del ultimo dato
+MESES_ABREV = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
 SLIDE_ANCHO_CM, SLIDE_ALTO_CM = 33.867, 19.05  # 16:9
 
 
@@ -281,6 +292,26 @@ def tipografia(rol):
 
 def _formato_numero(decimales):
     return "#,##0" if decimales == 0 else "#,##0." + "0" * decimales
+
+
+def _decimales_sin_ceros(valor, decimales):
+    """Decimales que necesita 'valor' redondeado a 'decimales', sin ceros sobrantes (2,50 -> 1)."""
+    texto = f"{round(float(valor), decimales):.{decimales}f}"
+    return len(texto.split(".")[1].rstrip("0")) if "." in texto else 0
+
+
+def _numero_texto(valor, decimales):
+    """Numero con coma decimal, punto de miles y sin ceros sobrantes: 1.234,5 / 3 / 0,25."""
+    d = _decimales_sin_ceros(valor, decimales)
+    return f"{round(float(valor), d):,.{d}f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def es_diaria(serie):
+    """True si la serie tiene datos con frecuencia diaria (separacion mediana < 20 dias)."""
+    fechas = serie.dropna().index
+    if len(fechas) < 3:
+        return False
+    return pd.Series(fechas).diff().dt.days.median() < 20
 
 
 # =============================================================================
@@ -376,7 +407,7 @@ def pie(slide, x, y, w, fuente, nota=None, h=None):
     if nota:
         texto += f"Nota: {nota}\n"
     texto += etiqueta + "; ".join(fuentes) + "."
-    return _caja_texto(slide, texto, x, y, w, h or Cm(1.2), tipografia("fuente"), 10)
+    return _caja_texto(slide, texto, x, y, w, h or Cm(1.2), tipografia("fuente"), TAM_FUENTE)
 
 
 def _sub(padre, tag, **attrs):
@@ -410,11 +441,13 @@ def _formato_eje_valor(eje, decimales, paso, tam, nombre_fuente):
     eje.major_tick_mark = XL_TICK_MARK.OUTSIDE
     eje.minor_tick_mark = XL_TICK_MARK.NONE
     eje.has_major_gridlines = False
-    # eje sin decimales salvo que el paso sea fraccional (ej. 0,5)
-    dec_eje = 0 if decimales <= 1 else decimales
-    if paso is not None and paso != int(paso):
-        dec_eje = max(dec_eje, len(f"{paso:g}".split(".")[1]))
-    eje.tick_labels.number_format = IDIOMA_FORMATO + _formato_numero(dec_eje)
+    # sin ceros sobrantes: los decimales del paso (1 -> "2"; 0,5 -> "2,5"); con escala
+    # automatica, formato General (Office no agrega ceros)
+    if paso is not None:
+        formato = _formato_numero(_decimales_sin_ceros(paso, 4))
+    else:
+        formato = "General"
+    eje.tick_labels.number_format = IDIOMA_FORMATO + formato
     eje.tick_labels.number_format_is_linked = False
     eje.tick_labels.font.size = Pt(tam)
     eje.tick_labels.font.name = nombre_fuente
@@ -476,12 +509,40 @@ def _eje_derecho(chart, columnas_der):
     return valor2
 
 
+def _a_barras(chart, columnas):
+    """Mueve las series indicadas a un grafico de columnas que usa los mismos ejes."""
+    from pptx.oxml.ns import qn
+    plot_area = chart._chartSpace.find(qn("c:chart")).find(qn("c:plotArea"))
+    linea = plot_area.find(qn("c:lineChart"))
+    barra = linea.makeelement(qn("c:barChart"), {})
+    _sub(barra, "c:barDir", val="col")
+    _sub(barra, "c:grouping", val="clustered")
+    _sub(barra, "c:varyColors", val="0")
+    for ser in list(linea.findall(qn("c:ser"))):
+        if ser.find(qn("c:tx")).find(".//" + qn("c:v")).text in columnas:
+            linea.remove(ser)
+            # una serie de columnas no lleva marcador ni suavizado
+            for tag in ("c:marker", "c:smooth"):
+                el = ser.find(qn(tag))
+                if el is not None:
+                    ser.remove(el)
+            previo = ser.find(qn("c:spPr"))
+            if previo is None:
+                previo = ser.find(qn("c:tx"))
+            previo.addnext(ser.makeelement(qn("c:invertIfNegative"), {"val": "0"}))
+            barra.append(ser)
+    _sub(barra, "c:gapWidth", val="40")
+    for eje in linea.findall(qn("c:axId")):
+        _sub(barra, "c:axId", val=eje.get("val"))
+    linea.addprevious(barra)  # las columnas se dibujan detras de las lineas
+
+
 def agregar_grafico(slide, df, x, y, w, h, titulo=None, unidad=None, decimales=1,
                     proyecciones=None, etiqueta_ultimo=True,
                     y_min=None, y_max=None, y_paso=None,
                     eje_derecho=None, unidad_derecha=None, y2_min=None, y2_max=None, y2_paso=None,
                     meses_entre_etiquetas=None, formato_fecha=FORMATO_FECHA,
-                    linea_ref=None, posicion_unidad="abajo", tam=12):
+                    linea_ref=None, posicion_unidad="abajo", tam=12, barras=None):
     """
     Grafico de lineas nativo (editable) en formato Santander, en la posicion dada de una lamina.
     df           : DataFrame indexado por fecha; cada columna es una serie (max. 5)
@@ -493,6 +554,8 @@ def agregar_grafico(slide, df, x, y, w, h, titulo=None, unidad=None, decimales=1
     linea_ref    : valor del eje Y donde cruza el eje X (ej. 50 en indices de difusion);
                    las fechas siguen abajo
     posicion_unidad : "abajo" (izquierda abajo, por defecto) o "arriba" (izquierda arriba)
+    etiqueta_ultimo : True (todas las series), False o lista de columnas con etiqueta
+    barras       : lista de columnas que se dibujan como columnas (mismo eje Y que las lineas)
     """
     from pptx.chart.data import CategoryChartData
     from pptx.enum.chart import (XL_CHART_TYPE, XL_LABEL_POSITION, XL_LEGEND_POSITION,
@@ -505,6 +568,10 @@ def agregar_grafico(slide, df, x, y, w, h, titulo=None, unidad=None, decimales=1
         raise ValueError("Máximo 5 series por gráfico (legibilidad y paleta).")
     proyecciones = proyecciones or []
     eje_derecho = eje_derecho or []
+    barras = [str(c) for c in (barras or [])]
+    if etiqueta_ultimo is True:
+        etiqueta_ultimo = list(df.columns)
+    etiqueta_ultimo = [str(c) for c in (etiqueta_ultimo or [])]
     f_tit, f_ejes = tipografia("titulo"), tipografia("ejes")
 
     if titulo:
@@ -543,6 +610,10 @@ def agregar_grafico(slide, df, x, y, w, h, titulo=None, unidad=None, decimales=1
     ex.tick_labels.font.size = Pt(tam)
     ex.tick_labels.font.name = f_ejes
     ex.tick_labels.font.color.rgb = _rgb(0, 0, 0)
+    # fechas horizontales
+    cuerpo = ex._element.find(qn("c:txPr")).find(qn("a:bodyPr"))
+    cuerpo.set("rot", "0")
+    cuerpo.set("vert", "horz")
     ex.format.line.width = Pt(0.75)
     ex.format.line.color.rgb = _rgb(*COLOR_EJES)
     ex.has_major_gridlines = False
@@ -560,6 +631,10 @@ def agregar_grafico(slide, df, x, y, w, h, titulo=None, unidad=None, decimales=1
         ex.format.line.dash_style = MSO_LINE_DASH_STYLE.DASH
         ex.format.line.color.rgb = _rgb(127, 127, 127)
 
+    # --- columnas (comparten ejes con las lineas y quedan detras de ellas) ---
+    if barras:
+        _a_barras(chart, barras)
+
     # --- eje Y secundario ---
     if eje_derecho:
         valor2 = _eje_derecho(chart, [str(c) for c in eje_derecho])
@@ -573,36 +648,49 @@ def agregar_grafico(slide, df, x, y, w, h, titulo=None, unidad=None, decimales=1
     for i, col in enumerate(df.columns):
         serie = series[str(col)]
         color = _rgb(*PALETA[i])
-        serie.smooth = False
-        serie.format.line.width = Pt(1.5)
-        serie.format.line.color.rgb = color
-        serie.marker.style = XL_MARKER_STYLE.NONE
-        # el marcador (invisible) lleva el color de la linea: algunos visores (LibreOffice)
-        # dibujan el simbolo de la leyenda con el color de fuente si no
-        serie.marker.format.line.color.rgb = color
-        if col in proyecciones:
-            serie.format.line.dash_style = MSO_LINE_DASH_STYLE.DASH
-        if etiqueta_ultimo:
-            idx = df[col].last_valid_index()
-            if idx is not None:
-                pos = df.index.get_loc(idx)
-                etq = serie.points[pos].data_label
+        diaria = es_diaria(df[col])
+        if str(col) in barras:
+            serie.format.fill.solid()
+            serie.format.fill.fore_color.rgb = color
+            serie.format.line.fill.background()
+        else:
+            serie.smooth = False
+            serie.format.line.width = Pt(GROSOR_DIARIO if diaria else GROSOR_MENSUAL)
+            serie.format.line.color.rgb = color
+            serie.marker.style = XL_MARKER_STYLE.NONE
+            # el marcador (invisible) lleva el color de la linea: algunos visores (LibreOffice)
+            # dibujan el simbolo de la leyenda con el color de fuente si no
+            serie.marker.format.line.color.rgb = color
+            if col in proyecciones:
+                serie.format.line.dash_style = MSO_LINE_DASH_STYLE.DASH
+        idx = df[col].last_valid_index()
+        if str(col) in etiqueta_ultimo and idx is not None:
+            valor = df[col].loc[idx]
+            etq = serie.points[df.index.get_loc(idx)].data_label
+            if diaria:
+                # series diarias: valor y dia del ultimo dato, ej. "977 (22-oct)"
+                etq.has_text_frame = True
+                etq.text_frame.text = f"{_numero_texto(valor, decimales)} ({idx.day}-{MESES_ABREV[idx.month - 1]})"
+                fuente_etq = etq.text_frame.paragraphs[0].runs[0].font
+            else:
                 etq.has_text_frame = False
                 etq.show_value = True
-                etq.number_format = IDIOMA_FORMATO + _formato_numero(decimales)
+                etq.number_format = IDIOMA_FORMATO + _formato_numero(_decimales_sin_ceros(valor, decimales))
                 etq.number_format_is_linked = False
-                etq.font.size = Pt(10)
-                etq.font.bold = True
-                etq.font.color.rgb = color
-                etq.position = XL_LABEL_POSITION.RIGHT
+                fuente_etq = etq.font
+            fuente_etq.size = Pt(TAM_ETIQUETA)
+            fuente_etq.bold = True
+            fuente_etq.name = f_ejes
+            fuente_etq.color.rgb = color
+            etq.position = XL_LABEL_POSITION.OUTSIDE_END if str(col) in barras else XL_LABEL_POSITION.RIGHT
 
     # --- descriptor de unidad dentro del grafico ---
     y_unidad = y + h - Cm(2.2) if posicion_unidad == "abajo" else y + Cm(1.3)
     if unidad:
-        _caja_texto(slide, unidad, x + Cm(2.0), y_unidad, Cm(8), Cm(0.8), f_ejes, tam)
+        _caja_texto(slide, unidad, x + Cm(2.0), y_unidad, Cm(8), Cm(0.8), f_ejes, TAM_UNIDAD)
     if unidad_derecha:
         from pptx.enum.text import PP_ALIGN
-        _caja_texto(slide, unidad_derecha, x + w - Cm(9.5), y_unidad, Cm(8), Cm(0.8), f_ejes, tam,
+        _caja_texto(slide, unidad_derecha, x + w - Cm(9.5), y_unidad, Cm(8), Cm(0.8), f_ejes, TAM_UNIDAD,
                     alineacion=PP_ALIGN.RIGHT)
     return chart
 
@@ -640,7 +728,8 @@ def vista_previa(df, titulo="", decimales=1):
     import matplotlib.pyplot as plt
     fig, ax = plt.subplots(figsize=(15 / 2.54, 11 / 2.54))
     for i, col in enumerate(df.columns):
-        ax.plot(df.index, df[col], color=[c / 255 for c in PALETA[i]], lw=1.5, label=col)
+        ax.plot(df.index, df[col], color=[c / 255 for c in PALETA[i]], label=col,
+                lw=GROSOR_DIARIO if es_diaria(df[col]) else GROSOR_MENSUAL)
     ax.set_title(titulo, fontweight="bold")
     if df.shape[1] > 1:
         ax.legend(frameon=False)
@@ -662,4 +751,4 @@ if __name__ == "__main__":
                    unidad="(CLP por USD)",
                    fuente="Banco Central de Chile",
                    decimales=0,
-                   archivo="prueba_macro.pptx")
+                   archivo="prueba_formato_graficos.pptx")
