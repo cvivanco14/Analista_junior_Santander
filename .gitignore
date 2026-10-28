@@ -218,3 +218,10 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# chartpack: imagenes intermedias
+expectativas/output/charts/
+
+# Planillas EEE descargadas (se regeneran con eee/descargar.py)
+eee/raw/
+eof/raw/

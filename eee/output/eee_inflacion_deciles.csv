@@ -1,0 +1,309 @@
+fecha,horizonte,mediana,decil_1,decil_9,archivo,rango_9_1
+2014-01,11m,3.0,2.6,3.2,resultado012014.xls,0.6
+2014-02,11m,3.0,2.6,3.2,resultado022014.xls,0.6
+2014-03,11m,3.0,2.8,3.5,resultado032014.xls,0.7
+2014-04,11m,3.0,2.6,3.5,resultado042014.xls,0.9
+2014-05,11m,3.1,2.7,3.7,resultado052014.xls,1.0
+2014-06,11m,3.0,2.5,3.7,resultado062014.xls,1.2
+2014-07,11m,3.0,2.5,3.5,resultado072014.xls,1.0
+2014-08,11m,3.0,2.5,3.4,resultado082014.xls,0.9
+2014-09,11m,3.2,2.8,3.7,resultado092014.xls,0.9
+2014-10,11m,3.3,2.7,3.9,resultado102014.xls,1.2
+2014-11,11m,3.1,2.2,4.0,resultado112014.xls,1.8
+2014-12,11m,2.7,1.9,3.5,resultado122014.xls,1.6
+2015-01,11m,2.7,2.0,3.0,resultado012015.xls,1.0
+2015-02,11m,3.0,2.5,3.2,resultado022015.xls,0.7
+2015-03,11m,3.0,2.8,3.3,resultado032015.xls,0.5
+2015-04,11m,3.2,2.9,3.5,resultado042015.xls,0.6
+2015-05,11m,3.1,2.9,3.4,resultado052015.xls,0.5
+2015-06,11m,3.0,2.8,3.5,resultado062015.xls,0.7
+2015-07,11m,3.2,2.8,3.6,resultado072015.xls,0.8
+2015-08,11m,3.5,2.9,4.0,resultado082015.xls,1.1
+2015-09,11m,3.7,3.1,4.1,resultado092015.xls,1.0
+2015-10,11m,3.5,2.9,4.0,resultado102015.xls,1.1
+2015-11,11m,3.5,3.0,4.0,resultado112015.xls,1.0
+2015-12,11m,3.5,3.0,3.8,resultado122015.xls,0.8
+2016-01,11m,3.5,3.2,3.9,resultado012016.xls,0.7
+2016-02,11m,3.4,3.0,3.7,resultado022016.xls,0.7
+2016-03,11m,3.3,3.0,3.6,resultado032016.xls,0.6
+2016-04,11m,3.3,3.0,3.7,resultado_42016.xls,0.7
+2016-05,11m,3.2,2.9,3.6,resultado_52016.xls,0.7
+2016-06,11m,3.2,2.9,3.6,resultado_62016.xls,0.7
+2016-07,11m,3.1,2.7,3.5,resultado_72016.xls,0.8
+2016-08,11m,3.0,2.7,3.6,resultado_82016.xls,0.9
+2016-09,11m,3.0,2.7,3.4,resultado_92016.xls,0.7
+2016-10,11m,3.0,2.7,3.2,resultado_102016.xls,0.5
+2016-11,11m,3.0,2.5,3.0,resultado_112016.xls,0.5
+2016-12,11m,2.9,2.5,3.1,resultado_122016.xls,0.6
+2017-01,11m,2.9,2.6,3.0,resultado_12017.xls,0.4
+2017-02,11m,2.9,2.4,3.1,resultado_22017.xls,0.7
+2017-03,11m,3.0,2.6,3.2,resultado_32017.xls,0.6
+2017-04,11m,2.9,2.5,3.0,resultado_42017.xls,0.5
+2017-05,11m,2.9,2.5,3.0,resultado_52017.xls,0.5
+2017-06,11m,2.9,2.4,3.1,resultado_62017.xls,0.7
+2017-07,11m,2.7,2.4,3.0,resultado_72017.xls,0.6
+2017-08,11m,2.7,2.4,3.0,resultado_82017.xls,0.6
+2017-09,11m,2.7,2.3,3.0,resultado_92017.xls,0.7
+2017-10,11m,2.5,2.1,3.0,resultado_102017.xls,0.9
+2017-11,11m,2.5,2.2,3.0,resultado_112017.xls,0.8
+2017-12,11m,2.7,2.3,3.0,resultado_122017.xls,0.7
+2018-01,11m,2.6,2.3,3.0,resultado_012018.xls,0.7
+2018-02,11m,2.6,2.3,3.0,resultado_022018.xls,0.7
+2018-03,11m,2.6,2.2,3.0,resultado_032018.xls,0.8
+2018-04,11m,2.7,2.5,3.0,resultado_042018.xls,0.5
+2018-05,11m,2.8,2.6,3.0,resultado_052018.xls,0.4
+2018-06,11m,2.9,2.6,3.0,resultado_062018.xls,0.4
+2018-07,11m,3.0,2.7,3.1,resultado_072018.xls,0.4
+2018-08,11m,3.0,2.7,3.1,resultado_082018.xls,0.4
+2018-09,11m,3.0,2.9,3.3,resultado_092018.xls,0.4
+2018-10,11m,3.0,2.9,3.3,resultado_102018.xlsx,0.4
+2018-11,11m,3.0,2.8,3.1,resultado_112018.xlsx,0.3
+2018-12,11m,2.9,2.7,3.0,resultado_122018.xlsx,0.3
+2019-01,11m,2.8,2.6,3.0,resultado_012019.xlsx,0.4
+2019-02,11m,2.8,2.5,3.0,Resultado_022019.xlsx,0.5
+2019-03,11m,2.8,2.6,3.0,resultado_032019.xlsx,0.4
+2019-04,11m,2.8,2.6,3.0,resultado_042019.xlsx,0.4
+2019-05,11m,2.9,2.7,3.1,resultado_052019.xlsx,0.4
+2019-06,11m,2.9,2.5,3.0,resultado_062019.xlsx,0.5
+2019-07,11m,2.8,2.5,3.0,resultado_072019.xlsx,0.5
+2019-08,11m,2.8,2.6,3.0,resultado_082019.xlsx,0.4
+2019-09,11m,2.8,2.6,3.0,resultado_092019.xlsx,0.4
+2019-10,11m,2.9,2.7,3.3,resultado_102019.xlsx,0.6
+2019-11,11m,2.7,2.3,3.0,resultado_112019.xlsx,0.7
+2019-12,11m,3.2,2.6,3.7,resultado_122019.xlsx,1.1
+2020-01,11m,3.2,2.8,3.6,resultado_012020.xlsx,0.8
+2020-02,11m,3.0,2.5,3.5,resultado_022020.xlsx,1.0
+2020-03,11m,3.2,2.8,3.8,resultado_032020.xlsx,1.0
+2020-04,11m,2.9,2.2,3.5,resultado_042020.xlsx,1.3
+2020-05,11m,2.5,2.0,3.4,resultado_052020.xlsx,1.4
+2020-06,11m,2.5,1.9,3.0,resultado_062020.xlsx,1.1
+2020-07,11m,2.5,1.7,2.9,resultado_072020.xlsx,1.2
+2020-08,11m,2.5,1.8,2.8,resultado_082020.xlsx,1.0
+2020-09,11m,2.6,2.4,3.0,resultado_092020.xlsx,0.6
+2020-10,11m,2.7,2.3,3.0,resultado_102020.xlsx,0.7
+2020-11,11m,2.9,2.6,3.1,resultado_112020.xlsx,0.5
+2020-12,11m,2.9,2.7,3.2,resultado_122020.xlsx,0.5
+2021-01,11m,3.0,2.8,3.2,resultado_012021.xlsx,0.4
+2021-02,11m,3.0,2.7,3.3,resultado_022021.xlsx,0.6
+2021-03,11m,3.0,2.7,3.3,resultado_032021.xlsx,0.6
+2021-04,11m,3.0,2.7,3.3,resultado_042021.xlsx,0.6
+2021-05,11m,3.0,2.6,3.4,resultado_052021.xlsx,0.8
+2021-06,11m,3.2,2.9,3.6,resultado_062021.xlsx,0.7
+2021-07,11m,3.3,3.0,3.9,resultado_072021.xlsx,0.9
+2021-08,11m,3.5,3.1,4.1,resultado_082021.xlsx,1.0
+2021-09,11m,4.3,3.5,5.0,resultado_092021.xlsx,1.5
+2021-10,11m,4.5,3.7,5.0,resultado_102021.xlsx,1.3
+2021-11,11m,4.8,3.9,6.4,resultado_112021.xlsx,2.5
+2021-12,11m,4.8,4.1,5.6,resultado_122021.xlsx,1.5
+2022-01,11m,4.7,4.4,5.5,resultado_012022.xlsx,1.1
+2022-02,11m,4.8,4.2,5.8,resultado_022022.xlsx,1.6
+2022-03,11m,5.3,4.5,7.0,resultado_032022.xlsx,2.5
+2022-04,11m,6.0,4.6,7.1,resultado_042022.xlsx,2.5
+2022-05,11m,6.2,5.0,7.5,resultado_052022.xlsx,2.5
+2022-06,11m,6.5,5.0,8.6,resultado_062022.xlsx,3.6
+2022-07,11m,7.1,5.6,11.0,resultado_072022.xlsx,5.4
+2022-08,11m,7.3,6.2,10.0,resultado_082022.xlsx,3.8
+2022-09,11m,7.0,5.0,9.0,resultado_092022.xlsx,4.0
+2022-10,11m,6.3,5.0,8.5,resultado_102022.xlsx,3.5
+2022-11,11m,5.8,4.4,7.5,resultado_112022.xlsx,3.1
+2022-12,11m,5.3,4.2,7.9,resultado_122022.xlsx,3.7
+2023-01,11m,5.0,4.2,7.8,resultado_012023.xlsx,3.6
+2023-02,11m,5.0,4.0,6.2,resultado_022023.xlsx,2.2
+2023-03,11m,4.8,4.0,5.5,resultado_032023.xlsx,1.5
+2023-04,11m,4.5,3.7,5.7,resultado_042023.xlsx,2.0
+2023-05,11m,4.3,3.5,5.4,resultado_052023.xlsx,1.9
+2023-06,11m,4.0,3.3,4.7,resultado_062023.xlsx,1.4
+2023-07,11m,3.5,2.9,4.2,resultado_072023.xlsx,1.3
+2023-08,11m,3.5,3.0,4.1,resultado_082023.xlsx,1.1
+2023-09,11m,3.5,3.0,4.0,resultado_092023.xlsx,1.0
+2023-10,11m,3.4,3.0,4.0,resultado_102023.xlsx,1.0
+2023-11,11m,3.3,3.0,4.1,resultado_112023.xlsx,1.1
+2023-12,11m,3.1,2.8,3.7,resultado_122023.xlsx,0.9
+2024-01,11m,3.0,2.5,3.4,resultado_012024.xlsx,0.9
+2024-02,11m,3.0,2.7,3.3,resultado_022024.xlsx,0.6
+2024-03,11m,3.0,2.7,3.4,resultado_032024.xlsx,0.7
+2024-04,11m,3.1,2.7,3.6,resultado_042024.xlsx,0.9
+2024-05,11m,3.2,2.9,3.5,resultado_052024.xlsx,0.6
+2024-06,11m,3.2,2.8,3.7,resultado_062024.xlsx,0.9
+2024-07,11m,3.6,3.1,4.4,resultado_072024.xlsx,1.3
+2024-08,11m,3.8,3.5,4.3,resultado_082024.xlsx,0.8
+2024-09,11m,3.8,3.5,4.3,Datos mensuales septiembre 2024.xlsx,0.8
+2024-10,11m,3.7,3.5,4.1,Datos mensuales octubre 2024.xlsx,0.6
+2024-11,11m,3.6,3.0,4.3,Datos mensuales noviembre 2024.xlsx,1.3
+2024-12,11m,3.6,3.3,4.0,Datos mensuales diciembre 2024.xlsx,0.7
+2025-01,11m,3.8,3.5,4.3,resultado_012025.xlsx,0.8
+2025-02,11m,3.6,3.2,4.3,Datos mensuales febrero 2025.xlsx,1.1
+2025-03,11m,3.5,3.0,4.1,Datos mensuales marzo 2025.xlsx,1.1
+2025-04,11m,3.6,3.0,4.3,Datos mensuales abril 2025.xlsx,1.3
+2025-05,11m,3.5,3.0,3.8,Datos mensuales mayo 2025.xlsx,0.8
+2025-06,11m,3.4,3.0,4.0,Datos mensuales junio 2025.xlsx,1.0
+2025-07,11m,3.3,3.0,3.8,Datos mensuales julio 2025.xlsx,0.8
+2025-08,11m,3.2,2.9,3.8,Datos mensuales agosto 2025.xlsx,0.9
+2025-09,11m,3.2,3.0,3.5,Datos mensuales septiembre 2025.xlsx,0.5
+2025-10,11m,3.2,3.0,3.6,Datos mensuales octubre 2025.xlsx,0.6
+2025-11,11m,3.2,3.0,3.7,Datos mensuales noviembre 2025.xlsx,0.7
+2025-12,11m,3.0,2.9,3.4,Datos mensuales diciembre 2025.xlsx,0.5
+2026-01,11m,3.0,2.8,3.2,Datos mensuales enero 2026.xlsx,0.4
+2026-02,11m,3.0,2.8,3.1,Datos mensuales febrero 2026.xlsx,0.3
+2026-03,11m,3.0,2.9,3.5,Datos mensuales marzo 2026.xlsx,0.6
+2026-04,11m,4.0,3.4,4.8,Datos mensuales abril 2026.xlsx,1.4
+2026-05,11m,3.3,2.5,4.2,Datos mensuales mayo 2026.xlsx,1.7
+2026-06,11m,3.1,2.5,4.0,Datos mensuales junio 2026.xlsx,1.5
+2026-07,11m,3.0,2.6,3.7,Datos mensuales julio 2026.xlsx,1.1
+2026-08,11m,3.1,2.8,3.5,Datos mensuales agosto 2026.xlsx,0.7
+2026-09,11m,3.3,2.9,3.6,Datos mensuales septiembre 2026.xlsx,0.7
+2026-10,11m,3.4,3.0,3.9,Datos mensuales octubre 2026.xlsx,0.9
+2014-01,23m,3.0,2.9,3.2,resultado012014.xls,0.3
+2014-02,23m,3.0,2.9,3.0,resultado022014.xls,0.1
+2014-03,23m,3.0,2.9,3.1,resultado032014.xls,0.2
+2014-04,23m,3.0,3.0,3.0,resultado042014.xls,0.0
+2014-05,23m,3.0,3.0,3.2,resultado052014.xls,0.2
+2014-06,23m,3.0,3.0,3.0,resultado062014.xls,0.0
+2014-07,23m,3.0,3.0,3.1,resultado072014.xls,0.1
+2014-08,23m,3.0,2.7,3.0,resultado082014.xls,0.3
+2014-09,23m,3.0,2.9,3.0,resultado092014.xls,0.1
+2014-10,23m,3.0,2.9,3.1,resultado102014.xls,0.2
+2014-11,23m,3.0,2.9,3.3,resultado112014.xls,0.4
+2014-12,23m,3.0,2.8,3.0,resultado122014.xls,0.2
+2015-01,23m,3.0,2.7,3.0,resultado012015.xls,0.3
+2015-02,23m,3.0,2.9,3.0,resultado022015.xls,0.1
+2015-03,23m,3.0,3.0,3.0,resultado032015.xls,0.0
+2015-04,23m,3.0,3.0,3.0,resultado042015.xls,0.0
+2015-05,23m,3.0,3.0,3.0,resultado052015.xls,0.0
+2015-06,23m,3.0,3.0,3.0,resultado062015.xls,0.0
+2015-07,23m,3.0,3.0,3.0,resultado072015.xls,0.0
+2015-08,23m,3.0,3.0,3.2,resultado082015.xls,0.2
+2015-09,23m,3.0,3.0,3.4,resultado092015.xls,0.4
+2015-10,23m,3.0,3.0,3.2,resultado102015.xls,0.2
+2015-11,23m,3.0,3.0,3.3,resultado112015.xls,0.3
+2015-12,23m,3.0,3.0,3.2,resultado122015.xls,0.2
+2016-01,23m,3.0,3.0,3.3,resultado012016.xls,0.3
+2016-02,23m,3.0,3.0,3.2,resultado022016.xls,0.2
+2016-03,23m,3.0,3.0,3.2,resultado032016.xls,0.2
+2016-04,23m,3.0,2.9,3.3,resultado_42016.xls,0.4
+2016-05,23m,3.0,3.0,3.2,resultado_52016.xls,0.2
+2016-06,23m,3.0,3.0,3.2,resultado_62016.xls,0.2
+2016-07,23m,3.0,2.8,3.0,resultado_72016.xls,0.2
+2016-08,23m,3.0,2.8,3.0,resultado_82016.xls,0.2
+2016-09,23m,3.0,3.0,3.1,resultado_92016.xls,0.1
+2016-10,23m,3.0,2.9,3.0,resultado_102016.xls,0.1
+2016-11,23m,3.0,2.8,3.1,resultado_112016.xls,0.3
+2016-12,23m,3.0,2.8,3.0,resultado_122016.xls,0.2
+2017-01,23m,3.0,2.8,3.0,resultado_12017.xls,0.2
+2017-02,23m,3.0,2.9,3.1,resultado_22017.xls,0.2
+2017-03,23m,3.0,3.0,3.1,resultado_32017.xls,0.1
+2017-04,23m,3.0,2.9,3.0,resultado_42017.xls,0.1
+2017-05,23m,3.0,2.9,3.0,resultado_52017.xls,0.1
+2017-06,23m,3.0,2.8,3.0,resultado_62017.xls,0.2
+2017-07,23m,3.0,2.8,3.0,resultado_72017.xls,0.2
+2017-08,23m,3.0,2.7,3.0,resultado_82017.xls,0.3
+2017-09,23m,3.0,2.6,3.0,resultado_92017.xls,0.4
+2017-10,23m,3.0,2.7,3.0,resultado_102017.xls,0.3
+2017-11,23m,3.0,2.6,3.0,resultado_112017.xls,0.4
+2017-12,23m,3.0,2.6,3.0,resultado_122017.xls,0.4
+2018-01,23m,3.0,2.8,3.0,resultado_012018.xls,0.2
+2018-02,23m,3.0,2.7,3.0,resultado_022018.xls,0.3
+2018-03,23m,3.0,2.7,3.0,resultado_032018.xls,0.3
+2018-04,23m,3.0,2.9,3.0,resultado_042018.xls,0.1
+2018-05,23m,3.0,2.9,3.0,resultado_052018.xls,0.1
+2018-06,23m,3.0,3.0,3.0,resultado_062018.xls,0.0
+2018-07,23m,3.0,3.0,3.1,resultado_072018.xls,0.1
+2018-08,23m,3.0,3.0,3.1,resultado_082018.xls,0.1
+2018-09,23m,3.0,3.0,3.0,resultado_092018.xls,0.0
+2018-10,23m,3.0,3.0,3.0,resultado_102018.xlsx,0.0
+2018-11,23m,3.0,3.0,3.1,resultado_112018.xlsx,0.1
+2018-12,23m,3.0,2.9,3.1,resultado_122018.xlsx,0.2
+2019-01,23m,3.0,2.8,3.0,resultado_012019.xlsx,0.2
+2019-02,23m,3.0,2.8,3.0,Resultado_022019.xlsx,0.2
+2019-03,23m,3.0,2.8,3.0,resultado_032019.xlsx,0.2
+2019-04,23m,3.0,2.8,3.0,resultado_042019.xlsx,0.2
+2019-05,23m,3.0,2.8,3.0,resultado_052019.xlsx,0.2
+2019-06,23m,3.0,2.9,3.0,resultado_062019.xlsx,0.1
+2019-07,23m,3.0,2.8,3.0,resultado_072019.xlsx,0.2
+2019-08,23m,3.0,2.7,3.0,resultado_082019.xlsx,0.3
+2019-09,23m,3.0,2.7,3.0,resultado_092019.xlsx,0.3
+2019-10,23m,3.0,2.8,3.0,resultado_102019.xlsx,0.2
+2019-11,23m,3.0,2.7,3.0,resultado_112019.xlsx,0.3
+2019-12,23m,3.0,2.5,3.3,resultado_122019.xlsx,0.8
+2020-01,23m,3.0,2.8,3.3,resultado_012020.xlsx,0.5
+2020-02,23m,3.0,2.8,3.1,resultado_022020.xlsx,0.3
+2020-03,23m,3.0,2.9,3.2,resultado_032020.xlsx,0.3
+2020-04,23m,3.0,2.8,3.1,resultado_042020.xlsx,0.3
+2020-05,23m,3.0,2.7,3.0,resultado_052020.xlsx,0.3
+2020-06,23m,3.0,2.6,3.2,resultado_062020.xlsx,0.6
+2020-07,23m,3.0,2.5,3.0,resultado_072020.xlsx,0.5
+2020-08,23m,3.0,2.5,3.2,resultado_082020.xlsx,0.7
+2020-09,23m,3.0,2.7,3.0,resultado_092020.xlsx,0.3
+2020-10,23m,3.0,2.5,3.0,resultado_102020.xlsx,0.5
+2020-11,23m,3.0,2.7,3.1,resultado_112020.xlsx,0.4
+2020-12,23m,3.0,2.8,3.1,resultado_122020.xlsx,0.3
+2021-01,23m,3.0,2.9,3.2,resultado_012021.xlsx,0.3
+2021-02,23m,3.0,3.0,3.2,resultado_022021.xlsx,0.2
+2021-03,23m,3.0,3.0,3.1,resultado_032021.xlsx,0.1
+2021-04,23m,3.0,3.0,3.1,resultado_042021.xlsx,0.1
+2021-05,23m,3.0,3.0,3.2,resultado_052021.xlsx,0.2
+2021-06,23m,3.0,3.0,3.2,resultado_062021.xlsx,0.2
+2021-07,23m,3.0,3.0,3.3,resultado_072021.xlsx,0.3
+2021-08,23m,3.0,3.0,3.3,resultado_082021.xlsx,0.3
+2021-09,23m,3.2,3.0,3.8,resultado_092021.xlsx,0.8
+2021-10,23m,3.3,3.0,4.0,resultado_102021.xlsx,1.0
+2021-11,23m,3.5,3.1,4.4,resultado_112021.xlsx,1.3
+2021-12,23m,3.5,3.0,4.5,resultado_122021.xlsx,1.5
+2022-01,23m,3.7,3.0,4.5,resultado_012022.xlsx,1.5
+2022-02,23m,3.5,3.0,4.3,resultado_022022.xlsx,1.3
+2022-03,23m,3.7,3.0,4.5,resultado_032022.xlsx,1.5
+2022-04,23m,3.7,3.0,4.5,resultado_042022.xlsx,1.5
+2022-05,23m,3.7,3.0,4.3,resultado_052022.xlsx,1.3
+2022-06,23m,3.6,3.0,4.5,resultado_062022.xlsx,1.5
+2022-07,23m,4.0,3.0,5.3,resultado_072022.xlsx,2.3
+2022-08,23m,4.0,3.0,5.0,resultado_082022.xlsx,2.0
+2022-09,23m,3.8,3.0,5.0,resultado_092022.xlsx,2.0
+2022-10,23m,3.9,3.0,4.7,resultado_102022.xlsx,1.7
+2022-11,23m,3.5,3.0,4.5,resultado_112022.xlsx,1.5
+2022-12,23m,3.5,3.0,4.5,resultado_122022.xlsx,1.5
+2023-01,23m,3.3,3.0,4.3,resultado_012023.xlsx,1.3
+2023-02,23m,3.2,3.0,4.0,resultado_022023.xlsx,1.0
+2023-03,23m,3.0,3.0,3.8,resultado_032023.xlsx,0.8
+2023-04,23m,3.0,3.0,3.5,resultado_042023.xlsx,0.5
+2023-05,23m,3.0,3.0,3.5,resultado_052023.xlsx,0.5
+2023-06,23m,3.0,3.0,3.5,resultado_062023.xlsx,0.5
+2023-07,23m,3.0,2.8,3.4,resultado_072023.xlsx,0.6
+2023-08,23m,3.0,2.9,3.4,resultado_082023.xlsx,0.5
+2023-09,23m,3.0,2.9,3.2,resultado_092023.xlsx,0.3
+2023-10,23m,3.0,2.9,3.3,resultado_102023.xlsx,0.4
+2023-11,23m,3.0,2.8,3.2,resultado_112023.xlsx,0.4
+2023-12,23m,3.0,2.9,3.2,resultado_122023.xlsx,0.3
+2024-01,23m,3.0,2.9,3.2,resultado_012024.xlsx,0.3
+2024-02,23m,3.0,3.0,3.0,resultado_022024.xlsx,0.0
+2024-03,23m,3.0,3.0,3.1,resultado_032024.xlsx,0.1
+2024-04,23m,3.0,3.0,3.1,resultado_042024.xlsx,0.1
+2024-05,23m,3.0,3.0,3.1,resultado_052024.xlsx,0.1
+2024-06,23m,3.0,3.0,3.1,resultado_062024.xlsx,0.1
+2024-07,23m,3.0,3.0,3.2,resultado_072024.xlsx,0.2
+2024-08,23m,3.0,3.0,3.5,resultado_082024.xlsx,0.5
+2024-09,23m,3.0,3.0,3.3,Datos mensuales septiembre 2024.xlsx,0.3
+2024-10,23m,3.0,3.0,3.3,Datos mensuales octubre 2024.xlsx,0.3
+2024-11,23m,3.0,3.0,3.5,Datos mensuales noviembre 2024.xlsx,0.5
+2024-12,23m,3.0,3.0,3.5,Datos mensuales diciembre 2024.xlsx,0.5
+2025-01,23m,3.0,3.0,3.8,resultado_012025.xlsx,0.8
+2025-02,23m,3.0,3.0,3.5,Datos mensuales febrero 2025.xlsx,0.5
+2025-03,23m,3.0,3.0,3.5,Datos mensuales marzo 2025.xlsx,0.5
+2025-04,23m,3.0,3.0,3.3,Datos mensuales abril 2025.xlsx,0.3
+2025-05,23m,3.0,3.0,3.2,Datos mensuales mayo 2025.xlsx,0.2
+2025-06,23m,3.0,3.0,3.2,Datos mensuales junio 2025.xlsx,0.2
+2025-07,23m,3.0,3.0,3.1,Datos mensuales julio 2025.xlsx,0.1
+2025-08,23m,3.0,3.0,3.1,Datos mensuales agosto 2025.xlsx,0.1
+2025-09,23m,3.0,3.0,3.2,Datos mensuales septiembre 2025.xlsx,0.2
+2025-10,23m,3.0,3.0,3.2,Datos mensuales octubre 2025.xlsx,0.2
+2025-11,23m,3.0,3.0,3.2,Datos mensuales noviembre 2025.xlsx,0.2
+2025-12,23m,3.0,3.0,3.0,Datos mensuales diciembre 2025.xlsx,0.0
+2026-01,23m,3.0,3.0,3.2,Datos mensuales enero 2026.xlsx,0.2
+2026-02,23m,3.0,3.0,3.1,Datos mensuales febrero 2026.xlsx,0.1
+2026-03,23m,3.0,3.0,3.0,Datos mensuales marzo 2026.xlsx,0.0
+2026-04,23m,3.0,3.0,3.5,Datos mensuales abril 2026.xlsx,0.5
+2026-05,23m,3.0,3.0,3.3,Datos mensuales mayo 2026.xlsx,0.3
+2026-06,23m,3.0,3.0,3.3,Datos mensuales junio 2026.xlsx,0.3
+2026-07,23m,3.0,3.0,3.3,Datos mensuales julio 2026.xlsx,0.3
+2026-08,23m,3.0,3.0,3.2,Datos mensuales agosto 2026.xlsx,0.2
+2026-09,23m,3.0,3.0,3.2,Datos mensuales septiembre 2026.xlsx,0.2
+2026-10,23m,3.0,3.0,3.3,Datos mensuales octubre 2026.xlsx,0.3
