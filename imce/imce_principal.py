@@ -32,7 +32,8 @@ Carpetas (sirven para cualquier usuario: no dependen de C:\Users\<usuario>):
   IMCE.xlsx se busca primero dentro de la carpeta IMCE del script (IMCE\, IMCE\Code\ y sus
   subcarpetas, ej. IMCE\Base\) y luego en <OneDrive>/.../Bases - Chartpack/Bases/Local/IMCE/Base/.
   Para forzar otra ubicacion: setx IMCE_XLSX 'C:\ruta\IMCE.xlsx'
-  El chartbook (PPTX y PDF) queda en tmp_chartbook_imce_santander\, junto a IMCE.xlsx.
+  Carpeta del proyecto: IMCE\Code (scripts), IMCE\Base (IMCE.xlsx) e IMCE\Output (chartbook
+  en PPTX y PDF; se crea si no existe).
 
 Formato: este script no define formato propio; usa formato_graficos.py del Manual de Estilo.
 """
@@ -41,6 +42,7 @@ import math
 import os
 import re
 import sys
+import time
 import unicodedata
 from datetime import date, datetime
 from pathlib import Path
@@ -76,13 +78,39 @@ def _credenciales() -> Dict[str, str]:
     """Token del BDE (preferido) o usuario y clave, desde variables de entorno."""
     for nombre in _ALIAS_TOKEN:
         if os.environ.get(nombre):
-            return {"token": os.environ[nombre]}
+            return {"token": os.environ[nombre].strip(), "origen": nombre}
     usuario, clave = os.environ.get("BCCH_USER"), os.environ.get("BCCH_PASS")
     if usuario and clave:
-        return {"user": usuario, "pass": clave}
+        return {"user": usuario.strip(), "pass": clave, "origen": "BCCH_USER / BCCH_PASS"}
     sys.exit("No encuentro credenciales del BCCh. En PowerShell ejecuta una vez:\n"
              "    setx BDE_TOKEN 'tu_token'\n"
              "y luego cierra y abre VS Code.")
+
+
+def _es_error_credenciales(e: Exception) -> bool:
+    texto = f"{type(e).__name__} {e}".lower()
+    return "invalidcredentials" in texto or "invalid username or password" in texto
+
+
+def _diagnostico_credenciales(cred: Dict[str, str]) -> str:
+    """Pistas para corregir la credencial, sin mostrarla."""
+    if "token" not in cred:
+        return ("Se usaron BCCH_USER y BCCH_PASS. Revisa que sean el usuario y la clave de la API "
+                "del BDE (si.bcentral.cl), no los de otra cuenta.")
+    t = cred["token"]
+    lineas = [f"Se usó el token de la variable {cred['origen']}:",
+              f"  - largo: {len(t)} caracteres (un token del BCCh suele tener 60)",
+              f"  - empieza con '$2a$': {'sí' if t.startswith('$2a$') else 'NO'}"]
+    if any(c in t for c in " '\""):
+        lineas.append("  - contiene espacios o comillas: se copió con caracteres de más")
+    otras = [n for n in _ALIAS_TOKEN if n != cred["origen"] and os.environ.get(n)]
+    if otras:
+        lineas.append(f"  - también existe {', '.join(otras)}; se usa {cred['origen']} porque va primero")
+    lineas += ["Causa más común: el token se guardó con comillas DOBLES y PowerShell borró las partes",
+               "que empiezan con $. Vuelve a guardarlo con comillas SIMPLES:",
+               f"    setx {cred['origen']} 'pega_aqui_tu_token'",
+               "y cierra y abre VS Code. Si sigue fallando, genera un token nuevo en si3.bcentral.cl."]
+    return "\n".join(lineas)
 
 
 def _raices_onedrive() -> List[Path]:
@@ -115,8 +143,10 @@ def encontrar_imce_xlsx() -> Path:
 
     # 1) dentro de la carpeta del proyecto IMCE (la carpeta padre de Code\)
     proyecto = AQUI.parent if AQUI.name.lower() == "code" else AQUI
-    locales = [AQUI / "IMCE.xlsx", proyecto / "IMCE.xlsx"]
+    locales = [proyecto / "Base" / "IMCE.xlsx", AQUI / "IMCE.xlsx", proyecto / "IMCE.xlsx"]
     locales += [sub / "IMCE.xlsx" for sub in proyecto.iterdir() if sub.is_dir()]
+    if locales[0].is_file():   # IMCE\Base\IMCE.xlsx
+        return locales[0]
     encontrados = [c for c in locales if c.is_file()]
     if encontrados:
         return max(encontrados, key=lambda p: p.stat().st_mtime)
@@ -141,6 +171,28 @@ def encontrar_imce_xlsx() -> Path:
                  "    setx IMCE_XLSX 'C:\\ruta\\IMCE.xlsx'")
     # si hay mas de uno (ej. dos bibliotecas sincronizadas), el modificado mas recientemente
     return max(encontrados, key=lambda p: p.stat().st_mtime)
+
+
+def carpeta_output(imce_xlsx: Path) -> Path:
+    """IMCE/Output: hermana de Code y Base dentro de la carpeta del proyecto IMCE."""
+    if AQUI.name.lower() == "code":
+        proyecto = AQUI.parent
+    elif imce_xlsx.parent.name.lower() == "base":
+        proyecto = imce_xlsx.parent.parent
+    else:
+        proyecto = imce_xlsx.parent
+    return proyecto / "Output"
+
+
+def verificar_credenciales(cred: Dict[str, str]):
+    """Prueba la credencial con una serie antes de tocar IMCE.xlsx."""
+    try:
+        descargar_serie("G089.IME.IND.A0.M", cred)
+    except Exception as e:  # noqa: BLE001
+        if _es_error_credenciales(e):
+            sys.exit("El Banco Central rechazó la credencial (Invalid username or password).\n"
+                     + _diagnostico_credenciales(cred))
+        sys.exit(f"No pude conectarme a la API del BCCh: {e}")
 
 
 # se completan en main()
@@ -332,9 +384,13 @@ def actualizar_excel(cred: Dict[str, str]):
             continue
         try:
             obs = descargar_serie(series_id, cred)
-        except Exception as e:  # noqa: BLE001 - se informa y se sigue con la siguiente serie
-            print(f"  ⚠️ {col_name}: {e}")
-            continue
+        except Exception:  # noqa: BLE001 - se reintenta una vez y si no se sigue con la siguiente
+            time.sleep(3)
+            try:
+                obs = descargar_serie(series_id, cred)
+            except Exception as e2:  # noqa: BLE001
+                print(f"  ⚠️ {col_name}: {e2}")
+                continue
 
         c_idx = h2c[col_name]
         for d, val in obs:
@@ -506,10 +562,13 @@ def main():
     print("=" * 60)
 
     cred = _credenciales()
+    verificar_credenciales(cred)
+    print(f"  Credenciales: OK ({cred['origen']})")
     IMCE_XLSX = encontrar_imce_xlsx()
-    OUT_DIR = IMCE_XLSX.parent / "tmp_chartbook_imce_santander"
+    OUT_DIR = carpeta_output(IMCE_XLSX)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    print(f"  Credenciales: {'token' if 'token' in cred else 'usuario y clave'} (variables de entorno)")
+    print(f"  Base:   {IMCE_XLSX}")
+    print(f"  Output: {OUT_DIR}")
 
     print(f"\n{'─'*60}")
     print(">> 1. Actualizando IMCE.xlsx desde API BCCh")

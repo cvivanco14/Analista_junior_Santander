@@ -19,11 +19,15 @@ No hay que editar nada:
 
 - Credenciales desde variables de entorno (`BDE_TOKEN`/`BCCH_API_token`, o `BCCH_USER` y
   `BCCH_PASS`); nunca escritas en el código.
-- Busca `IMCE.xlsx` primero en la carpeta `IMCE` del proyecto (`IMCE\`, `IMCE\Code\` y sus
-  subcarpetas, por ejemplo `IMCE\Base\`) y luego en la ubicación anterior
+- Estructura del proyecto: `IMCE\Code` (scripts), `IMCE\Base` (`IMCE.xlsx`) e `IMCE\Output`
+  (chartbook PPTX y PDF; se crea si no existe).
+- Busca `IMCE.xlsx` primero en `IMCE\Base\`, luego en el resto de la carpeta `IMCE` y por último
+  en la ubicación anterior
   (`.../Bases - Chartpack/Bases/Local/IMCE/Base/IMCE.xlsx`). `IMCE_XLSX` permite forzar otra ruta.
-- El PPTX y el PDF quedan en `tmp_chartbook_imce_santander/`, junto a `IMCE.xlsx`. El PDF lo
-  exporta PowerPoint en Windows (con `pywin32`) o LibreOffice si está instalado.
+- El PDF lo exporta PowerPoint en Windows (con `pywin32`) o LibreOffice si está instalado.
+- Antes de modificar `IMCE.xlsx` prueba la credencial; si el Banco Central la rechaza
+  ("Invalid username or password"), se detiene e indica qué variable usó y cómo corregirla
+  (la causa más común es guardar el token con comillas dobles en PowerShell).
 
 ```powershell
 python imce/imce_principal.py
