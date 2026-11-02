@@ -18,7 +18,9 @@
 No hay que editar nada:
 
 - Credenciales desde variables de entorno (`BDE_TOKEN`/`BCCH_API_token`, o `BCCH_USER` y
-  `BCCH_PASS`); nunca escritas en el código.
+  `BCCH_PASS`) o desde el Llavero de macOS (ver README principal); nunca escritas en el código.
+- Funciona en Windows y macOS: en Mac encuentra SharePoint en `~/Library/CloudStorage` y exporta
+  el PDF con PowerPoint para Mac (o LibreOffice).
 - Estructura del proyecto: `IMCE\Code` (scripts), `IMCE\Base` (`IMCE.xlsx`) e `IMCE\Output`
   (chartbook PPTX y PDF; se crea si no existe).
 - Busca `IMCE.xlsx` primero en `IMCE\Base\`, luego en el resto de la carpeta `IMCE` y por último

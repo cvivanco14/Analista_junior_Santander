@@ -10,14 +10,16 @@ Ejecutar (no hay que editar nada):
     python imce_principal.py
 
 Requisitos (una vez):
-    python -m pip install bcchapi pandas openpyxl requests python-pptx matplotlib pywin32
-  (pywin32 permite que PowerPoint exporte el PDF en Windows)
+    python -m pip install bcchapi pandas openpyxl requests python-pptx matplotlib keyring
+  En Windows, ademas pywin32 (para que PowerPoint exporte el PDF).
 
-Credenciales (una vez por computador). API Key Token del BCCh (tambien acepta BCCH_API_token):
-  Anaconda Prompt o cmd (comillas DOBLES):   setx BDE_TOKEN "tu_token"
-  PowerShell (comillas SIMPLES):             setx BDE_TOKEN 'tu_token'
-  o, con usuario y clave de la API: setx BCCH_USER "tu_correo" y setx BCCH_PASS "tu_clave".
-  Luego cerrar y abrir Spyder / VS Code. Las credenciales nunca se escriben en este archivo.
+Credenciales (una vez por computador). API Key Token del BCCh; nunca se escribe en este archivo.
+  macOS (consola de Spyder; queda en el Llavero):
+    import keyring, getpass; keyring.set_password('estudios_santander', 'BDE_TOKEN', getpass.getpass('Token BCCh: '))
+  Windows, Anaconda Prompt o cmd (comillas DOBLES):   setx BDE_TOKEN "tu_token"
+  Windows, PowerShell (comillas SIMPLES):             setx BDE_TOKEN 'tu_token'
+  (con setx, luego cerrar y abrir Spyder / VS Code). Tambien acepta la variable BCCH_API_token,
+  o usuario y clave de la API en BCCH_USER y BCCH_PASS.
 
 Carpetas (sirven para cualquier usuario: no dependen de C:\Users\<usuario>):
   Este script vive en
@@ -73,20 +75,45 @@ CARPETA_IMCE = Path("Expectativas y Encuestas") / "IMCE"
 _ALIAS_TOKEN = ["BDE_TOKEN", "BCCH_API_token", "BCCH_API_TOKEN"]
 
 
+LLAVERO = "estudios_santander"   # servicio en el Llavero de macOS / Administrador de credenciales
+
+
+def _token_llavero():
+    """Token guardado con keyring (Llavero de macOS o Administrador de credenciales de Windows)."""
+    try:
+        import keyring
+        return keyring.get_password(LLAVERO, "BDE_TOKEN")
+    except Exception:  # noqa: BLE001 - sin keyring o sin llavero disponible
+        return None
+
+
+def _como_guardar_token(variable="BDE_TOKEN") -> str:
+    """Instrucciones para guardar el token segun el sistema operativo."""
+    if sys.platform == "darwin":
+        return ("En la consola de Spyder (una vez; pide el token sin mostrarlo):\n"
+                "    import keyring, getpass; keyring.set_password('estudios_santander', 'BDE_TOKEN', "
+                "getpass.getpass('Token BCCh: '))\n"
+                "Queda en el Llavero de macOS; no hace falta reiniciar Spyder.")
+    return ("Ejecuta una vez y luego cierra y abre Spyder / VS Code:\n"
+            f'    Anaconda Prompt o cmd:  setx {variable} "tu_token"\n'
+            f"    PowerShell:             setx {variable} 'tu_token'\n"
+            "(en PowerShell las comillas dobles borran las partes del token que empiezan con $)")
+
+
 def _credenciales() -> Dict[str, str]:
-    """Token del BDE (preferido) o usuario y clave, desde variables de entorno."""
+    """Token del BDE (variable de entorno o llavero) o usuario y clave de la API."""
     for nombre in _ALIAS_TOKEN:
         if os.environ.get(nombre):
             # sin espacios ni comillas alrededor (setx 'x' en Anaconda Prompt/cmd las guarda)
             return {"token": os.environ[nombre].strip().strip("'\"").strip(), "origen": nombre}
+    token = _token_llavero()
+    if token:
+        return {"token": token.strip().strip("'\"").strip(), "origen": "llavero"}
     usuario, clave = os.environ.get("BCCH_USER"), os.environ.get("BCCH_PASS")
     if usuario and clave:
         return {"user": usuario.strip().strip("'\""), "pass": clave.strip("'\""),
                 "origen": "BCCH_USER / BCCH_PASS"}
-    sys.exit("No encuentro credenciales del BCCh. Ejecuta una vez:\n"
-             '    Anaconda Prompt o cmd:  setx BDE_TOKEN "tu_token"\n'
-             "    PowerShell:             setx BDE_TOKEN 'tu_token'\n"
-             "y luego cierra y abre Spyder / VS Code.")
+    sys.exit("No encuentro el token del BCCh.\n" + _como_guardar_token())
 
 
 def _es_error_credenciales(e: Exception) -> bool:
@@ -100,18 +127,19 @@ def _diagnostico_credenciales(cred: Dict[str, str]) -> str:
         return ("Se usaron BCCH_USER y BCCH_PASS. Revisa que sean el usuario y la clave de la API "
                 "del BDE (si.bcentral.cl), no los de otra cuenta.")
     t = cred["token"]
-    lineas = [f"Se usó el token de la variable {cred['origen']}:",
+    donde = "del Llavero" if cred["origen"] == "llavero" else f"de la variable {cred['origen']}"
+    lineas = [f"Se usó el token {donde}:",
               f"  - largo: {len(t)} caracteres (un token del BCCh suele tener 60)",
               f"  - empieza con '$2a$': {'sí' if t.startswith('$2a$') else 'NO'}"]
     if any(c in t for c in " '\""):
         lineas.append("  - contiene espacios o comillas: se copió con caracteres de más")
     otras = [n for n in _ALIAS_TOKEN if n != cred["origen"] and os.environ.get(n)]
+    if cred["origen"] != "llavero" and _token_llavero():
+        otras.append("un token en el Llavero")
     if otras:
-        lineas.append(f"  - también existe {', '.join(otras)}; se usa {cred['origen']} porque va primero")
-    lineas += ["Vuelve a guardarlo y cierra y abre Spyder / VS Code:",
-               f'    Anaconda Prompt o cmd:  setx {cred["origen"]} "pega_aqui_tu_token"',
-               f"    PowerShell:             setx {cred['origen']} 'pega_aqui_tu_token'",
-               "(en PowerShell las comillas dobles borran las partes del token que empiezan con $).",
+        lineas.append(f"  - también existe {', '.join(otras)}; la variable de entorno tiene prioridad")
+    variable = cred["origen"] if cred["origen"] in _ALIAS_TOKEN else "BDE_TOKEN"
+    lineas += ["Vuelve a guardarlo. " + _como_guardar_token(variable),
                "Si sigue fallando, genera un token nuevo en si3.bcentral.cl."]
     return "\n".join(lineas)
 
@@ -123,10 +151,12 @@ def _raices_onedrive() -> List[Path]:
         if os.environ.get(var):
             raices.append(Path(os.environ[var]))
     casa = Path.home()
-    if casa.is_dir():
-        for p in casa.iterdir():
-            if p.is_dir() and re.search(r"santander|onedrive", p.name, re.I):
-                raices.append(p)
+    # Windows: C:\Users\<usuario>\...; macOS: ~/Library/CloudStorage/OneDrive-...
+    for base in (casa, casa / "Library" / "CloudStorage"):
+        if base.is_dir():
+            for p in base.iterdir():
+                if p.is_dir() and re.search(r"santander|onedrive|sharepoint", p.name, re.I):
+                    raices.append(p)
     vistas, unicas = set(), []
     for r in raices:
         clave = str(r).lower()
