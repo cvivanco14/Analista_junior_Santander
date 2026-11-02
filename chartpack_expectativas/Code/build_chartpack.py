@@ -1,29 +1,64 @@
-"""Chartpack de Expectativas - Gerencia de Estudios (Santander Chile).
+# -*- coding: utf-8 -*-
+r"""Chartpack de Expectativas - Gerencia de Estudios (Santander Chile).
 
-Define el contenido (series, transformaciones, laminas). Los datos, el formato y los
-graficos nativos de PowerPoint vienen de ../formato/formato_graficos.py. Las laminas de dispersion
-EEE y umbrales EOF leen las series que generan ../encuestas_eee_eof/eee/graficos.py y
-../encuestas_eee_eof/eof/graficos.py.
+Define el contenido (series, transformaciones, laminas). Los datos del BDE, el formato y los
+graficos nativos de PowerPoint vienen de formato_graficos.py (Administrativos\Manual de Estilo).
+Las laminas de dispersion EEE y umbrales EOF leen los Excel que genera encuestas_bcch.py.
 
-Uso:
-    python build_chartpack.py
-Genera output/AAAAMMDD_Chartpack_Expectativas.pptx, el .pdf (con PowerPoint en Windows o
-LibreOffice) y un .xlsx con los datos de cada grafico.
+Carpetas (relativas a este script, sirven para cualquier usuario):
+    <Chartpack de Expectativas>\Code\     build_chartpack.py y encuestas_bcch.py
+    <Chartpack de Expectativas>\Inputs\   eee\ y eof\ (planillas raw y Excel resultante)
+    <Chartpack de Expectativas>\Outputs\  AAAAMMDD_Chartpack_Expectativas.pptx / .pdf / _datos.xlsx
+
+Uso (no hay que editar nada):
+    python encuestas_bcch.py     # actualiza Inputs (EEE y EOF)
+    python build_chartpack.py    # genera el chartpack en Outputs
 """
 import datetime as dt
+import os
+import re
 import sys
 from pathlib import Path
 
 import pandas as pd
 from pptx.util import Cm
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "formato"))
+CODE = Path(__file__).resolve().parent
+BASE = CODE.parent
+INPUTS = BASE / "Inputs"
+OUT = BASE / "Outputs"
+EEE_DECILES = INPUTS / "eee" / "eee_inflacion_deciles.xlsx"
+EOF_UMBRALES = INPUTS / "eof" / "eof_inflacion_2a_umbrales.xlsx"
+MANUAL_ESTILO = Path("Administrativos") / "Manual de Estilo"
+BIBLIOTECA = Path("Estudios - Documentos") / "General"
+
+
+def _carpeta_formato() -> Path:
+    """Carpeta de formato_graficos.py: Administrativos/Manual de Estilo de la biblioteca de Estudios."""
+    candidatos = []
+    if os.environ.get("FORMATO_GRAFICOS_DIR"):
+        candidatos.append(Path(os.environ["FORMATO_GRAFICOS_DIR"]))
+    # 1) subiendo desde la carpeta de este script (...\General\...\Code)
+    for p in [CODE, *CODE.parents]:
+        candidatos += [p / MANUAL_ESTILO, p / "formato"]   # "formato": estructura del repositorio
+    # 2) carpetas sincronizadas de OneDrive/SharePoint (Windows: C:\Users\<usuario>; macOS: CloudStorage)
+    casa = Path.home()
+    for base in (casa, casa / "Library" / "CloudStorage"):
+        if base.is_dir():
+            for raiz in base.iterdir():
+                if raiz.is_dir() and re.search(r"santander|onedrive|sharepoint", raiz.name, re.I):
+                    candidatos.append(raiz / BIBLIOTECA / MANUAL_ESTILO)
+    for carpeta in candidatos:
+        if (carpeta / "formato_graficos.py").is_file():
+            return carpeta
+    sys.exit("No encuentro formato_graficos.py. Debe estar en\n"
+             f"    ...\\{BIBLIOTECA}\\{MANUAL_ESTILO}\n"
+             "(con su carpeta assets). Para indicar otra carpeta: variable FORMATO_GRAFICOS_DIR.")
+
+
+sys.path.insert(0, str(_carpeta_formato()))
 import formato_graficos as fg  # noqa: E402
 
-OUT = Path(__file__).parent / "output"
-ENCUESTAS = Path(__file__).resolve().parent.parent / "encuestas_eee_eof"
-EEE_DECILES = ENCUESTAS / "eee" / "output" / "eee_inflacion_deciles.csv"
-EOF_UMBRALES = ENCUESTAS / "eof" / "output" / "eof_inflacion_2a_umbrales_mensual.csv"
 BCCH = "Banco Central de Chile"
 MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto",
          "septiembre", "octubre", "noviembre", "diciembre"]
@@ -54,9 +89,15 @@ def graficar(lam, df, x, w, hoja, fuente=BCCH, nota=None, **kw):
     DATOS[f"{_NUM[0]:02d} {hoja}"] = df
 
 
+def _input(archivo):
+    if not archivo.is_file():
+        sys.exit(f"No encuentro {archivo}. Corre primero: python encuestas_bcch.py")
+    return archivo
+
+
 def eee_deciles(horizonte):
-    """Mediana, deciles 1 y 9 y rango 9-1 de la EEE (serie de eee/graficos.py)."""
-    d = pd.read_csv(EEE_DECILES)
+    """Mediana, deciles 1 y 9 y rango 9-1 de la EEE (Excel de encuestas_bcch.py)."""
+    d = pd.read_excel(_input(EEE_DECILES), sheet_name="deciles")
     d = d[d["horizonte"] == horizonte]
     d.index = pd.to_datetime(d["fecha"])
     return d[["mediana", "decil_1", "decil_9", "rango_9_1"]].rename(columns={
@@ -64,8 +105,8 @@ def eee_deciles(horizonte):
 
 
 def eof_umbrales():
-    """% de operadores EOF con inflacion a 2 anios sobre/bajo umbrales (eof/graficos.py)."""
-    d = pd.read_csv(EOF_UMBRALES)
+    """% de operadores EOF con inflacion a 2 anios sobre/bajo umbrales (Excel de encuestas_bcch.py)."""
+    d = pd.read_excel(_input(EOF_UMBRALES), sheet_name="mensual")
     d.index = pd.to_datetime(d["mes"])
     return d
 

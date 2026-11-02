@@ -1,7 +1,7 @@
 # Formato de gráficos Santander
 
 `formato_graficos.py` es el módulo común de datos y formato de la Gerencia de Estudios. Lo usan
-[`../chartpack_expectativas/`](../chartpack_expectativas/) y [`../imce/`](../imce/).
+[`../chartpack_expectativas/`](../chartpack_expectativas/) y [`../imce/`](../imce/). En SharePoint está en `Estudios - Documentos\General\Administrativos\Manual de Estilo`.
 
 - Datos: API BDE del BCCh (`bde`, `buscar_bde`), FRED, FMI (WEO) y GSCPI de la Fed de Nueva York.
 - Transformaciones explícitas que devuelven su nota metodológica (`var_anual`, `media_movil`,
