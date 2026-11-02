@@ -6,3 +6,4 @@ playwright
 bcchapi
 requests
 python-pptx
+pywin32; sys_platform == "win32"

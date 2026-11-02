@@ -5,9 +5,10 @@ independiente con su propio README:
 
 | Carpeta | Qué hace |
 |---|---|
-| [`chartpack_expectativas/`](chartpack_expectativas/) | Chartpack de Expectativas (PPTX/PDF con gráficos nativos editables) y el módulo de formato `formato_graficos.py`. |
+| [`formato/`](formato/) | `formato_graficos.py`: datos (API BDE, FRED, FMI, GSCPI), transformaciones con nota metodológica y formato Santander de gráficos nativos de PowerPoint; portada y logos. Lo usan el chartpack y el IMCE. |
+| [`chartpack_expectativas/`](chartpack_expectativas/) | Chartpack de Expectativas (PPTX/PDF con gráficos nativos editables). |
 | [`encuestas_eee_eof/`](encuestas_eee_eof/) | Descarga de planillas de la EEE y la EOF del Banco Central y series de dispersión (deciles EEE, umbrales EOF). |
-| [`imce/`](imce/) | Proceso mensual del IMCE: actualiza `IMCE.xlsx` y genera el chartbook PDF. |
+| [`imce/`](imce/) | Proceso mensual del IMCE: actualiza `IMCE.xlsx` y genera el chartbook en PPTX y PDF. |
 
 ```bash
 python -m pip install -r requirements.txt

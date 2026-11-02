@@ -3,13 +3,15 @@
 IMCE — Proceso mensual completo
 ================================
 1. Descarga datos IMCE desde la API del BCCh y actualiza IMCE.xlsx
-2. Genera el PDF chartbook Santander
+2. Genera el chartbook Santander en PPTX (graficos editables) y PDF, con el formato de
+   ../formato/formato_graficos.py
 
 Ejecutar (no hay que editar nada):
     python imce_principal.py
 
 Requisitos (una vez):
-    python -m pip install bcchapi pandas openpyxl requests matplotlib reportlab
+    python -m pip install bcchapi pandas openpyxl requests python-pptx matplotlib pywin32
+  (pywin32 permite que PowerPoint exporte el PDF en Windows)
 
 Credenciales (una vez por computador, en PowerShell, con comillas SIMPLES):
     setx BDE_TOKEN 'tu_token'        # API Key Token del BCCh (tambien acepta BCCH_API_token)
@@ -22,6 +24,10 @@ Carpeta: el script busca solo IMCE.xlsx en OneDrive de Santander
     <OneDrive>/.../Bases - Chartpack/Bases/Local/IMCE/Base/IMCE.xlsx
   para cualquier usuario. Si no lo encuentra, usa un IMCE.xlsx junto a este script.
   Para forzar otra ubicacion: setx IMCE_XLSX 'C:\\ruta\\IMCE.xlsx'
+  El chartbook (PPTX y PDF) queda en tmp_chartbook_imce_santander/, junto a IMCE.xlsx.
+
+Formato: este script no define formato propio; usa formato_graficos.py (carpeta formato/
+del repositorio, o la misma carpeta que este script).
 """
 
 import math
@@ -33,16 +39,10 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import requests
 from openpyxl import load_workbook
-from reportlab.lib.pagesizes import A4, landscape
-from reportlab.lib.utils import ImageReader
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.pdfgen import canvas
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -327,35 +327,54 @@ def actualizar_excel(cred: Dict[str, str]):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 5. CHARTBOOK PDF
+# 5. CHARTBOOK PPTX + PDF (formato de Estudios: ../formato/formato_graficos.py)
 # ─────────────────────────────────────────────────────────────────────────────
 
-SANTANDER_RED = (236/255, 0, 0)
-SANTANDER_BLACK = (0, 0, 0)
-SANTANDER_OCHRE = (255/255, 174/255, 66/255)
-SANTANDER_GREY = (178/255, 178/255, 178/255)
-GREEN = (0, 176/255, 80/255)
-
-DPI = 200
-LW_MAIN = 2.25          # pt, series mensuales (formato Estudios)
-TOP_BAR_H = 18
-PAGE_MARGIN = 18
-FS_TITLE = 22; FS_LEGEND = 16; FS_TICKS = 14; FS_END = 16; FS_OPT = 16
-FUENTE = "Fuente: Banco Central de Chile."
-FS_FUENTE = 9           # pt en la pagina del PDF
-MAX_ETIQUETAS_X = 10    # fechas horizontales: maximo de etiquetas para que no se encimen
-
-MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
+def _importar_formato():
+    """formato_graficos.py vive en la carpeta formato/ del repositorio (o junto a este script)."""
+    aqui = Path(__file__).resolve().parent
+    for carpeta in (aqui.parent / "formato", aqui):
+        if (carpeta / "formato_graficos.py").is_file():
+            sys.path.insert(0, str(carpeta))
+            import formato_graficos
+            return formato_graficos
+    sys.exit("No encuentro formato_graficos.py: debe estar en la carpeta 'formato' junto a 'imce' "
+             "(como en el repositorio) o en la misma carpeta que este script.")
 
 
-def _month_label(dt):
-    return f"{MESES[dt.month-1]}-{str(dt.year)[-2:]}"
+MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto",
+         "septiembre", "octubre", "noviembre", "diciembre"]
+FUENTE = "Banco Central de Chile"
+NOTA = "Sobre 50 indica optimismo; bajo 50, pesimismo."
+MESES_ENTRE_ETIQUETAS = 24
 
-
-def _fmt(x):
-    """Un decimal, coma decimal y sin ceros sobrantes: 52,3 / 50."""
-    texto = f"{round(x, 1):.1f}".rstrip("0").rstrip(".")
-    return texto.replace(".", ",")
+# (titulo de la lamina, [(nombre en la leyenda, [columnas candidatas en IMCE.xlsx])], (min, max) o None)
+CHARTS = [
+    ("IMCE total y sin minería",
+     [("IMCE total", ["IMCE Total", "IMCE: Total", "Total"]),
+      ("IMCE sin minería", ["IMCE: Sin Minería", "Sin Minería", "IMCE: Sin Mineria"])], None),
+    ("IMCE por sector económico",
+     [("Comercio", ["Comercio"]), ("Construcción", ["Construcción", "Construccion"]),
+      ("Industria", ["Industria"])], None),
+    ("Expectativas de empleo",
+     [("Comercio", ["COM_Expectativas - Empleo"]), ("Construcción", ["CONS_Expectativas - Empleo"]),
+      ("Industria", ["IND_Expectativas - Empleo"])], (0, 100)),
+    ("Inventarios (vs deseado)",
+     [("Comercio", ["COM_Situacion actual - Inventarios"]),
+      ("Industria", ["IND_Situacion actual - Inventarios"])], (0, 100)),
+    ("Presiones salariales",
+     [("Construcción", ["CONS_Expectativas - Salarios"]), ("Industria", ["IND_Expectativas - Salarios"])],
+     (0, 100)),
+    ("Nivel de demanda percibida",
+     [("Comercio", ["COM_Situacion actual - Demanda"]), ("Construcción", ["CONS_Situacion actual - Demanda"]),
+      ("Industria", ["IND_Situacion actual - Demanda"])], (0, 100)),
+    ("Expectativas de precios",
+     [("Comercio", ["COM_Expectativas - Precios"]), ("Construcción", ["CONS_Expectativas - Precios"]),
+      ("Industria", ["IND_Expectativas - Precios"])], (0, 100)),
+    ("Expectativas de costos",
+     [("Comercio", ["COM_Expectativas - Costos"]), ("Construcción", ["CONS_Expectativas - Costos"]),
+      ("Industria", ["IND_Expectativas - Costos"])], (0, 100)),
+]
 
 
 def _norm_col(s):
@@ -391,207 +410,47 @@ def read_imce() -> pd.DataFrame:
     return df
 
 
-def _ticks(dates):
-    """Etiquetas en enero, cada tantos anios como haga falta para que quepan horizontales."""
-    eneros = [i for i, dt in enumerate(dates) if pd.notna(dt) and dt.month == 1]
-    paso = max(1, math.ceil(len(eneros) / MAX_ETIQUETAS_X))
-    idx = eneros[::-1][::paso][::-1]  # se cuenta desde el ultimo enero hacia atras
-    return idx, [_month_label(pd.Timestamp(dates.iloc[i])) for i in idx]
-
-
-def _ylim(y_all, include=50.0, pad=0.14):
-    y = y_all[np.isfinite(y_all)]
+def _ylim(df, paso=10, incluir=50.0):
+    """Limites en multiplos de 'paso' que contienen las series y la linea de 50."""
+    y = df.to_numpy(dtype=float)
+    y = y[np.isfinite(y)]
     if y.size == 0:
         return (0, 100)
-    lo = min(float(np.quantile(y, 0.02)), float(y.min()), include)
-    hi = max(float(np.quantile(y, 0.98)), float(y.max()), include)
-    span = max(hi - lo, 1.0)
-    step = 5.0
-    return (step * np.floor((lo - pad*span)/step), step * np.ceil((hi + pad*span)/step))
+    lo, hi = min(y.min(), incluir), max(y.max(), incluir)
+    return (paso * math.floor(lo / paso), paso * math.ceil(hi / paso))
 
 
-def _opt_pes(ax):
-    ax.text(0.01, 0.98, "(Índice)", transform=ax.transAxes, ha="left", va="top",
-            fontsize=FS_OPT, color=SANTANDER_BLACK)
-    ax.annotate("", xy=(0.08, 0.86), xytext=(0.08, 0.72),
-                xycoords=ax.transAxes, textcoords=ax.transAxes,
-                arrowprops=dict(arrowstyle="simple", color=GREEN, lw=0, mutation_scale=35),
-                annotation_clip=False)
-    ax.text(0.11, 0.80, "Optimista", transform=ax.transAxes,
-            ha="left", va="center", fontsize=FS_OPT, color=SANTANDER_BLACK)
-    ax.annotate("", xy=(0.08, 0.08), xytext=(0.08, 0.22),
-                xycoords=ax.transAxes, textcoords=ax.transAxes,
-                arrowprops=dict(arrowstyle="simple", color=SANTANDER_RED, lw=0, mutation_scale=35),
-                annotation_clip=False)
-    ax.text(0.11, 0.14, "Pesimista", transform=ax.transAxes,
-            ha="left", va="center", fontsize=FS_OPT, color=SANTANDER_BLACK)
-
-
-def make_chart(df, title, series, out_png, legend_ncol=None, force_ylims=None):
-    d = df.copy().sort_values("Fecha").reset_index(drop=True)
-    x = np.arange(len(d))
-    tick_idx, tick_labels = _ticks(d["Fecha"])
-    y_all = np.concatenate([d[col].astype(float).to_numpy() for _, col, _, _ in series])
-    ylims = force_ylims if force_ylims is not None else _ylim(y_all)
-
-    fig, ax = plt.subplots(figsize=(12.8, 7.2), dpi=DPI)
-    fig.patch.set_facecolor("white")
-    ax.set_facecolor("white")
-
-    for label, col, color, lw in series:
-        y = d[col].astype(float).to_numpy()
-        ax.plot(x, y, color=color, linewidth=lw, label=label)
-        # etiqueta del ultimo dato disponible de la serie
-        ult = np.flatnonzero(np.isfinite(y))
-        if ult.size:
-            i = ult[-1]
-            ax.text(x[i]+0.55, float(y[i]), _fmt(float(y[i])),
-                    color=color, va="center", fontsize=FS_END, fontweight="bold")
-
-    ax.hlines(50, 0, len(d)-1, colors=SANTANDER_GREY, linewidth=1.6, linestyles="--")
-    ax.set_title(title, fontweight="bold", pad=18, fontsize=FS_TITLE)
-    ax.set_xlim(0, len(d)-1+4)
-    ax.set_ylim(*ylims)
-    ax.set_xticks(tick_idx)
-    ax.set_xticklabels(tick_labels, rotation=0, fontsize=FS_TICKS)   # fechas horizontales
-    ax.yaxis.set_major_formatter(lambda v, _: _fmt(v))
-    ax.tick_params(axis="x", length=0)
-    ax.tick_params(axis="y", length=0, labelsize=FS_TICKS)
-    for sp in ax.spines.values():
-        sp.set_visible(False)
-    ax.legend(loc="upper center", ncol=legend_ncol or len(series), frameon=False,
-              bbox_to_anchor=(0.5, 1.03), fontsize=FS_LEGEND, handlelength=2.2, columnspacing=1.8)
-    _opt_pes(ax)
-    plt.tight_layout(rect=[0.03, 0.06, 0.97, 0.92])
-    fig.savefig(out_png)
-    plt.close(fig)
-
-
-def _fuente_pdf(estilo):
-    """Santander Text / Text Light si estan instaladas en Windows; si no, Helvetica."""
-    nombre = {"normal": "Santander Text", "light": "Santander Text Light"}[estilo]
-    clave = nombre.lower().replace(" ", "")
-    carpetas = [Path(os.environ.get("WINDIR", "C:/Windows")) / "Fonts",
-                Path(os.environ.get("LOCALAPPDATA", "")) / "Microsoft" / "Windows" / "Fonts"]
-    for carpeta in carpetas:
-        if not carpeta.is_dir():
-            continue
-        for f in carpeta.iterdir():
-            base = f.stem.lower().replace(" ", "").replace("-", "")
-            if f.suffix.lower() == ".ttf" and (base == clave or base == clave + "regular"):
-                try:
-                    pdfmetrics.registerFont(TTFont(nombre, str(f)))
-                    return nombre
-                except Exception:  # noqa: BLE001 - fuente no utilizable: se usa Helvetica
-                    pass
-    return "Helvetica"
-
-
-def _top_bar(c, W, H):
-    c.setFillColorRGB(236/255, 0, 0)
-    c.rect(0, H-TOP_BAR_H, W, TOP_BAR_H, fill=1, stroke=0)
-
-
-def build_pdf(cover_month_year, pngs, out_pdf):
-    W, H = landscape(A4)
-    cv = canvas.Canvas(str(out_pdf), pagesize=landscape(A4))
-    font_rl = _fuente_pdf("normal")
-    font_fuente = _fuente_pdf("light")
-
-    # Portada
-    _top_bar(cv, W, H)
-    cv.setFillColorRGB(236/255, 0, 0)
-    cv.setFont(font_rl, 44)
-    cv.drawString(42, H-92, "Santander")
-    cv.setFillColorRGB(0, 0, 0)
-    cv.setFont(font_rl, 16)
-    cv.drawString(44, H-122, "Santander Estudios Económicos")
-    cv.setFont(font_rl, 34)
-    cv.drawCentredString(W/2, H/2+40, "Índice Mensual de Confianza Empresarial (IMCE)")
-    cv.setFont(font_rl, 30)
-    cv.drawCentredString(W/2, H/2-5, cover_month_year)
-    cv.setFont(font_rl, 18)
-    cv.drawCentredString(W/2, H/2-45, f"Actualización: {pd.Timestamp.now():%d-%m-%Y}")
-    cv.showPage()
-
-    for i, p in enumerate(pngs, 1):
-        _top_bar(cv, W, H)
-        img = ImageReader(str(p))
-        iw, ih = img.getSize()
-        usable_h = H - TOP_BAR_H - 26
-        usable_w = W - 2*PAGE_MARGIN
-        scale = min(usable_w/iw, usable_h/ih)
-        w_img, h_img = iw*scale, ih*scale
-        cv.drawImage(img, (W-w_img)/2, (usable_h-h_img)/2+18, width=w_img, height=h_img, mask="auto")
-        cv.setFillColorRGB(0, 0, 0)
-        cv.setFont(font_fuente, FS_FUENTE)
-        cv.drawString(PAGE_MARGIN + 10, 18, FUENTE)
-        cv.setFont(font_rl, 12)
-        cv.drawRightString(W-24, 18, str(i))
-        cv.showPage()
-
-    cv.save()
-
-
-def generar_pdf():
-    df = read_imce()
-    last_date = df["Fecha"].max()
-    cover = f"{MESES[last_date.month-1].upper()} {last_date.year}"
+def generar_chartbook():
+    from pptx.util import Cm
+    fg = _importar_formato()
+    df = read_imce().set_index("Fecha")
+    ult = df.index.max()
     ts = pd.Timestamp.now().strftime("%Y%m%d")
-    pngs = []
+    x, y, ancho, alto = Cm(1.3), Cm(3.6), Cm(31.2), Cm(fg.ALTO_CM)
 
-    charts = [
-        ("01_total_vs_nomi", "IMCE total y sin minería",
-         [("IMCE total",       find_col(df, ["IMCE Total", "IMCE: Total", "Total"]),    SANTANDER_RED,   LW_MAIN),
-          ("IMCE sin minería", find_col(df, ["IMCE: Sin Minería", "Sin Minería", "IMCE: Sin Mineria"]),
-           SANTANDER_BLACK, LW_MAIN)],
-         2, None),
-        ("02_sectores", "IMCE por sector económico",
-         [("Comercio",     find_col(df, ["Comercio"]),     SANTANDER_BLACK, LW_MAIN),
-          ("Construcción", find_col(df, ["Construcción", "Construccion"]), SANTANDER_RED, LW_MAIN),
-          ("Industria",    find_col(df, ["Industria"]),    SANTANDER_OCHRE, LW_MAIN)],
-         3, None),
-        ("03_empleo", "Expectativas de empleo",
-         [("Comercio",     find_col(df, ["COM_Expectativas - Empleo"]),  SANTANDER_BLACK, LW_MAIN),
-          ("Construcción", find_col(df, ["CONS_Expectativas - Empleo"]), SANTANDER_RED,   LW_MAIN),
-          ("Industria",    find_col(df, ["IND_Expectativas - Empleo"]),  SANTANDER_OCHRE, LW_MAIN)],
-         3, (0, 100)),
-        ("04_inventarios", "Inventarios (vs deseado)",
-         [("Comercio",  find_col(df, ["COM_Situacion actual - Inventarios"]), SANTANDER_BLACK, LW_MAIN),
-          ("Industria", find_col(df, ["IND_Situacion actual - Inventarios"]), SANTANDER_RED,   LW_MAIN)],
-         2, (0, 100)),
-        ("05_salarios", "Presiones salariales",
-         [("Construcción", find_col(df, ["CONS_Expectativas - Salarios"]), SANTANDER_RED,   LW_MAIN),
-          ("Industria",    find_col(df, ["IND_Expectativas - Salarios"]),  SANTANDER_OCHRE, LW_MAIN)],
-         2, (0, 100)),
-        ("06_demanda", "Nivel de demanda percibida",
-         [("Comercio",     find_col(df, ["COM_Situacion actual - Demanda"]),  SANTANDER_BLACK, LW_MAIN),
-          ("Construcción", find_col(df, ["CONS_Situacion actual - Demanda"]), SANTANDER_RED,   LW_MAIN),
-          ("Industria",    find_col(df, ["IND_Situacion actual - Demanda"]),  SANTANDER_OCHRE, LW_MAIN)],
-         3, (0, 100)),
-        ("07_precios", "Expectativas de precios",
-         [("Comercio",     find_col(df, ["COM_Expectativas - Precios"]),  SANTANDER_BLACK, LW_MAIN),
-          ("Construcción", find_col(df, ["CONS_Expectativas - Precios"]), SANTANDER_RED,   LW_MAIN),
-          ("Industria",    find_col(df, ["IND_Expectativas - Precios"]),  SANTANDER_OCHRE, LW_MAIN)],
-         3, (0, 100)),
-        ("08_costos", "Expectativas de costos",
-         [("Comercio",     find_col(df, ["COM_Expectativas - Costos"]),  SANTANDER_BLACK, LW_MAIN),
-          ("Construcción", find_col(df, ["CONS_Expectativas - Costos"]), SANTANDER_RED,   LW_MAIN),
-          ("Industria",    find_col(df, ["IND_Expectativas - Costos"]),  SANTANDER_OCHRE, LW_MAIN)],
-         3, (0, 100)),
-    ]
+    prs = fg.nueva_presentacion()
+    fg.portada(prs, f"IMCE · {MESES[ult.month - 1]} de {ult.year}")
+    for num, (titulo, series, ylims) in enumerate(CHARTS, start=2):
+        datos = df[[find_col(df, cand) for _, cand in series]]
+        datos.columns = [nombre for nombre, _ in series]
+        datos = datos.dropna(how="all")
+        y_min, y_max = ylims or _ylim(datos)
+        lam = fg.lamina(prs, titulo, num)
+        fg.agregar_grafico(lam, datos, x, y, ancho, alto, unidad="(Índice)", posicion_unidad="arriba",
+                           y_min=y_min, y_max=y_max, y_paso=10, linea_ref=50,
+                           meses_entre_etiquetas=MESES_ENTRE_ETIQUETAS)
+        fg.pie(lam, x, y + alto + Cm(0.15), ancho, FUENTE, NOTA)
+        print(f"  📊 {titulo}")
 
-    for fname, title, series, ncol, ylims in charts:
-        cols_needed = {col for _, col, _, _ in series}
-        df_c = df[["Fecha"] + list(cols_needed)].copy()
-        out_png = OUT_DIR / f"{fname}_{ts}.png"
-        make_chart(df_c, title, series, out_png, legend_ncol=ncol, force_ylims=ylims)
-        pngs.append(out_png)
-        print(f"  📊 {title}")
-
-    out_pdf = OUT_DIR / f"IMCE_Chartbook_Santander_{ts}.pdf"
-    build_pdf(cover, pngs, out_pdf)
-    print(f"\n  ✅ PDF: {out_pdf}")
+    out_pptx = OUT_DIR / f"IMCE_Chartbook_Santander_{ts}.pptx"
+    try:
+        prs.save(out_pptx)
+    except PermissionError:
+        sys.exit(f"No pude guardar {out_pptx.name}: está abierto en PowerPoint. Ciérralo y vuelve a correr.")
+    print(f"\n  ✅ PPTX: {out_pptx}")
+    pdf = fg.exportar_pdf(out_pptx)
+    if pdf:
+        print(f"  ✅ PDF:  {pdf}")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -616,9 +475,9 @@ def main():
     actualizar_excel(cred)
 
     print(f"\n{'─'*60}")
-    print(">> 2. Generando PDF chartbook")
+    print(">> 2. Generando chartbook (PPTX y PDF)")
     print(f"{'─'*60}")
-    generar_pdf()
+    generar_chartbook()
 
     print("\n" + "="*60)
     print("  PROCESO COMPLETO")

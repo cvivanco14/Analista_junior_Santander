@@ -723,6 +723,40 @@ def grafico_lineas(df, titulo, unidad, fuente, nota=None, archivo="graficos.pptx
     return archivo
 
 
+def exportar_pdf(archivo_pptx):
+    """
+    Guarda un PDF junto al PPTX. En Windows usa PowerPoint (requiere pywin32 o comtypes);
+    en otros sistemas, o si PowerPoint no esta disponible, usa LibreOffice si esta instalado.
+    Devuelve la ruta del PDF, o None si no se pudo generar.
+    """
+    import shutil
+    import subprocess
+    pptx = Path(archivo_pptx).resolve()
+    pdf = pptx.with_suffix(".pdf")
+    if sys.platform.startswith("win"):
+        try:
+            try:
+                from win32com.client import Dispatch
+            except ImportError:
+                from comtypes.client import CreateObject as Dispatch
+            app = Dispatch("PowerPoint.Application")
+            pres = app.Presentations.Open(str(pptx), True, False, False)  # solo lectura, sin ventana
+            pres.SaveAs(str(pdf), 32)  # 32 = ppSaveAsPDF
+            pres.Close()
+            if app.Presentations.Count == 0:
+                app.Quit()
+            return pdf
+        except Exception as e:  # noqa: BLE001 - se intenta con LibreOffice
+            print(f"Aviso: PowerPoint no pudo exportar el PDF ({e}).")
+    soffice = shutil.which("soffice") or shutil.which("libreoffice")
+    if soffice:
+        subprocess.run([soffice, "--headless", "--convert-to", "pdf", "--outdir", str(pptx.parent),
+                        str(pptx)], check=True, capture_output=True)
+        return pdf
+    print(f"Aviso: no pude generar el PDF; ábrelo en PowerPoint y usa Guardar como PDF: {pptx}")
+    return None
+
+
 def vista_previa(df, titulo="", decimales=1):
     """Vista rapida con matplotlib (solo para revisar, no para presentar)."""
     import matplotlib.pyplot as plt

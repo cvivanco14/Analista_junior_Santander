@@ -1,24 +1,24 @@
 """Chartpack de Expectativas - Gerencia de Estudios (Santander Chile).
 
 Define el contenido (series, transformaciones, laminas). Los datos, el formato y los
-graficos nativos de PowerPoint vienen de formato_graficos.py. Las laminas de dispersion
+graficos nativos de PowerPoint vienen de ../formato/formato_graficos.py. Las laminas de dispersion
 EEE y umbrales EOF leen las series que generan ../encuestas_eee_eof/eee/graficos.py y
 ../encuestas_eee_eof/eof/graficos.py.
 
 Uso:
     python build_chartpack.py
-Genera output/AAAAMMDD_Chartpack_Expectativas.pptx, el .pdf (si hay LibreOffice) y un
-.xlsx con los datos de cada grafico.
+Genera output/AAAAMMDD_Chartpack_Expectativas.pptx, el .pdf (con PowerPoint en Windows o
+LibreOffice) y un .xlsx con los datos de cada grafico.
 """
 import datetime as dt
-import shutil
-import subprocess
+import sys
 from pathlib import Path
 
 import pandas as pd
 from pptx.util import Cm
 
-import formato_graficos as fg
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "formato"))
+import formato_graficos as fg  # noqa: E402
 
 OUT = Path(__file__).parent / "output"
 ENCUESTAS = Path(__file__).resolve().parent.parent / "encuestas_eee_eof"
@@ -240,11 +240,9 @@ def main(hoy=None):
         for hoja, df in DATOS.items():
             df.rename_axis("Fecha").to_excel(xl, sheet_name=hoja[:31])
     print(pptx)
-    soffice = shutil.which("soffice") or shutil.which("libreoffice")
-    if soffice:
-        subprocess.run([soffice, "--headless", "--convert-to", "pdf", "--outdir", str(OUT), str(pptx)],
-                       check=True, capture_output=True)
-        print(OUT / f"{nombre}.pdf")
+    pdf = fg.exportar_pdf(pptx)
+    if pdf:
+        print(pdf)
 
 
 if __name__ == "__main__":
