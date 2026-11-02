@@ -13,12 +13,11 @@ Requisitos (una vez):
     python -m pip install bcchapi pandas openpyxl requests python-pptx matplotlib pywin32
   (pywin32 permite que PowerPoint exporte el PDF en Windows)
 
-Credenciales (una vez por computador, en PowerShell, con comillas SIMPLES):
-    setx BDE_TOKEN 'tu_token'        # API Key Token del BCCh (tambien acepta BCCH_API_token)
-  o, si se usa usuario y clave de la API en vez de token:
-    setx BCCH_USER 'tu_correo'
-    setx BCCH_PASS 'tu_clave'
-  Luego cerrar y abrir VS Code. Las credenciales nunca se escriben en este archivo.
+Credenciales (una vez por computador). API Key Token del BCCh (tambien acepta BCCH_API_token):
+  Anaconda Prompt o cmd (comillas DOBLES):   setx BDE_TOKEN "tu_token"
+  PowerShell (comillas SIMPLES):             setx BDE_TOKEN 'tu_token'
+  o, con usuario y clave de la API: setx BCCH_USER "tu_correo" y setx BCCH_PASS "tu_clave".
+  Luego cerrar y abrir Spyder / VS Code. Las credenciales nunca se escriben en este archivo.
 
 Carpetas (sirven para cualquier usuario: no dependen de C:\Users\<usuario>):
   Este script vive en
@@ -78,13 +77,16 @@ def _credenciales() -> Dict[str, str]:
     """Token del BDE (preferido) o usuario y clave, desde variables de entorno."""
     for nombre in _ALIAS_TOKEN:
         if os.environ.get(nombre):
-            return {"token": os.environ[nombre].strip(), "origen": nombre}
+            # sin espacios ni comillas alrededor (setx 'x' en Anaconda Prompt/cmd las guarda)
+            return {"token": os.environ[nombre].strip().strip("'\"").strip(), "origen": nombre}
     usuario, clave = os.environ.get("BCCH_USER"), os.environ.get("BCCH_PASS")
     if usuario and clave:
-        return {"user": usuario.strip(), "pass": clave, "origen": "BCCH_USER / BCCH_PASS"}
-    sys.exit("No encuentro credenciales del BCCh. En PowerShell ejecuta una vez:\n"
-             "    setx BDE_TOKEN 'tu_token'\n"
-             "y luego cierra y abre VS Code.")
+        return {"user": usuario.strip().strip("'\""), "pass": clave.strip("'\""),
+                "origen": "BCCH_USER / BCCH_PASS"}
+    sys.exit("No encuentro credenciales del BCCh. Ejecuta una vez:\n"
+             '    Anaconda Prompt o cmd:  setx BDE_TOKEN "tu_token"\n'
+             "    PowerShell:             setx BDE_TOKEN 'tu_token'\n"
+             "y luego cierra y abre Spyder / VS Code.")
 
 
 def _es_error_credenciales(e: Exception) -> bool:
@@ -106,10 +108,11 @@ def _diagnostico_credenciales(cred: Dict[str, str]) -> str:
     otras = [n for n in _ALIAS_TOKEN if n != cred["origen"] and os.environ.get(n)]
     if otras:
         lineas.append(f"  - también existe {', '.join(otras)}; se usa {cred['origen']} porque va primero")
-    lineas += ["Causa más común: el token se guardó con comillas DOBLES y PowerShell borró las partes",
-               "que empiezan con $. Vuelve a guardarlo con comillas SIMPLES:",
-               f"    setx {cred['origen']} 'pega_aqui_tu_token'",
-               "y cierra y abre VS Code. Si sigue fallando, genera un token nuevo en si3.bcentral.cl."]
+    lineas += ["Vuelve a guardarlo y cierra y abre Spyder / VS Code:",
+               f'    Anaconda Prompt o cmd:  setx {cred["origen"]} "pega_aqui_tu_token"',
+               f"    PowerShell:             setx {cred['origen']} 'pega_aqui_tu_token'",
+               "(en PowerShell las comillas dobles borran las partes del token que empiezan con $).",
+               "Si sigue fallando, genera un token nuevo en si3.bcentral.cl."]
     return "\n".join(lineas)
 
 
