@@ -220,8 +220,8 @@ __marimo__/
 .streamlit/secrets.toml
 
 # chartpack: imagenes intermedias
-expectativas/output/charts/
+chartpack_expectativas/output/charts/
 
-# Planillas EEE descargadas (se regeneran con eee/descargar.py)
-eee/raw/
-eof/raw/
+# Planillas EEE/EOF descargadas (se regeneran con encuestas_eee_eof/descargar_bcch.py)
+encuestas_eee_eof/eee/raw/
+encuestas_eee_eof/eof/raw/

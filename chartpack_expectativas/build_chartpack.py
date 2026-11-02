@@ -2,7 +2,8 @@
 
 Define el contenido (series, transformaciones, laminas). Los datos, el formato y los
 graficos nativos de PowerPoint vienen de formato_graficos.py. Las laminas de dispersion
-EEE y umbrales EOF leen las series que generan eee/graficos.py y eof/graficos.py.
+EEE y umbrales EOF leen las series que generan ../encuestas_eee_eof/eee/graficos.py y
+../encuestas_eee_eof/eof/graficos.py.
 
 Uso:
     python build_chartpack.py
@@ -20,9 +21,9 @@ from pptx.util import Cm
 import formato_graficos as fg
 
 OUT = Path(__file__).parent / "output"
-RAIZ = Path(__file__).resolve().parent.parent
-EEE_DECILES = RAIZ / "eee" / "output" / "eee_inflacion_deciles.csv"
-EOF_UMBRALES = RAIZ / "eof" / "output" / "eof_inflacion_2a_umbrales_mensual.csv"
+ENCUESTAS = Path(__file__).resolve().parent.parent / "encuestas_eee_eof"
+EEE_DECILES = ENCUESTAS / "eee" / "output" / "eee_inflacion_deciles.csv"
+EOF_UMBRALES = ENCUESTAS / "eof" / "output" / "eof_inflacion_2a_umbrales_mensual.csv"
 BCCH = "Banco Central de Chile"
 MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto",
          "septiembre", "octubre", "noviembre", "diciembre"]
