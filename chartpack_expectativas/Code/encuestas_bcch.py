@@ -171,10 +171,23 @@ def _descargar(encuesta, desde):
     return nuevas
 
 
+def _motor_excel(fuente):
+    """Lector de Excel segun el contenido (no la extension): xlrd para .xls antiguos, openpyxl
+    para .xlsx. Explicito para no depender del lector por defecto de cada version de pandas."""
+    if isinstance(fuente, (bytes, bytearray)):
+        firma = bytes(fuente[:4])
+    elif hasattr(fuente, "getvalue"):
+        firma = fuente.getvalue()[:4]
+    else:
+        with open(fuente, "rb") as f:
+            firma = f.read(4)
+    return "xlrd" if firma == b"\xd0\xcf\x11\xe0" else "openpyxl"
+
+
 def _leer_excel(path):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        return pd.read_excel(path, sheet_name=None, header=None)
+        return pd.read_excel(path, sheet_name=None, header=None, engine=_motor_excel(path))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -236,7 +249,7 @@ def eee_serie():
     serie = serie[serie["fecha"] >= EEE_DESDE]
     # meses que ya estaban en el Excel y cuya planilla no esta en raw/ se conservan
     if EEE_XLSX.exists():
-        previo = pd.read_excel(EEE_XLSX, sheet_name="deciles", parse_dates=["fecha"])
+        previo = pd.read_excel(EEE_XLSX, sheet_name="deciles", parse_dates=["fecha"], engine="openpyxl")
         previo = previo[["fecha", "horizonte", "mediana", "decil_1", "decil_9", "archivo"]]
         clave = set(zip(serie["fecha"], serie["horizonte"]))
         previo = previo[[k not in clave for k in zip(previo["fecha"], previo["horizonte"])]]

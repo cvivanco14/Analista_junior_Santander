@@ -97,7 +97,7 @@ def _input(archivo):
 
 def eee_deciles(horizonte):
     """Mediana, deciles 1 y 9 y rango 9-1 de la EEE (Excel de encuestas_bcch.py)."""
-    d = pd.read_excel(_input(EEE_DECILES), sheet_name="deciles")
+    d = pd.read_excel(_input(EEE_DECILES), sheet_name="deciles", engine="openpyxl")
     d = d[d["horizonte"] == horizonte]
     d.index = pd.to_datetime(d["fecha"])
     return d[["mediana", "decil_1", "decil_9", "rango_9_1"]].rename(columns={
@@ -106,7 +106,7 @@ def eee_deciles(horizonte):
 
 def eof_umbrales():
     """% de operadores EOF con inflacion a 2 anios sobre/bajo umbrales (Excel de encuestas_bcch.py)."""
-    d = pd.read_excel(_input(EOF_UMBRALES), sheet_name="mensual")
+    d = pd.read_excel(_input(EOF_UMBRALES), sheet_name="mensual", engine="openpyxl")
     d.index = pd.to_datetime(d["mes"])
     return d
 

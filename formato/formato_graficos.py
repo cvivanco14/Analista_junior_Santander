@@ -234,6 +234,19 @@ def fmi_weo(indicador, paises, desde=None, hasta=None):
     return df
 
 
+def _motor_excel(fuente):
+    """Lector de Excel segun el contenido (no la extension): xlrd para .xls antiguos, openpyxl
+    para .xlsx. Explicito para no depender del lector por defecto de cada version de pandas."""
+    if isinstance(fuente, (bytes, bytearray)):
+        firma = bytes(fuente[:4])
+    elif hasattr(fuente, "getvalue"):
+        firma = fuente.getvalue()[:4]
+    else:
+        with open(fuente, "rb") as f:
+            firma = f.read(4)
+    return "xlrd" if firma == b"\xd0\xcf\x11\xe0" else "openpyxl"
+
+
 def nyfed_gscpi(desde=None, hasta=None, nombre="GSCPI"):
     """
     Global Supply Chain Pressure Index (mensual) desde la Fed de Nueva York (sin key).
@@ -243,7 +256,8 @@ def nyfed_gscpi(desde=None, hasta=None, nombre="GSCPI"):
            "downloads/gscpi_data.xlsx")
     r = requests.get(url, timeout=60)
     r.raise_for_status()
-    crudo = pd.read_excel(io.BytesIO(r.content), sheet_name="GSCPI Monthly Data", header=None)
+    crudo = pd.read_excel(io.BytesIO(r.content), sheet_name="GSCPI Monthly Data", header=None,
+                          engine=_motor_excel(r.content))
     crudo = crudo.iloc[:, :2].dropna()
     fechas = pd.to_datetime(crudo.iloc[:, 0], format="%d-%b-%Y", errors="coerce")
     df = pd.DataFrame({nombre: pd.to_numeric(crudo.iloc[:, 1], errors="coerce").values},

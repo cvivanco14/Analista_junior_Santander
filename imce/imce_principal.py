@@ -555,7 +555,7 @@ def find_col(df, candidates):
 
 
 def read_imce() -> pd.DataFrame:
-    df = pd.read_excel(IMCE_XLSX, sheet_name="IMCE", header=2)
+    df = pd.read_excel(IMCE_XLSX, sheet_name="IMCE", header=2, engine="openpyxl")
     df.columns = [str(c).strip() for c in df.columns]
     c_f = find_col(df, ["Periodo"])
     df = df.rename(columns={c_f: "Fecha"})
