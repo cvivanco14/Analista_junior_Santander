@@ -63,26 +63,48 @@ _ALIAS = {
 LLAVERO = "estudios_santander"   # servicio en el Llavero de macOS / Administrador de credenciales
 
 
+def _limpiar(valor):
+    """Sin espacios ni comillas alrededor (setx 'x' en Anaconda Prompt/cmd las guarda)."""
+    return valor.strip().strip("'\"").strip() if valor else valor
+
+
+def _llavero(nombre):
+    try:
+        import keyring
+        return keyring.get_password(LLAVERO, nombre)
+    except Exception:  # noqa: BLE001 - sin keyring o sin llavero disponible
+        return None
+
+
+def _candidatos(nombre):
+    """[(origen, valor)] en orden de prioridad: variable, sus alias y el llavero; sin repetidos."""
+    vistos, out = set(), []
+    for origen in [nombre, *_ALIAS.get(nombre, [])]:
+        v = _limpiar(os.environ.get(origen))
+        if v and v not in vistos:
+            vistos.add(v)
+            out.append((f"variable {origen}", v))
+    v = _limpiar(_llavero(nombre))
+    if v and v not in vistos:
+        out.append(("Llavero", v))
+    return out
+
+
+def _como_guardar(nombre):
+    if sys.platform == "darwin":
+        return (f"En la consola de Spyder (una vez; pide el valor sin mostrarlo):\n"
+                f"    import keyring, getpass; keyring.set_password('{LLAVERO}', '{nombre}', "
+                f"getpass.getpass('{nombre}: '))")
+    return (f"En Anaconda Prompt: setx {nombre} \"valor\" (en PowerShell: setx {nombre} 'valor') "
+            f"y luego cierra y abre Spyder / VS Code.")
+
+
 def _credencial(nombre, obligatoria=True):
     """Variable de entorno (o sus alias) y, si no esta, el llavero del sistema (keyring)."""
-    valor = os.environ.get(nombre)
-    for alias in _ALIAS.get(nombre, []):
-        valor = valor or os.environ.get(alias)
-    if not valor:
-        try:
-            import keyring
-            valor = keyring.get_password(LLAVERO, nombre)
-        except Exception:  # noqa: BLE001 - sin keyring o sin llavero disponible
-            valor = None
-    valor = valor.strip().strip("'\"").strip() if valor else valor
-    if obligatoria and not valor:
-        if sys.platform == "darwin":
-            sys.exit(f"No encuentro {nombre}. En la consola de Spyder (una vez):\n"
-                     f"    import keyring, getpass; keyring.set_password('{LLAVERO}', '{nombre}', "
-                     f"getpass.getpass('{nombre}: '))")
-        sys.exit(f"No encuentro la variable {nombre}. En Anaconda Prompt: setx {nombre} \"valor\" "
-                 f"(en PowerShell: setx {nombre} 'valor') y luego cierra y abre Spyder / VS Code.")
-    return valor
+    candidatos = _candidatos(nombre)
+    if obligatoria and not candidatos:
+        sys.exit(f"No encuentro {nombre}. " + _como_guardar(nombre))
+    return candidatos[0][1] if candidatos else None
 
 
 # =============================================================================
@@ -92,18 +114,50 @@ def _credencial(nombre, obligatoria=True):
 _SIETE = None
 
 
+def _nueva_siete(token):
+    import bcchapi
+    # La documentacion oficial del BCCh usa Siete(token=...).
+    try:
+        return bcchapi.Siete(token=token)
+    except TypeError:
+        return bcchapi.Siete(api_key=token)
+
+
 def _siete():
-    """Conexion unica a la API BDE (se reutiliza entre llamadas)."""
+    """
+    Conexion unica a la API BDE (se reutiliza entre llamadas). Prueba el token de la variable
+    BDE_TOKEN, sus alias y el Llavero, en ese orden, y usa el primero que el BCCh acepta.
+    """
     global _SIETE
-    if _SIETE is None:
-        import bcchapi
-        token = _credencial("BDE_TOKEN")
-        # La documentacion oficial del BCCh usa Siete(token=...).
+    if _SIETE is not None:
+        return _SIETE
+    candidatos = _candidatos("BDE_TOKEN")
+    if not candidatos:
+        sys.exit("No encuentro el token del BCCh (BDE_TOKEN). " + _como_guardar("BDE_TOKEN"))
+    rechazados = []
+    for origen, token in candidatos:
+        siete = _nueva_siete(token)
         try:
-            _SIETE = bcchapi.Siete(token=token)
-        except TypeError:
-            _SIETE = bcchapi.Siete(api_key=token)
-    return _SIETE
+            siete.cuadro(series=["F073.TCO.PRE.Z.D"],
+                         desde=(dt.date.today() - dt.timedelta(days=10)).isoformat())
+        except Exception as e:  # noqa: BLE001
+            texto = f"{type(e).__name__} {e}".lower()
+            if "invalidcredentials" in texto or "invalid username or password" in texto:
+                rechazados.append((origen, token))
+                continue
+            raise
+        for o, _ in rechazados:
+            print(f"Aviso: el token de {o} no es válido; uso el de {origen}. "
+                  f"Conviene borrar o corregir {o.replace('variable ', '')}.")
+        _SIETE = siete
+        return _SIETE
+    detalle = "\n".join(f"  - {o}: {len(t)} caracteres (un token del BCCh suele tener 60), "
+                        f"empieza con '$2a$': {'sí' if t.startswith('$2a$') else 'NO'}"
+                        for o, t in rechazados)
+    sys.exit("El Banco Central rechazó el token (Invalid username or password).\n" + detalle +
+             "\nVuelve a guardarlo. " + _como_guardar("BDE_TOKEN") +
+             "\nSi hay una variable BDE_TOKEN con un valor equivocado, bórrala (en Mac: revisa "
+             "~/.zshrc y ejecuta launchctl unsetenv BDE_TOKEN).")
 
 
 def bde(series, nombres=None, desde=None, hasta=None, quitar_vacios=True):
