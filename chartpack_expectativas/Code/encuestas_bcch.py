@@ -90,7 +90,17 @@ def _anio(nombre):
 
 
 def descargar(encuesta, desde):
-    """Baja a Inputs/<encuesta>/raw/ las planillas que falten; devuelve cuantas bajo."""
+    """Baja a Inputs/<encuesta>/raw/ las planillas que falten; devuelve cuantas bajo.
+
+    Corre en un hilo aparte: la API sincronica de Playwright no funciona dentro del loop de
+    asyncio que tienen las consolas de Spyder, Jupyter e IPython.
+    """
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=1) as hilo:
+        return hilo.submit(_descargar, encuesta, desde).result()
+
+
+def _descargar(encuesta, desde):
     from playwright.sync_api import sync_playwright
 
     url, patron = PAGINAS[encuesta]
