@@ -1,48 +1,58 @@
 # -*- coding: utf-8 -*-
-"""
+r"""
 IMCE — Proceso mensual completo
 ================================
 1. Descarga datos IMCE desde la API del BCCh y actualiza IMCE.xlsx
-2. Genera el PDF chartbook Santander
+2. Genera el chartbook Santander en PPTX (graficos editables) y PDF, con el formato de
+   ../formato/formato_graficos.py
 
 Ejecutar (no hay que editar nada):
     python imce_principal.py
 
 Requisitos (una vez):
-    python -m pip install bcchapi pandas openpyxl requests matplotlib reportlab
+    python -m pip install bcchapi pandas openpyxl requests python-pptx matplotlib keyring
+  En Windows, ademas pywin32 (para que PowerPoint exporte el PDF).
 
-Credenciales (una vez por computador, en PowerShell, con comillas SIMPLES):
-    setx BDE_TOKEN 'tu_token'        # API Key Token del BCCh (tambien acepta BCCH_API_token)
-  o, si se usa usuario y clave de la API en vez de token:
-    setx BCCH_USER 'tu_correo'
-    setx BCCH_PASS 'tu_clave'
-  Luego cerrar y abrir VS Code. Las credenciales nunca se escriben en este archivo.
+Credenciales (una vez por computador). API Key Token del BCCh; nunca se escribe en este archivo.
+  macOS (consola de Spyder; queda en el Llavero):
+    import keyring, getpass; keyring.set_password('estudios_santander', 'BDE_TOKEN', getpass.getpass('Token BCCh: '))
+  Windows, Anaconda Prompt o cmd (comillas DOBLES):   setx BDE_TOKEN "tu_token"
+  Windows, PowerShell (comillas SIMPLES):             setx BDE_TOKEN 'tu_token'
+  (con setx, luego cerrar y abrir Spyder / VS Code). Tambien acepta la variable BCCH_API_token,
+  o usuario y clave de la API en BCCH_USER y BCCH_PASS.
 
-Carpeta: el script busca solo IMCE.xlsx en OneDrive de Santander
-    <OneDrive>/.../Bases - Chartpack/Bases/Local/IMCE/Base/IMCE.xlsx
-  para cualquier usuario. Si no lo encuentra, usa un IMCE.xlsx junto a este script.
-  Para forzar otra ubicacion: setx IMCE_XLSX 'C:\\ruta\\IMCE.xlsx'
+Carpetas (sirven para cualquier usuario: no dependen de C:\Users\<usuario>):
+  Este script vive en
+    ...\Estudios - Documentos\General\Expectativas y Encuestas\IMCE\Code
+  y el formato comun en
+    ...\Estudios - Documentos\General\Administrativos\Manual de Estilo\formato_graficos.py
+  (con su carpeta assets\). El script sube desde su propia carpeta hasta encontrar
+  Administrativos\Manual de Estilo; si no, lo busca en la carpeta sincronizada
+  "Santander Office 365" del usuario. Para forzar otra: setx FORMATO_GRAFICOS_DIR 'C:\ruta'
+
+  IMCE.xlsx se busca primero dentro de la carpeta IMCE del script (IMCE\, IMCE\Code\ y sus
+  subcarpetas, ej. IMCE\Base\) y luego en <OneDrive>/.../Bases - Chartpack/Bases/Local/IMCE/Base/.
+  Para forzar otra ubicacion: setx IMCE_XLSX 'C:\ruta\IMCE.xlsx'
+  Carpeta del proyecto: IMCE\Code (scripts), IMCE\Base (IMCE.xlsx) e IMCE\Output (chartbook
+  en PPTX y PDF; se crea si no existe).
+
+Formato: este script no define formato propio; usa formato_graficos.py del Manual de Estilo.
 """
 
 import math
 import os
 import re
 import sys
+import time
 import unicodedata
 from datetime import date, datetime
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import requests
 from openpyxl import load_workbook
-from reportlab.lib.pagesizes import A4, landscape
-from reportlab.lib.utils import ImageReader
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.pdfgen import canvas
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -52,24 +62,92 @@ from reportlab.pdfgen import canvas
 # Fecha de inicio de descarga
 FECHA_INICIO = "2004-01-01"
 
-# Ruta de IMCE.xlsx dentro de la carpeta compartida de Estudios
+# Ruta de IMCE.xlsx dentro de la carpeta compartida de Estudios (ubicacion anterior)
 RUTA_RELATIVA = Path("Bases - Chartpack") / "Bases" / "Local" / "IMCE" / "Base" / "IMCE.xlsx"
+
+# Biblioteca de Estudios en SharePoint y carpetas fijas dentro de ella
+AQUI = Path(__file__).resolve().parent                     # ...\IMCE\Code
+BIBLIOTECA = Path("Estudios - Documentos") / "General"
+MANUAL_ESTILO = Path("Administrativos") / "Manual de Estilo"
+CARPETA_IMCE = Path("Expectativas y Encuestas") / "IMCE"
 
 # nombres alternativos con que pueden estar definidas las variables de entorno
 _ALIAS_TOKEN = ["BDE_TOKEN", "BCCH_API_token", "BCCH_API_TOKEN"]
 
 
+LLAVERO = "estudios_santander"   # servicio en el Llavero de macOS / Administrador de credenciales
+
+
+def _token_llavero():
+    """Token guardado con keyring (Llavero de macOS o Administrador de credenciales de Windows)."""
+    try:
+        import keyring
+        return keyring.get_password(LLAVERO, "BDE_TOKEN")
+    except Exception:  # noqa: BLE001 - sin keyring o sin llavero disponible
+        return None
+
+
+def _como_guardar_token(variable="BDE_TOKEN") -> str:
+    """Instrucciones para guardar el token segun el sistema operativo."""
+    if sys.platform == "darwin":
+        return ("En la consola de Spyder (una vez; pide el token sin mostrarlo):\n"
+                "    import keyring, getpass; keyring.set_password('estudios_santander', 'BDE_TOKEN', "
+                "getpass.getpass('Token BCCh: '))\n"
+                "Queda en el Llavero de macOS; no hace falta reiniciar Spyder.")
+    return ("Ejecuta una vez y luego cierra y abre Spyder / VS Code:\n"
+            f'    Anaconda Prompt o cmd:  setx {variable} "tu_token"\n'
+            f"    PowerShell:             setx {variable} 'tu_token'\n"
+            "(en PowerShell las comillas dobles borran las partes del token que empiezan con $)")
+
+
 def _credenciales() -> Dict[str, str]:
-    """Token del BDE (preferido) o usuario y clave, desde variables de entorno."""
+    """Token del BDE (variable de entorno o llavero) o usuario y clave de la API."""
     for nombre in _ALIAS_TOKEN:
         if os.environ.get(nombre):
-            return {"token": os.environ[nombre]}
+            # sin espacios ni comillas alrededor (setx 'x' en Anaconda Prompt/cmd las guarda)
+            return {"token": os.environ[nombre].strip().strip("'\"").strip(), "origen": nombre}
+    token = _token_llavero()
+    if token:
+        return {"token": token.strip().strip("'\"").strip(), "origen": "llavero"}
     usuario, clave = os.environ.get("BCCH_USER"), os.environ.get("BCCH_PASS")
     if usuario and clave:
-        return {"user": usuario, "pass": clave}
-    sys.exit("No encuentro credenciales del BCCh. En PowerShell ejecuta una vez:\n"
-             "    setx BDE_TOKEN 'tu_token'\n"
-             "y luego cierra y abre VS Code.")
+        return {"user": usuario.strip().strip("'\""), "pass": clave.strip("'\""),
+                "origen": "BCCH_USER / BCCH_PASS"}
+    sys.exit("No encuentro el token del BCCh.\n" + _como_guardar_token())
+
+
+def _es_error_credenciales(e: Exception) -> bool:
+    texto = f"{type(e).__name__} {e}".lower()
+    return "invalidcredentials" in texto or "invalid username or password" in texto
+
+
+def _diagnostico_credenciales(cred: Dict[str, str]) -> str:
+    """Pistas para corregir la credencial, sin mostrarla."""
+    if "token" not in cred:
+        return ("Se usaron BCCH_USER y BCCH_PASS. Revisa que sean el usuario y la clave de la API "
+                "del BDE (si.bcentral.cl), no los de otra cuenta.")
+    t = cred["token"]
+    donde = "del Llavero" if cred["origen"] == "llavero" else f"de la variable {cred['origen']}"
+    lineas = [f"Se usó el token {donde}:",
+              f"  - largo: {len(t)} caracteres (un token del BCCh suele tener 60)",
+              f"  - empieza con '$2a$': {'sí' if t.startswith('$2a$') else 'NO'}"]
+    if any(c in t for c in " '\""):
+        lineas.append("  - contiene espacios o comillas: se copió con caracteres de más")
+    otras = [n for n in _ALIAS_TOKEN if n != cred["origen"] and os.environ.get(n)]
+    if cred["origen"] != "llavero" and _token_llavero():
+        otras.append("un token en el Llavero")
+    if otras:
+        lineas.append(f"  - también existe {', '.join(otras)}; la variable de entorno tiene prioridad")
+    if cred["origen"] in _ALIAS_TOKEN and sys.platform == "darwin":
+        lineas += [f"La variable {cred['origen']} tiene un valor incorrecto. Para borrarla en Mac:",
+                   f"  - en esta consola de Spyder: import os; os.environ.pop('{cred['origen']}', None)",
+                   f"  - y donde se definió, en la Terminal: grep -n {cred['origen']} ~/.zshrc ~/.zprofile "
+                   f"~/.bash_profile  (borra esa línea), launchctl unsetenv {cred['origen']} y "
+                   f"conda env config vars unset {cred['origen']}"]
+    variable = cred["origen"] if cred["origen"] in _ALIAS_TOKEN else "BDE_TOKEN"
+    lineas += ["Vuelve a guardarlo. " + _como_guardar_token(variable),
+               "Si sigue fallando, genera un token nuevo en si3.bcentral.cl."]
+    return "\n".join(lineas)
 
 
 def _raices_onedrive() -> List[Path]:
@@ -79,10 +157,12 @@ def _raices_onedrive() -> List[Path]:
         if os.environ.get(var):
             raices.append(Path(os.environ[var]))
     casa = Path.home()
-    if casa.is_dir():
-        for p in casa.iterdir():
-            if p.is_dir() and re.search(r"santander|onedrive", p.name, re.I):
-                raices.append(p)
+    # Windows: C:\Users\<usuario>\...; macOS: ~/Library/CloudStorage/OneDrive-...
+    for base in (casa, casa / "Library" / "CloudStorage"):
+        if base.is_dir():
+            for p in base.iterdir():
+                if p.is_dir() and re.search(r"santander|onedrive|sharepoint", p.name, re.I):
+                    raices.append(p)
     vistas, unicas = set(), []
     for r in raices:
         clave = str(r).lower()
@@ -100,23 +180,78 @@ def encontrar_imce_xlsx() -> Path:
             return p
         sys.exit(f"IMCE_XLSX apunta a un archivo que no existe: {p}")
 
+    # 1) dentro de la carpeta del proyecto IMCE (la carpeta padre de Code\)
+    proyecto = AQUI.parent if AQUI.name.lower() == "code" else AQUI
+    locales = [proyecto / "Base" / "IMCE.xlsx", AQUI / "IMCE.xlsx", proyecto / "IMCE.xlsx"]
+    locales += [sub / "IMCE.xlsx" for sub in proyecto.iterdir() if sub.is_dir()]
+    if locales[0].is_file():   # IMCE\Base\IMCE.xlsx
+        return locales[0]
+    encontrados = [c for c in locales if c.is_file()]
+    if encontrados:
+        return max(encontrados, key=lambda p: p.stat().st_mtime)
+
+    # 2) carpetas sincronizadas: proyecto IMCE en la biblioteca y ubicacion anterior
     candidatos = []
     raices = _raices_onedrive()
     for raiz in raices:
+        imce = raiz / BIBLIOTECA / CARPETA_IMCE
+        if imce.is_dir():
+            candidatos.append(imce / "IMCE.xlsx")
+            candidatos += [sub / "IMCE.xlsx" for sub in imce.iterdir() if sub.is_dir()]
         # <raiz>/Bases - Chartpack/... o <raiz>/<biblioteca, ej. "General - Estudios">/Bases - Chartpack/...
         candidatos.append(raiz / RUTA_RELATIVA)
         candidatos += [sub / RUTA_RELATIVA for sub in raiz.iterdir() if sub.is_dir()]
-    candidatos.append(Path(__file__).resolve().parent / "IMCE.xlsx")
-
     encontrados = [c for c in candidatos if c.is_file()]
     if not encontrados:
         buscado = "\n    ".join(str(r) for r in raices) or "(no hay carpetas de OneDrive)"
-        sys.exit("No encontré IMCE.xlsx. Busqué en:\n    " + buscado +
-                 f"\n(ruta esperada dentro: {RUTA_RELATIVA})\n"
-                 "Solución: copia IMCE.xlsx junto a este script, o en PowerShell:\n"
+        sys.exit(f"No encontré IMCE.xlsx en {proyecto} ni en:\n    " + buscado +
+                 f"\n(rutas esperadas dentro: {BIBLIOTECA / CARPETA_IMCE} o {RUTA_RELATIVA})\n"
+                 "Solución: deja IMCE.xlsx en la carpeta IMCE del proyecto, o en PowerShell:\n"
                  "    setx IMCE_XLSX 'C:\\ruta\\IMCE.xlsx'")
     # si hay mas de uno (ej. dos bibliotecas sincronizadas), el modificado mas recientemente
     return max(encontrados, key=lambda p: p.stat().st_mtime)
+
+
+def carpeta_output(imce_xlsx: Path) -> Path:
+    """IMCE/Output: hermana de Code y Base dentro de la carpeta del proyecto IMCE."""
+    if AQUI.name.lower() == "code":
+        proyecto = AQUI.parent
+    elif imce_xlsx.parent.name.lower() == "base":
+        proyecto = imce_xlsx.parent.parent
+    else:
+        proyecto = imce_xlsx.parent
+    return proyecto / "Output"
+
+
+def _probar(cred: Dict[str, str]):
+    """Descarga una serie con la credencial; devuelve None si funciona o la excepcion."""
+    global _SIETE
+    _SIETE = None   # la conexion de bcchapi queda asociada al token con que se creo
+    try:
+        descargar_serie("G089.IME.IND.A0.M", cred)
+        return None
+    except Exception as e:  # noqa: BLE001
+        return e
+
+
+def verificar_credenciales(cred: Dict[str, str]) -> Dict[str, str]:
+    """Prueba la credencial con una serie antes de tocar IMCE.xlsx; devuelve la que funciona."""
+    error = _probar(cred)
+    if error is None:
+        return cred
+    if not _es_error_credenciales(error):
+        sys.exit(f"No pude conectarme a la API del BCCh: {error}")
+    # la variable de entorno fue rechazada: probar el token del Llavero, si es distinto
+    llavero = _token_llavero()
+    if cred["origen"] != "llavero" and llavero:
+        alternativa = {"token": llavero.strip().strip("'\"").strip(), "origen": "llavero"}
+        if alternativa["token"] != cred.get("token") and _probar(alternativa) is None:
+            print(f"  ⚠️ El token de la variable {cred['origen']} no es válido; uso el del Llavero.\n"
+                  f"     Conviene borrar esa variable para que no vuelva a interferir "
+                  f"(ver README de imce).")
+            return alternativa
+    sys.exit("El Banco Central rechazó la credencial (Invalid username or password).\n"
+             + _diagnostico_credenciales(cred))
 
 
 # se completan en main()
@@ -308,9 +443,13 @@ def actualizar_excel(cred: Dict[str, str]):
             continue
         try:
             obs = descargar_serie(series_id, cred)
-        except Exception as e:  # noqa: BLE001 - se informa y se sigue con la siguiente serie
-            print(f"  ⚠️ {col_name}: {e}")
-            continue
+        except Exception:  # noqa: BLE001 - se reintenta una vez y si no se sigue con la siguiente
+            time.sleep(3)
+            try:
+                obs = descargar_serie(series_id, cred)
+            except Exception as e2:  # noqa: BLE001
+                print(f"  ⚠️ {col_name}: {e2}")
+                continue
 
         c_idx = h2c[col_name]
         for d, val in obs:
@@ -327,35 +466,72 @@ def actualizar_excel(cred: Dict[str, str]):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 5. CHARTBOOK PDF
+# 5. CHARTBOOK PPTX + PDF (formato de Estudios: ../formato/formato_graficos.py)
 # ─────────────────────────────────────────────────────────────────────────────
 
-SANTANDER_RED = (236/255, 0, 0)
-SANTANDER_BLACK = (0, 0, 0)
-SANTANDER_OCHRE = (255/255, 174/255, 66/255)
-SANTANDER_GREY = (178/255, 178/255, 178/255)
-GREEN = (0, 176/255, 80/255)
+def _carpeta_formato() -> Path:
+    """Carpeta de formato_graficos.py: Administrativos/Manual de Estilo de la biblioteca de Estudios."""
+    candidatos = []
+    if os.environ.get("FORMATO_GRAFICOS_DIR"):
+        candidatos.append(Path(os.environ["FORMATO_GRAFICOS_DIR"]))
+    # 1) subiendo desde la carpeta de este script (...\General\Expectativas y Encuestas\IMCE\Code)
+    candidatos += [p / MANUAL_ESTILO for p in [AQUI, *AQUI.parents]]
+    # 2) en la biblioteca sincronizada del usuario que corre el script
+    for raiz in _raices_onedrive():
+        candidatos.append(raiz / BIBLIOTECA / MANUAL_ESTILO)
+        candidatos += [sub / "General" / MANUAL_ESTILO for sub in raiz.iterdir() if sub.is_dir()]
+    # 3) estructura del repositorio de GitHub (formato/ junto a imce/) o junto a este script
+    candidatos += [AQUI.parent / "formato", AQUI]
+    for carpeta in candidatos:
+        if (carpeta / "formato_graficos.py").is_file():
+            return carpeta
+    sys.exit("No encuentro formato_graficos.py. Debe estar en\n"
+             f"    ...\\{BIBLIOTECA}\\{MANUAL_ESTILO}\n"
+             "(con su carpeta assets). Para indicar otra carpeta, en PowerShell:\n"
+             "    setx FORMATO_GRAFICOS_DIR 'C:\\ruta\\Manual de Estilo'")
 
-DPI = 200
-LW_MAIN = 2.25          # pt, series mensuales (formato Estudios)
-TOP_BAR_H = 18
-PAGE_MARGIN = 18
-FS_TITLE = 22; FS_LEGEND = 16; FS_TICKS = 14; FS_END = 16; FS_OPT = 16
-FUENTE = "Fuente: Banco Central de Chile."
-FS_FUENTE = 9           # pt en la pagina del PDF
-MAX_ETIQUETAS_X = 10    # fechas horizontales: maximo de etiquetas para que no se encimen
 
-MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
+def _importar_formato():
+    carpeta = _carpeta_formato()
+    sys.path.insert(0, str(carpeta))
+    import formato_graficos
+    print(f"  Formato: {carpeta / 'formato_graficos.py'}")
+    return formato_graficos
 
 
-def _month_label(dt):
-    return f"{MESES[dt.month-1]}-{str(dt.year)[-2:]}"
+MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto",
+         "septiembre", "octubre", "noviembre", "diciembre"]
+FUENTE = "Banco Central de Chile"
+NOTA = "Sobre 50 indica optimismo; bajo 50, pesimismo."
+MESES_ENTRE_ETIQUETAS = 24
 
-
-def _fmt(x):
-    """Un decimal, coma decimal y sin ceros sobrantes: 52,3 / 50."""
-    texto = f"{round(x, 1):.1f}".rstrip("0").rstrip(".")
-    return texto.replace(".", ",")
+# (titulo de la lamina, [(nombre en la leyenda, [columnas candidatas en IMCE.xlsx])], (min, max) o None)
+CHARTS = [
+    ("IMCE total y sin minería",
+     [("IMCE total", ["IMCE Total", "IMCE: Total", "Total"]),
+      ("IMCE sin minería", ["IMCE: Sin Minería", "Sin Minería", "IMCE: Sin Mineria"])], None),
+    ("IMCE por sector económico",
+     [("Comercio", ["Comercio"]), ("Construcción", ["Construcción", "Construccion"]),
+      ("Industria", ["Industria"])], None),
+    ("Expectativas de empleo",
+     [("Comercio", ["COM_Expectativas - Empleo"]), ("Construcción", ["CONS_Expectativas - Empleo"]),
+      ("Industria", ["IND_Expectativas - Empleo"])], (0, 100)),
+    ("Inventarios (vs deseado)",
+     [("Comercio", ["COM_Situacion actual - Inventarios"]),
+      ("Industria", ["IND_Situacion actual - Inventarios"])], (0, 100)),
+    ("Presiones salariales",
+     [("Construcción", ["CONS_Expectativas - Salarios"]), ("Industria", ["IND_Expectativas - Salarios"])],
+     (0, 100)),
+    ("Nivel de demanda percibida",
+     [("Comercio", ["COM_Situacion actual - Demanda"]), ("Construcción", ["CONS_Situacion actual - Demanda"]),
+      ("Industria", ["IND_Situacion actual - Demanda"])], (0, 100)),
+    ("Expectativas de precios",
+     [("Comercio", ["COM_Expectativas - Precios"]), ("Construcción", ["CONS_Expectativas - Precios"]),
+      ("Industria", ["IND_Expectativas - Precios"])], (0, 100)),
+    ("Expectativas de costos",
+     [("Comercio", ["COM_Expectativas - Costos"]), ("Construcción", ["CONS_Expectativas - Costos"]),
+      ("Industria", ["IND_Expectativas - Costos"])], (0, 100)),
+]
 
 
 def _norm_col(s):
@@ -391,207 +567,47 @@ def read_imce() -> pd.DataFrame:
     return df
 
 
-def _ticks(dates):
-    """Etiquetas en enero, cada tantos anios como haga falta para que quepan horizontales."""
-    eneros = [i for i, dt in enumerate(dates) if pd.notna(dt) and dt.month == 1]
-    paso = max(1, math.ceil(len(eneros) / MAX_ETIQUETAS_X))
-    idx = eneros[::-1][::paso][::-1]  # se cuenta desde el ultimo enero hacia atras
-    return idx, [_month_label(pd.Timestamp(dates.iloc[i])) for i in idx]
-
-
-def _ylim(y_all, include=50.0, pad=0.14):
-    y = y_all[np.isfinite(y_all)]
+def _ylim(df, paso=10, incluir=50.0):
+    """Limites en multiplos de 'paso' que contienen las series y la linea de 50."""
+    y = df.to_numpy(dtype=float)
+    y = y[np.isfinite(y)]
     if y.size == 0:
         return (0, 100)
-    lo = min(float(np.quantile(y, 0.02)), float(y.min()), include)
-    hi = max(float(np.quantile(y, 0.98)), float(y.max()), include)
-    span = max(hi - lo, 1.0)
-    step = 5.0
-    return (step * np.floor((lo - pad*span)/step), step * np.ceil((hi + pad*span)/step))
+    lo, hi = min(y.min(), incluir), max(y.max(), incluir)
+    return (paso * math.floor(lo / paso), paso * math.ceil(hi / paso))
 
 
-def _opt_pes(ax):
-    ax.text(0.01, 0.98, "(Índice)", transform=ax.transAxes, ha="left", va="top",
-            fontsize=FS_OPT, color=SANTANDER_BLACK)
-    ax.annotate("", xy=(0.08, 0.86), xytext=(0.08, 0.72),
-                xycoords=ax.transAxes, textcoords=ax.transAxes,
-                arrowprops=dict(arrowstyle="simple", color=GREEN, lw=0, mutation_scale=35),
-                annotation_clip=False)
-    ax.text(0.11, 0.80, "Optimista", transform=ax.transAxes,
-            ha="left", va="center", fontsize=FS_OPT, color=SANTANDER_BLACK)
-    ax.annotate("", xy=(0.08, 0.08), xytext=(0.08, 0.22),
-                xycoords=ax.transAxes, textcoords=ax.transAxes,
-                arrowprops=dict(arrowstyle="simple", color=SANTANDER_RED, lw=0, mutation_scale=35),
-                annotation_clip=False)
-    ax.text(0.11, 0.14, "Pesimista", transform=ax.transAxes,
-            ha="left", va="center", fontsize=FS_OPT, color=SANTANDER_BLACK)
-
-
-def make_chart(df, title, series, out_png, legend_ncol=None, force_ylims=None):
-    d = df.copy().sort_values("Fecha").reset_index(drop=True)
-    x = np.arange(len(d))
-    tick_idx, tick_labels = _ticks(d["Fecha"])
-    y_all = np.concatenate([d[col].astype(float).to_numpy() for _, col, _, _ in series])
-    ylims = force_ylims if force_ylims is not None else _ylim(y_all)
-
-    fig, ax = plt.subplots(figsize=(12.8, 7.2), dpi=DPI)
-    fig.patch.set_facecolor("white")
-    ax.set_facecolor("white")
-
-    for label, col, color, lw in series:
-        y = d[col].astype(float).to_numpy()
-        ax.plot(x, y, color=color, linewidth=lw, label=label)
-        # etiqueta del ultimo dato disponible de la serie
-        ult = np.flatnonzero(np.isfinite(y))
-        if ult.size:
-            i = ult[-1]
-            ax.text(x[i]+0.55, float(y[i]), _fmt(float(y[i])),
-                    color=color, va="center", fontsize=FS_END, fontweight="bold")
-
-    ax.hlines(50, 0, len(d)-1, colors=SANTANDER_GREY, linewidth=1.6, linestyles="--")
-    ax.set_title(title, fontweight="bold", pad=18, fontsize=FS_TITLE)
-    ax.set_xlim(0, len(d)-1+4)
-    ax.set_ylim(*ylims)
-    ax.set_xticks(tick_idx)
-    ax.set_xticklabels(tick_labels, rotation=0, fontsize=FS_TICKS)   # fechas horizontales
-    ax.yaxis.set_major_formatter(lambda v, _: _fmt(v))
-    ax.tick_params(axis="x", length=0)
-    ax.tick_params(axis="y", length=0, labelsize=FS_TICKS)
-    for sp in ax.spines.values():
-        sp.set_visible(False)
-    ax.legend(loc="upper center", ncol=legend_ncol or len(series), frameon=False,
-              bbox_to_anchor=(0.5, 1.03), fontsize=FS_LEGEND, handlelength=2.2, columnspacing=1.8)
-    _opt_pes(ax)
-    plt.tight_layout(rect=[0.03, 0.06, 0.97, 0.92])
-    fig.savefig(out_png)
-    plt.close(fig)
-
-
-def _fuente_pdf(estilo):
-    """Santander Text / Text Light si estan instaladas en Windows; si no, Helvetica."""
-    nombre = {"normal": "Santander Text", "light": "Santander Text Light"}[estilo]
-    clave = nombre.lower().replace(" ", "")
-    carpetas = [Path(os.environ.get("WINDIR", "C:/Windows")) / "Fonts",
-                Path(os.environ.get("LOCALAPPDATA", "")) / "Microsoft" / "Windows" / "Fonts"]
-    for carpeta in carpetas:
-        if not carpeta.is_dir():
-            continue
-        for f in carpeta.iterdir():
-            base = f.stem.lower().replace(" ", "").replace("-", "")
-            if f.suffix.lower() == ".ttf" and (base == clave or base == clave + "regular"):
-                try:
-                    pdfmetrics.registerFont(TTFont(nombre, str(f)))
-                    return nombre
-                except Exception:  # noqa: BLE001 - fuente no utilizable: se usa Helvetica
-                    pass
-    return "Helvetica"
-
-
-def _top_bar(c, W, H):
-    c.setFillColorRGB(236/255, 0, 0)
-    c.rect(0, H-TOP_BAR_H, W, TOP_BAR_H, fill=1, stroke=0)
-
-
-def build_pdf(cover_month_year, pngs, out_pdf):
-    W, H = landscape(A4)
-    cv = canvas.Canvas(str(out_pdf), pagesize=landscape(A4))
-    font_rl = _fuente_pdf("normal")
-    font_fuente = _fuente_pdf("light")
-
-    # Portada
-    _top_bar(cv, W, H)
-    cv.setFillColorRGB(236/255, 0, 0)
-    cv.setFont(font_rl, 44)
-    cv.drawString(42, H-92, "Santander")
-    cv.setFillColorRGB(0, 0, 0)
-    cv.setFont(font_rl, 16)
-    cv.drawString(44, H-122, "Santander Estudios Económicos")
-    cv.setFont(font_rl, 34)
-    cv.drawCentredString(W/2, H/2+40, "Índice Mensual de Confianza Empresarial (IMCE)")
-    cv.setFont(font_rl, 30)
-    cv.drawCentredString(W/2, H/2-5, cover_month_year)
-    cv.setFont(font_rl, 18)
-    cv.drawCentredString(W/2, H/2-45, f"Actualización: {pd.Timestamp.now():%d-%m-%Y}")
-    cv.showPage()
-
-    for i, p in enumerate(pngs, 1):
-        _top_bar(cv, W, H)
-        img = ImageReader(str(p))
-        iw, ih = img.getSize()
-        usable_h = H - TOP_BAR_H - 26
-        usable_w = W - 2*PAGE_MARGIN
-        scale = min(usable_w/iw, usable_h/ih)
-        w_img, h_img = iw*scale, ih*scale
-        cv.drawImage(img, (W-w_img)/2, (usable_h-h_img)/2+18, width=w_img, height=h_img, mask="auto")
-        cv.setFillColorRGB(0, 0, 0)
-        cv.setFont(font_fuente, FS_FUENTE)
-        cv.drawString(PAGE_MARGIN + 10, 18, FUENTE)
-        cv.setFont(font_rl, 12)
-        cv.drawRightString(W-24, 18, str(i))
-        cv.showPage()
-
-    cv.save()
-
-
-def generar_pdf():
-    df = read_imce()
-    last_date = df["Fecha"].max()
-    cover = f"{MESES[last_date.month-1].upper()} {last_date.year}"
+def generar_chartbook():
+    from pptx.util import Cm
+    fg = _importar_formato()
+    df = read_imce().set_index("Fecha")
+    ult = df.index.max()
     ts = pd.Timestamp.now().strftime("%Y%m%d")
-    pngs = []
+    x, y, ancho, alto = Cm(1.3), Cm(3.6), Cm(31.2), Cm(fg.ALTO_CM)
 
-    charts = [
-        ("01_total_vs_nomi", "IMCE total y sin minería",
-         [("IMCE total",       find_col(df, ["IMCE Total", "IMCE: Total", "Total"]),    SANTANDER_RED,   LW_MAIN),
-          ("IMCE sin minería", find_col(df, ["IMCE: Sin Minería", "Sin Minería", "IMCE: Sin Mineria"]),
-           SANTANDER_BLACK, LW_MAIN)],
-         2, None),
-        ("02_sectores", "IMCE por sector económico",
-         [("Comercio",     find_col(df, ["Comercio"]),     SANTANDER_BLACK, LW_MAIN),
-          ("Construcción", find_col(df, ["Construcción", "Construccion"]), SANTANDER_RED, LW_MAIN),
-          ("Industria",    find_col(df, ["Industria"]),    SANTANDER_OCHRE, LW_MAIN)],
-         3, None),
-        ("03_empleo", "Expectativas de empleo",
-         [("Comercio",     find_col(df, ["COM_Expectativas - Empleo"]),  SANTANDER_BLACK, LW_MAIN),
-          ("Construcción", find_col(df, ["CONS_Expectativas - Empleo"]), SANTANDER_RED,   LW_MAIN),
-          ("Industria",    find_col(df, ["IND_Expectativas - Empleo"]),  SANTANDER_OCHRE, LW_MAIN)],
-         3, (0, 100)),
-        ("04_inventarios", "Inventarios (vs deseado)",
-         [("Comercio",  find_col(df, ["COM_Situacion actual - Inventarios"]), SANTANDER_BLACK, LW_MAIN),
-          ("Industria", find_col(df, ["IND_Situacion actual - Inventarios"]), SANTANDER_RED,   LW_MAIN)],
-         2, (0, 100)),
-        ("05_salarios", "Presiones salariales",
-         [("Construcción", find_col(df, ["CONS_Expectativas - Salarios"]), SANTANDER_RED,   LW_MAIN),
-          ("Industria",    find_col(df, ["IND_Expectativas - Salarios"]),  SANTANDER_OCHRE, LW_MAIN)],
-         2, (0, 100)),
-        ("06_demanda", "Nivel de demanda percibida",
-         [("Comercio",     find_col(df, ["COM_Situacion actual - Demanda"]),  SANTANDER_BLACK, LW_MAIN),
-          ("Construcción", find_col(df, ["CONS_Situacion actual - Demanda"]), SANTANDER_RED,   LW_MAIN),
-          ("Industria",    find_col(df, ["IND_Situacion actual - Demanda"]),  SANTANDER_OCHRE, LW_MAIN)],
-         3, (0, 100)),
-        ("07_precios", "Expectativas de precios",
-         [("Comercio",     find_col(df, ["COM_Expectativas - Precios"]),  SANTANDER_BLACK, LW_MAIN),
-          ("Construcción", find_col(df, ["CONS_Expectativas - Precios"]), SANTANDER_RED,   LW_MAIN),
-          ("Industria",    find_col(df, ["IND_Expectativas - Precios"]),  SANTANDER_OCHRE, LW_MAIN)],
-         3, (0, 100)),
-        ("08_costos", "Expectativas de costos",
-         [("Comercio",     find_col(df, ["COM_Expectativas - Costos"]),  SANTANDER_BLACK, LW_MAIN),
-          ("Construcción", find_col(df, ["CONS_Expectativas - Costos"]), SANTANDER_RED,   LW_MAIN),
-          ("Industria",    find_col(df, ["IND_Expectativas - Costos"]),  SANTANDER_OCHRE, LW_MAIN)],
-         3, (0, 100)),
-    ]
+    prs = fg.nueva_presentacion()
+    fg.portada(prs, f"IMCE · {MESES[ult.month - 1]} de {ult.year}")
+    for num, (titulo, series, ylims) in enumerate(CHARTS, start=2):
+        datos = df[[find_col(df, cand) for _, cand in series]]
+        datos.columns = [nombre for nombre, _ in series]
+        datos = datos.dropna(how="all")
+        y_min, y_max = ylims or _ylim(datos)
+        lam = fg.lamina(prs, titulo, num)
+        fg.agregar_grafico(lam, datos, x, y, ancho, alto, unidad="(Índice)", posicion_unidad="arriba",
+                           y_min=y_min, y_max=y_max, y_paso=10, linea_ref=50,
+                           meses_entre_etiquetas=MESES_ENTRE_ETIQUETAS)
+        fg.pie(lam, x, y + alto + Cm(0.15), ancho, FUENTE, NOTA)
+        print(f"  📊 {titulo}")
 
-    for fname, title, series, ncol, ylims in charts:
-        cols_needed = {col for _, col, _, _ in series}
-        df_c = df[["Fecha"] + list(cols_needed)].copy()
-        out_png = OUT_DIR / f"{fname}_{ts}.png"
-        make_chart(df_c, title, series, out_png, legend_ncol=ncol, force_ylims=ylims)
-        pngs.append(out_png)
-        print(f"  📊 {title}")
-
-    out_pdf = OUT_DIR / f"IMCE_Chartbook_Santander_{ts}.pdf"
-    build_pdf(cover, pngs, out_pdf)
-    print(f"\n  ✅ PDF: {out_pdf}")
+    out_pptx = OUT_DIR / f"IMCE_Chartbook_Santander_{ts}.pptx"
+    try:
+        prs.save(out_pptx)
+    except PermissionError:
+        sys.exit(f"No pude guardar {out_pptx.name}: está abierto en PowerPoint. Ciérralo y vuelve a correr.")
+    print(f"\n  ✅ PPTX: {out_pptx}")
+    pdf = fg.exportar_pdf(out_pptx)
+    if pdf:
+        print(f"  ✅ PDF:  {pdf}")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -605,10 +621,13 @@ def main():
     print("=" * 60)
 
     cred = _credenciales()
+    cred = verificar_credenciales(cred)
+    print(f"  Credenciales: OK ({cred['origen']})")
     IMCE_XLSX = encontrar_imce_xlsx()
-    OUT_DIR = IMCE_XLSX.parent / "tmp_chartbook_imce_santander"
+    OUT_DIR = carpeta_output(IMCE_XLSX)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    print(f"  Credenciales: {'token' if 'token' in cred else 'usuario y clave'} (variables de entorno)")
+    print(f"  Base:   {IMCE_XLSX}")
+    print(f"  Output: {OUT_DIR}")
 
     print(f"\n{'─'*60}")
     print(">> 1. Actualizando IMCE.xlsx desde API BCCh")
@@ -616,9 +635,9 @@ def main():
     actualizar_excel(cred)
 
     print(f"\n{'─'*60}")
-    print(">> 2. Generando PDF chartbook")
+    print(">> 2. Generando chartbook (PPTX y PDF)")
     print(f"{'─'*60}")
-    generar_pdf()
+    generar_chartbook()
 
     print("\n" + "="*60)
     print("  PROCESO COMPLETO")

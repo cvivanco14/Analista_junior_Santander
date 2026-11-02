@@ -17,10 +17,14 @@ Para armar presentaciones de varias laminas (ej. chartpacks):
 Requisitos (una vez, en la terminal de VS Code):
     python -m pip install bcchapi pandas openpyxl requests python-pptx matplotlib
 
-Credenciales (variables de entorno de Windows, comillas SIMPLES en PowerShell):
-    setx BDE_TOKEN 'tu_token'        # API Key Token del BCCh (tambien acepta BCCH_API_token)
-    setx FRED_API_KEY 'tu_key'       # FRED (St. Louis Fed) (tambien acepta FRED_API)
-    setx IMF_API_KEY 'tu_key'        # opcional, FMI
+Credenciales (una vez por computador; nunca en el codigo):
+  macOS, en la consola de Spyder (quedan en el Llavero):
+    import keyring, getpass; keyring.set_password('estudios_santander', 'BDE_TOKEN', getpass.getpass('Token BCCh: '))
+    (igual para 'FRED_API_KEY')
+  Windows, variables de entorno (Anaconda Prompt: comillas DOBLES; PowerShell: SIMPLES):
+    setx BDE_TOKEN "tu_token"        # API Key Token del BCCh (tambien acepta BCCH_API_token)
+    setx FRED_API_KEY "tu_key"       # FRED (St. Louis Fed) (tambien acepta FRED_API)
+    setx IMF_API_KEY "tu_key"        # opcional, FMI
 
 Reglas que respeta este modulo (manual de estilo de Estudios):
     - Ninguna transformacion se aplica en silencio: cada funcion de transformacion
@@ -56,13 +60,28 @@ _ALIAS = {
 }
 
 
+LLAVERO = "estudios_santander"   # servicio en el Llavero de macOS / Administrador de credenciales
+
+
 def _credencial(nombre, obligatoria=True):
+    """Variable de entorno (o sus alias) y, si no esta, el llavero del sistema (keyring)."""
     valor = os.environ.get(nombre)
     for alias in _ALIAS.get(nombre, []):
         valor = valor or os.environ.get(alias)
+    if not valor:
+        try:
+            import keyring
+            valor = keyring.get_password(LLAVERO, nombre)
+        except Exception:  # noqa: BLE001 - sin keyring o sin llavero disponible
+            valor = None
+    valor = valor.strip().strip("'\"").strip() if valor else valor
     if obligatoria and not valor:
-        sys.exit(f"No encuentro la variable {nombre}. En PowerShell: setx {nombre} 'valor' "
-                 f"y luego cierra y abre VS Code.")
+        if sys.platform == "darwin":
+            sys.exit(f"No encuentro {nombre}. En la consola de Spyder (una vez):\n"
+                     f"    import keyring, getpass; keyring.set_password('{LLAVERO}', '{nombre}', "
+                     f"getpass.getpass('{nombre}: '))")
+        sys.exit(f"No encuentro la variable {nombre}. En Anaconda Prompt: setx {nombre} \"valor\" "
+                 f"(en PowerShell: setx {nombre} 'valor') y luego cierra y abre Spyder / VS Code.")
     return valor
 
 
@@ -721,6 +740,54 @@ def grafico_lineas(df, titulo, unidad, fuente, nota=None, archivo="graficos.pptx
     prs.save(archivo)
     print(f"Gráfico agregado a {archivo} (lámina {len(prs.slides)}).")
     return archivo
+
+
+def exportar_pdf(archivo_pptx):
+    """
+    Guarda un PDF junto al PPTX. En Windows usa PowerPoint (requiere pywin32 o comtypes); en
+    macOS, PowerPoint via AppleScript; si no esta disponible, LibreOffice si esta instalado.
+    Devuelve la ruta del PDF, o None si no se pudo generar.
+    """
+    import shutil
+    import subprocess
+    pptx = Path(archivo_pptx).resolve()
+    pdf = pptx.with_suffix(".pdf")
+    if sys.platform.startswith("win"):
+        try:
+            try:
+                from win32com.client import Dispatch
+            except ImportError:
+                from comtypes.client import CreateObject as Dispatch
+            app = Dispatch("PowerPoint.Application")
+            pres = app.Presentations.Open(str(pptx), True, False, False)  # solo lectura, sin ventana
+            pres.SaveAs(str(pdf), 32)  # 32 = ppSaveAsPDF
+            pres.Close()
+            if app.Presentations.Count == 0:
+                app.Quit()
+            return pdf
+        except Exception as e:  # noqa: BLE001 - se intenta con LibreOffice
+            print(f"Aviso: PowerPoint no pudo exportar el PDF ({e}).")
+    if sys.platform == "darwin":
+        # PowerPoint para Mac via AppleScript (puede pedir permiso para la carpeta la primera vez)
+        script = (f'tell application "Microsoft PowerPoint"\n'
+                  f'  open POSIX file "{pptx}"\n'
+                  f'  set p to active presentation\n'
+                  f'  save p in (POSIX file "{pdf}") as save as PDF\n'
+                  f'  close p saving no\n'
+                  f'end tell')
+        r = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
+        if r.returncode == 0 and pdf.exists():
+            return pdf
+        print(f"Aviso: PowerPoint para Mac no pudo exportar el PDF ({r.stderr.strip()[:200]}).")
+    soffice = (shutil.which("soffice") or shutil.which("libreoffice")
+               or next((p for p in ["/Applications/LibreOffice.app/Contents/MacOS/soffice"]
+                        if os.path.exists(p)), None))
+    if soffice:
+        subprocess.run([soffice, "--headless", "--convert-to", "pdf", "--outdir", str(pptx.parent),
+                        str(pptx)], check=True, capture_output=True)
+        return pdf
+    print(f"Aviso: no pude generar el PDF; ábrelo en PowerPoint y usa Guardar como PDF: {pptx}")
+    return None
 
 
 def vista_previa(df, titulo="", decimales=1):

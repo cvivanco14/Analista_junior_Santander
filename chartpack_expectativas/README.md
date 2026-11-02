@@ -5,19 +5,37 @@ EEE/EOF, dispersión de la EEE (deciles), EOF con inflación a 2 años sobre/baj
 compensación inflacionaria, EDEP, costos de transporte, TCN/TCM, tasas SPC, EEE de actividad e
 IMCE vs Imacec no minero.
 
-- `formato_graficos.py`: datos (API BDE, FRED, FMI, GSCPI), transformaciones que devuelven su
-  nota metodológica y formato Santander con gráficos nativos editables de PowerPoint (líneas de
-  2,25 pt mensuales y 1,75 pt diarias, fechas horizontales, números sin ceros sobrantes, último
-  dato etiquetado —con el día en series diarias—, descriptor de la serie en 11 y fuente en
-  Santander Text Light 9).
-- `build_chartpack.py`: contenido del chartpack; llama a `formato_graficos`. Las láminas de
-  dispersión EEE y umbrales EOF leen las series de [`../encuestas_eee_eof/`](../encuestas_eee_eof/)
-  (actualizarlas primero).
-- `assets/`: portada y logos. `output/`: PPTX, PDF y Excel con los datos de cada gráfico.
+## Carpetas
+
+| Carpeta | Contenido |
+|---|---|
+| `Code/` | `encuestas_bcch.py` (descarga y procesa la EEE y la EOF) y `build_chartpack.py` (arma el chartpack). |
+| `Inputs/eee/` | Planillas de la EEE (`raw/`) y el Excel resultante `eee_inflacion_deciles.xlsx`. |
+| `Inputs/eof/` | Planillas de la EOF (`raw/`) y el Excel resultante `eof_inflacion_2a_umbrales.xlsx` (hojas `mensual` y `por_encuesta`). |
+| `Outputs/` | `AAAAMMDD_Chartpack_Expectativas.pptx`, `.pdf` y `_datos.xlsx` (datos de cada gráfico). |
+
+El formato (`formato_graficos.py`, con su carpeta `assets`) está en
+`Estudios - Documentos\General\Administrativos\Manual de Estilo` (en este repositorio,
+[`../formato/`](../formato/)). Los scripts lo encuentran subiendo desde su propia carpeta o en la
+carpeta sincronizada de SharePoint del usuario, en Windows o macOS; no usan el nombre de usuario.
+
+## Uso (no hay que editar nada)
 
 ```bash
-python chartpack_expectativas/build_chartpack.py   # output/AAAAMMDD_Chartpack_Expectativas.{pptx,pdf} + _datos.xlsx
+cd chartpack_expectativas/Code
+python encuestas_bcch.py      # baja las planillas EEE/EOF que falten y actualiza Inputs
+python build_chartpack.py     # genera el chartpack en Outputs
 ```
 
-El PDF se genera solo si LibreOffice (`soffice`) está instalado. Las tipografías Santander se usan si
-están instaladas; si no, Arial.
+- `encuestas_bcch.py --sin-descarga` reprocesa solo las planillas ya descargadas;
+  `--solo eee` o `--solo eof` procesa una encuesta.
+- Las planillas se descargan con Chromium (Playwright) porque el sitio del Banco Central bloquea
+  descargas directas: instalar una vez con `python -m playwright install chromium`.
+- EEE: mediana, decil 1 y decil 9 de inflación en 11 y 23 meses, desde 2014. Reconoce los nombres
+  de archivo antiguos y los nuevos (`datos-mensuales-<mes>-<año>-xlsx`, desde febrero de 2026).
+- EOF: % de operadores con inflación a 13–24 meses sobre 3,0%, sobre 3,2% y bajo 2,8%, desde
+  agosto de 2013; un dato por mes (promedio de las encuestas que cerraron ese mes; noviembre de
+  2021 queda vacío).
+- `build_chartpack.py` descarga las demás series de la API del BCCh (token, ver README principal) y
+  exporta el PDF con PowerPoint (Windows/Mac) o LibreOffice.
+- Las planillas raw (~260 MB) no se suben a GitHub; en SharePoint quedan en `Inputs/*/raw/`.

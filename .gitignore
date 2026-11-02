@@ -219,9 +219,6 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-# chartpack: imagenes intermedias
-chartpack_expectativas/output/charts/
-
-# Planillas EEE/EOF descargadas (se regeneran con encuestas_eee_eof/descargar_bcch.py)
-encuestas_eee_eof/eee/raw/
-encuestas_eee_eof/eof/raw/
+# Planillas EEE/EOF descargadas (~260 MB; se regeneran con chartpack_expectativas/Code/encuestas_bcch.py)
+chartpack_expectativas/Inputs/*/raw/*
+!chartpack_expectativas/Inputs/*/raw/.gitkeep
