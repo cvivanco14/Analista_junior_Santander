@@ -331,9 +331,45 @@ FUENTES_SANTANDER = {
     "fuente": "Santander Text Light",
 }
 FUENTE_RESPALDO = "Arial"   # siempre instalada en Windows, sans serif neutra
-FORMATO_FECHA = "mmm.yy"    # ene.26 (meses en minusculas con Office en espanol)
+FORMATO_FECHA = "mmm.yy"    # ene.26; en Windows, donde el mes ya trae punto, se usa "mmmyy"
 # fija el idioma de los formatos en espanol (Chile) aunque el Office este en otro idioma
 IDIOMA_FORMATO = "[$-340A]"
+_MES_CON_PUNTO = None
+
+
+def _mes_abreviado_con_punto():
+    """
+    True si Windows abrevia los meses en espanol de Chile con punto ("ene."). Office usa esa
+    abreviatura para "mmm", y con FORMATO_FECHA "mmm.yy" las fechas saldrian "ene..26".
+    En macOS (y LibreOffice) la abreviatura no lleva punto.
+    """
+    global _MES_CON_PUNTO
+    if _MES_CON_PUNTO is None:
+        _MES_CON_PUNTO = False
+        if sys.platform.startswith("win"):
+            try:
+                import ctypes
+                from ctypes import wintypes
+
+                class SYSTEMTIME(ctypes.Structure):
+                    _fields_ = [(c, wintypes.WORD) for c in ("wYear", "wMonth", "wDayOfWeek", "wDay",
+                                                             "wHour", "wMinute", "wSecond",
+                                                             "wMilliseconds")]
+                fecha = SYSTEMTIME(2026, 1, 0, 15, 0, 0, 0, 0)
+                buf = ctypes.create_unicode_buffer(32)
+                n = ctypes.windll.kernel32.GetDateFormatEx("es-CL", 0, ctypes.byref(fecha), "MMM",
+                                                           buf, len(buf), None)
+                _MES_CON_PUNTO = bool(n) and buf.value.strip().endswith(".")
+            except Exception:  # noqa: BLE001 - si no se puede consultar, se deja el formato tal cual
+                _MES_CON_PUNTO = False
+    return _MES_CON_PUNTO
+
+
+def _formato_fecha_local(formato):
+    """'mmm.yy' -> 'mmmyy' cuando el mes abreviado ya trae punto, para que salga 'ene.26'."""
+    if "mmm." in formato and "mmmm" not in formato and _mes_abreviado_con_punto():
+        return formato.replace("mmm.", "mmm")
+    return formato
 ANCHO_CM, ALTO_CM = 15, 11
 GROSOR_MENSUAL = 2.25       # pt, series mensuales (o menos frecuentes)
 GROSOR_DIARIO = 1.75        # pt, series diarias
@@ -692,7 +728,7 @@ def agregar_grafico(slide, df, x, y, w, h, titulo=None, unidad=None, decimales=1
     ex.tick_label_position = XL_TICK_LABEL_POSITION.LOW
     ex.major_tick_mark = XL_TICK_MARK.OUTSIDE
     ex.minor_tick_mark = XL_TICK_MARK.NONE
-    ex.tick_labels.number_format = IDIOMA_FORMATO + formato_fecha
+    ex.tick_labels.number_format = IDIOMA_FORMATO + _formato_fecha_local(formato_fecha)
     ex.tick_labels.number_format_is_linked = False
     ex.tick_labels.font.size = Pt(tam)
     ex.tick_labels.font.name = f_ejes
