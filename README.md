@@ -27,6 +27,20 @@ python expectativas/build_chartpack.py  # output/AAAAMMDD_Chartpack_Expectativas
 El PDF se genera solo si LibreOffice (`soffice`) está instalado. Las tipografías Santander se usan si
 están instaladas; si no, Arial.
 
+## IMCE: proceso mensual (`imce/imce_principal.py`)
+
+Actualiza `IMCE.xlsx` desde la API del BCCh y genera el chartbook PDF. No hay que editar nada:
+
+- Credenciales desde variables de entorno (`BDE_TOKEN`/`BCCH_API_token`, o `BCCH_USER` y
+  `BCCH_PASS`); nunca escritas en el código.
+- Busca `IMCE.xlsx` en las carpetas de OneDrive/SharePoint de Santander de cualquier usuario
+  (`.../Bases - Chartpack/Bases/Local/IMCE/Base/IMCE.xlsx`); si no está, usa uno junto al script,
+  y `IMCE_XLSX` permite forzar otra ruta.
+
+```powershell
+python imce/imce_principal.py
+```
+
 ## EEE: dispersión de expectativas de inflación
 
 Replica los gráficos "EEE: Inflación en 11 meses" y "EEE: Inflación en 23 meses"
