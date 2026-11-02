@@ -825,7 +825,10 @@ def exportar_pdf(archivo_pptx):
             try:
                 from win32com.client import Dispatch
             except ImportError:
-                from comtypes.client import CreateObject as Dispatch
+                try:
+                    from comtypes.client import CreateObject as Dispatch
+                except ImportError:
+                    raise ImportError("falta pywin32; instálalo una vez con: python -m pip install pywin32")
             app = Dispatch("PowerPoint.Application")
             pres = app.Presentations.Open(str(pptx), True, False, False)  # solo lectura, sin ventana
             pres.SaveAs(str(pdf), 32)  # 32 = ppSaveAsPDF
