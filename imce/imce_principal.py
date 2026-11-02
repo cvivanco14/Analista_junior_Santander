@@ -138,6 +138,12 @@ def _diagnostico_credenciales(cred: Dict[str, str]) -> str:
         otras.append("un token en el Llavero")
     if otras:
         lineas.append(f"  - también existe {', '.join(otras)}; la variable de entorno tiene prioridad")
+    if cred["origen"] in _ALIAS_TOKEN and sys.platform == "darwin":
+        lineas += [f"La variable {cred['origen']} tiene un valor incorrecto. Para borrarla en Mac:",
+                   f"  - en esta consola de Spyder: import os; os.environ.pop('{cred['origen']}', None)",
+                   f"  - y donde se definió, en la Terminal: grep -n {cred['origen']} ~/.zshrc ~/.zprofile "
+                   f"~/.bash_profile  (borra esa línea), launchctl unsetenv {cred['origen']} y "
+                   f"conda env config vars unset {cred['origen']}"]
     variable = cred["origen"] if cred["origen"] in _ALIAS_TOKEN else "BDE_TOKEN"
     lineas += ["Vuelve a guardarlo. " + _como_guardar_token(variable),
                "Si sigue fallando, genera un token nuevo en si3.bcentral.cl."]
@@ -217,15 +223,35 @@ def carpeta_output(imce_xlsx: Path) -> Path:
     return proyecto / "Output"
 
 
-def verificar_credenciales(cred: Dict[str, str]):
-    """Prueba la credencial con una serie antes de tocar IMCE.xlsx."""
+def _probar(cred: Dict[str, str]):
+    """Descarga una serie con la credencial; devuelve None si funciona o la excepcion."""
+    global _SIETE
+    _SIETE = None   # la conexion de bcchapi queda asociada al token con que se creo
     try:
         descargar_serie("G089.IME.IND.A0.M", cred)
+        return None
     except Exception as e:  # noqa: BLE001
-        if _es_error_credenciales(e):
-            sys.exit("El Banco Central rechazó la credencial (Invalid username or password).\n"
-                     + _diagnostico_credenciales(cred))
-        sys.exit(f"No pude conectarme a la API del BCCh: {e}")
+        return e
+
+
+def verificar_credenciales(cred: Dict[str, str]) -> Dict[str, str]:
+    """Prueba la credencial con una serie antes de tocar IMCE.xlsx; devuelve la que funciona."""
+    error = _probar(cred)
+    if error is None:
+        return cred
+    if not _es_error_credenciales(error):
+        sys.exit(f"No pude conectarme a la API del BCCh: {error}")
+    # la variable de entorno fue rechazada: probar el token del Llavero, si es distinto
+    llavero = _token_llavero()
+    if cred["origen"] != "llavero" and llavero:
+        alternativa = {"token": llavero.strip().strip("'\"").strip(), "origen": "llavero"}
+        if alternativa["token"] != cred.get("token") and _probar(alternativa) is None:
+            print(f"  ⚠️ El token de la variable {cred['origen']} no es válido; uso el del Llavero.\n"
+                  f"     Conviene borrar esa variable para que no vuelva a interferir "
+                  f"(ver README de imce).")
+            return alternativa
+    sys.exit("El Banco Central rechazó la credencial (Invalid username or password).\n"
+             + _diagnostico_credenciales(cred))
 
 
 # se completan en main()
@@ -595,7 +621,7 @@ def main():
     print("=" * 60)
 
     cred = _credenciales()
-    verificar_credenciales(cred)
+    cred = verificar_credenciales(cred)
     print(f"  Credenciales: OK ({cred['origen']})")
     IMCE_XLSX = encontrar_imce_xlsx()
     OUT_DIR = carpeta_output(IMCE_XLSX)

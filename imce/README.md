@@ -34,3 +34,19 @@ No hay que editar nada:
 ```powershell
 python imce/imce_principal.py
 ```
+
+## Si aparece "Invalid username or password"
+
+El script indica de dónde leyó el token. Si dice "de la variable BDE_TOKEN" y el largo no es ~60
+o no empieza con `$2a$`, esa variable tiene un valor equivocado (típico de guardarla con comillas
+dobles, que borran las partes con `$`). Si hay un token válido en el Llavero, el script lo usa
+igual y avisa; para que no vuelva a interferir, borra la variable:
+
+- **macOS**, en la Terminal:
+  ```bash
+  grep -n BDE_TOKEN ~/.zshrc ~/.zprofile ~/.bash_profile 2>/dev/null   # borra la línea que aparezca
+  launchctl unsetenv BDE_TOKEN
+  conda env config vars unset BDE_TOKEN
+  ```
+  y cierra y abre Spyder.
+- **Windows**, en Anaconda Prompt: `reg delete HKCU\Environment /v BDE_TOKEN /f`, y cierra y abre Spyder.
