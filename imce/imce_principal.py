@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
+r"""
 IMCE — Proceso mensual completo
 ================================
 1. Descarga datos IMCE desde la API del BCCh y actualiza IMCE.xlsx
@@ -20,14 +20,21 @@ Credenciales (una vez por computador, en PowerShell, con comillas SIMPLES):
     setx BCCH_PASS 'tu_clave'
   Luego cerrar y abrir VS Code. Las credenciales nunca se escriben en este archivo.
 
-Carpeta: el script busca solo IMCE.xlsx en OneDrive de Santander
-    <OneDrive>/.../Bases - Chartpack/Bases/Local/IMCE/Base/IMCE.xlsx
-  para cualquier usuario. Si no lo encuentra, usa un IMCE.xlsx junto a este script.
-  Para forzar otra ubicacion: setx IMCE_XLSX 'C:\\ruta\\IMCE.xlsx'
-  El chartbook (PPTX y PDF) queda en tmp_chartbook_imce_santander/, junto a IMCE.xlsx.
+Carpetas (sirven para cualquier usuario: no dependen de C:\Users\<usuario>):
+  Este script vive en
+    ...\Estudios - Documentos\General\Expectativas y Encuestas\IMCE\Code
+  y el formato comun en
+    ...\Estudios - Documentos\General\Administrativos\Manual de Estilo\formato_graficos.py
+  (con su carpeta assets\). El script sube desde su propia carpeta hasta encontrar
+  Administrativos\Manual de Estilo; si no, lo busca en la carpeta sincronizada
+  "Santander Office 365" del usuario. Para forzar otra: setx FORMATO_GRAFICOS_DIR 'C:\ruta'
 
-Formato: este script no define formato propio; usa formato_graficos.py (carpeta formato/
-del repositorio, o la misma carpeta que este script).
+  IMCE.xlsx se busca primero dentro de la carpeta IMCE del script (IMCE\, IMCE\Code\ y sus
+  subcarpetas, ej. IMCE\Base\) y luego en <OneDrive>/.../Bases - Chartpack/Bases/Local/IMCE/Base/.
+  Para forzar otra ubicacion: setx IMCE_XLSX 'C:\ruta\IMCE.xlsx'
+  El chartbook (PPTX y PDF) queda en tmp_chartbook_imce_santander\, junto a IMCE.xlsx.
+
+Formato: este script no define formato propio; usa formato_graficos.py del Manual de Estilo.
 """
 
 import math
@@ -52,8 +59,14 @@ from openpyxl import load_workbook
 # Fecha de inicio de descarga
 FECHA_INICIO = "2004-01-01"
 
-# Ruta de IMCE.xlsx dentro de la carpeta compartida de Estudios
+# Ruta de IMCE.xlsx dentro de la carpeta compartida de Estudios (ubicacion anterior)
 RUTA_RELATIVA = Path("Bases - Chartpack") / "Bases" / "Local" / "IMCE" / "Base" / "IMCE.xlsx"
+
+# Biblioteca de Estudios en SharePoint y carpetas fijas dentro de ella
+AQUI = Path(__file__).resolve().parent                     # ...\IMCE\Code
+BIBLIOTECA = Path("Estudios - Documentos") / "General"
+MANUAL_ESTILO = Path("Administrativos") / "Manual de Estilo"
+CARPETA_IMCE = Path("Expectativas y Encuestas") / "IMCE"
 
 # nombres alternativos con que pueden estar definidas las variables de entorno
 _ALIAS_TOKEN = ["BDE_TOKEN", "BCCH_API_token", "BCCH_API_TOKEN"]
@@ -100,20 +113,31 @@ def encontrar_imce_xlsx() -> Path:
             return p
         sys.exit(f"IMCE_XLSX apunta a un archivo que no existe: {p}")
 
+    # 1) dentro de la carpeta del proyecto IMCE (la carpeta padre de Code\)
+    proyecto = AQUI.parent if AQUI.name.lower() == "code" else AQUI
+    locales = [AQUI / "IMCE.xlsx", proyecto / "IMCE.xlsx"]
+    locales += [sub / "IMCE.xlsx" for sub in proyecto.iterdir() if sub.is_dir()]
+    encontrados = [c for c in locales if c.is_file()]
+    if encontrados:
+        return max(encontrados, key=lambda p: p.stat().st_mtime)
+
+    # 2) carpetas sincronizadas: proyecto IMCE en la biblioteca y ubicacion anterior
     candidatos = []
     raices = _raices_onedrive()
     for raiz in raices:
+        imce = raiz / BIBLIOTECA / CARPETA_IMCE
+        if imce.is_dir():
+            candidatos.append(imce / "IMCE.xlsx")
+            candidatos += [sub / "IMCE.xlsx" for sub in imce.iterdir() if sub.is_dir()]
         # <raiz>/Bases - Chartpack/... o <raiz>/<biblioteca, ej. "General - Estudios">/Bases - Chartpack/...
         candidatos.append(raiz / RUTA_RELATIVA)
         candidatos += [sub / RUTA_RELATIVA for sub in raiz.iterdir() if sub.is_dir()]
-    candidatos.append(Path(__file__).resolve().parent / "IMCE.xlsx")
-
     encontrados = [c for c in candidatos if c.is_file()]
     if not encontrados:
         buscado = "\n    ".join(str(r) for r in raices) or "(no hay carpetas de OneDrive)"
-        sys.exit("No encontré IMCE.xlsx. Busqué en:\n    " + buscado +
-                 f"\n(ruta esperada dentro: {RUTA_RELATIVA})\n"
-                 "Solución: copia IMCE.xlsx junto a este script, o en PowerShell:\n"
+        sys.exit(f"No encontré IMCE.xlsx en {proyecto} ni en:\n    " + buscado +
+                 f"\n(rutas esperadas dentro: {BIBLIOTECA / CARPETA_IMCE} o {RUTA_RELATIVA})\n"
+                 "Solución: deja IMCE.xlsx en la carpeta IMCE del proyecto, o en PowerShell:\n"
                  "    setx IMCE_XLSX 'C:\\ruta\\IMCE.xlsx'")
     # si hay mas de uno (ej. dos bibliotecas sincronizadas), el modificado mas recientemente
     return max(encontrados, key=lambda p: p.stat().st_mtime)
@@ -330,16 +354,34 @@ def actualizar_excel(cred: Dict[str, str]):
 # 5. CHARTBOOK PPTX + PDF (formato de Estudios: ../formato/formato_graficos.py)
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _importar_formato():
-    """formato_graficos.py vive en la carpeta formato/ del repositorio (o junto a este script)."""
-    aqui = Path(__file__).resolve().parent
-    for carpeta in (aqui.parent / "formato", aqui):
+def _carpeta_formato() -> Path:
+    """Carpeta de formato_graficos.py: Administrativos/Manual de Estilo de la biblioteca de Estudios."""
+    candidatos = []
+    if os.environ.get("FORMATO_GRAFICOS_DIR"):
+        candidatos.append(Path(os.environ["FORMATO_GRAFICOS_DIR"]))
+    # 1) subiendo desde la carpeta de este script (...\General\Expectativas y Encuestas\IMCE\Code)
+    candidatos += [p / MANUAL_ESTILO for p in [AQUI, *AQUI.parents]]
+    # 2) en la biblioteca sincronizada del usuario que corre el script
+    for raiz in _raices_onedrive():
+        candidatos.append(raiz / BIBLIOTECA / MANUAL_ESTILO)
+        candidatos += [sub / "General" / MANUAL_ESTILO for sub in raiz.iterdir() if sub.is_dir()]
+    # 3) estructura del repositorio de GitHub (formato/ junto a imce/) o junto a este script
+    candidatos += [AQUI.parent / "formato", AQUI]
+    for carpeta in candidatos:
         if (carpeta / "formato_graficos.py").is_file():
-            sys.path.insert(0, str(carpeta))
-            import formato_graficos
-            return formato_graficos
-    sys.exit("No encuentro formato_graficos.py: debe estar en la carpeta 'formato' junto a 'imce' "
-             "(como en el repositorio) o en la misma carpeta que este script.")
+            return carpeta
+    sys.exit("No encuentro formato_graficos.py. Debe estar en\n"
+             f"    ...\\{BIBLIOTECA}\\{MANUAL_ESTILO}\n"
+             "(con su carpeta assets). Para indicar otra carpeta, en PowerShell:\n"
+             "    setx FORMATO_GRAFICOS_DIR 'C:\\ruta\\Manual de Estilo'")
+
+
+def _importar_formato():
+    carpeta = _carpeta_formato()
+    sys.path.insert(0, str(carpeta))
+    import formato_graficos
+    print(f"  Formato: {carpeta / 'formato_graficos.py'}")
+    return formato_graficos
 
 
 MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto",
