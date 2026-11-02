@@ -1,0 +1,8 @@
+pandas
+openpyxl
+xlrd
+matplotlib
+playwright
+bcchapi
+requests
+python-pptx
