@@ -3,22 +3,25 @@ r"""Datos de la Minuta IMCE (ICARE/UAI, publicado en la BDE del Banco Central de
 
 1. Descarga las series del IMCE desde la API del BCCh (con formato_graficos.py) y deja el CSV en
    Inputs\imce.csv.
-2. Actualiza el Excel de bases Outputs\IMCE.xlsx sin borrar lo que el usuario haya agregado:
-     - usa el IMCE.xlsx que ya esté en Outputs (o la ubicación anterior IMCE\Base\IMCE.xlsx, que
-       copia a Outputs); si no hay ninguno, crea uno nuevo;
-     - en la hoja IMCE solo escribe las columnas de las series (agrega filas y columnas nuevas);
+2. Actualiza el Excel de bases Outputs\Base_IMCE.xlsx (siempre con ese nombre) manteniendo el
+   formato de la planilla IMCE (hojas IMCE y Grafs):
+     - si no existe, lo crea copiando Inputs\Base_IMCE_plantilla.xlsx (o la ubicación anterior
+       IMCE\Base\IMCE.xlsx);
+     - en la hoja IMCE solo escribe las columnas de las series; los meses nuevos copian el formato de
+       la fila de arriba y los gráficos (hoja Grafs) se extienden hasta el último mes;
      - las hojas Léeme, SA, Pesos y Compuestos son del script y se reescriben en cada corrida
        (Compuestos queda con fórmulas de Excel). Los cálculos y gráficos propios van en otras hojas.
-   Si el Excel tiene gráficos, lo actualiza con Excel (xlwings) para no perderlos.
+   Si el archivo lo guardó Excel y tiene gráficos, lo actualiza con Excel (xlwings) cuando está
+   disponible; si no, con openpyxl dejando un respaldo en Outputs\respaldo.
 
 Carpetas (relativas a este script; sirven para cualquier usuario):
     <IMCE>\Code\      datos_imce.py y minuta_imce.py
-    <IMCE>\Inputs\    imce.csv (descarga) y hacienda_imce_sa.csv (referencia de Hacienda)
-    <IMCE>\Outputs\   IMCE.xlsx (bases y cálculos) y la minuta: PPTX, PDF y _datos.xlsx
+    <IMCE>\Inputs\    imce.csv (descarga), Base_IMCE_plantilla.xlsx y hacienda_imce_sa.csv (referencia)
+    <IMCE>\Outputs\   Base_IMCE.xlsx (bases y cálculos) y la minuta: PPTX, PDF y _datos.xlsx
 
 Uso (no hay que editar nada):
-    python datos_imce.py                 # descarga y actualiza Inputs y Outputs\IMCE.xlsx
-    python datos_imce.py --sin-descarga  # solo rehace IMCE.xlsx con el Inputs\imce.csv existente
+    python datos_imce.py                 # descarga y actualiza Inputs y Outputs\Base_IMCE.xlsx
+    python datos_imce.py --sin-descarga  # solo rehace Base_IMCE.xlsx con el Inputs\imce.csv existente
 
 Credenciales: el token del BCCh lo lee formato_graficos.py desde la variable de entorno BDE_TOKEN
 (o BCCH_API_token) o desde el Llavero; nunca se escribe en el código (ver README principal).
@@ -43,7 +46,8 @@ INPUTS = PROYECTO / "Inputs"
 OUT = PROYECTO / "Outputs"
 CSV = INPUTS / "imce.csv"
 HACIENDA = INPUTS / "hacienda_imce_sa.csv"
-EXCEL = OUT / "IMCE.xlsx"
+EXCEL = OUT / "Base_IMCE.xlsx"                 # salida: siempre Base_<proyecto>.xlsx
+PLANTILLA = INPUTS / "Base_IMCE_plantilla.xlsx"  # formato de la planilla (hojas IMCE y Grafs)
 FECHA_INICIO = "2003-01-01"
 
 MANUAL_ESTILO = Path("Administrativos") / "Manual de Estilo"
@@ -250,7 +254,7 @@ def descargar() -> pd.DataFrame:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Excel de bases (Outputs/IMCE.xlsx)
+# Excel de bases (Outputs/Base_IMCE.xlsx)
 # ─────────────────────────────────────────────────────────────────────────────
 
 FILA_CODIGO, FILA_TITULOS, FILA_DATOS = 2, 3, 4     # misma estructura que la planilla IMCE.xlsx
@@ -285,7 +289,7 @@ def _valor(v):
 
 
 class _LibroOpenpyxl:
-    """Edita el .xlsx con openpyxl (no necesita Excel). Ojo: openpyxl no conserva gráficos."""
+    """Edita el .xlsx con openpyxl (no necesita Excel). Conserva estilos y los gráficos que lee."""
 
     def __init__(self, ruta):
         from openpyxl import load_workbook
@@ -302,15 +306,24 @@ class _LibroOpenpyxl:
         return [list(r) for r in self.wb[nombre].iter_rows(values_only=True)]
 
     def escribir(self, nombre, fila, col, filas, formulas=False):
+        from copy import copy
         ws = self._hoja(nombre)
+        propia = nombre in HOJAS_DEL_SCRIPT
         for i, f in enumerate(filas):
             for j, v in enumerate(f):
                 c = ws.cell(fila + i, col + j)
+                if not propia and not c.has_style and c.row > FILA_DATOS:
+                    # filas nuevas de la planilla: mismo formato que la fila de arriba (antes del valor,
+                    # porque openpyxl le pone formato propio a las fechas)
+                    arriba = ws.cell(c.row - 1, c.column)
+                    if arriba.has_style:
+                        c._style = copy(arriba._style)
                 c.value = v
-                if isinstance(v, (dt.date, pd.Timestamp)):
-                    c.number_format = "mmm-yy"
-                elif isinstance(v, float) or (formulas and isinstance(v, str) and v.startswith("=")):
-                    c.number_format = "0.0"
+                if propia:   # hojas del script: formato simple
+                    if isinstance(v, (dt.date, pd.Timestamp)):
+                        c.number_format = "mmm-yy"
+                    elif isinstance(v, float) or (formulas and isinstance(v, str) and v.startswith("=")):
+                        c.number_format = "0.0"
 
     def limpiar(self, nombre):
         ws = self._hoja(nombre)
@@ -318,7 +331,8 @@ class _LibroOpenpyxl:
             ws.delete_rows(1, ws.max_row)
 
     def ancho(self, nombre, col, ancho):
-        self._hoja(nombre).column_dimensions[_letra(col)].width = ancho
+        if nombre in HOJAS_DEL_SCRIPT:   # en las hojas de la planilla se respetan los anchos
+            self._hoja(nombre).column_dimensions[_letra(col)].width = ancho
 
     def guardar(self):
         self.wb.save(self.ruta)
@@ -328,7 +342,7 @@ class _LibroOpenpyxl:
 
 
 class _LibroExcel:
-    """Edita el .xlsx con Excel (xlwings): conserva gráficos, tablas dinámicas y formatos."""
+    """Edita el .xlsx con Excel (xlwings): conserva todo lo que Excel guarda."""
 
     def __init__(self, ruta):
         import xlwings as xw
@@ -352,7 +366,12 @@ class _LibroExcel:
     def escribir(self, nombre, fila, col, filas, formulas=False):
         if not filas:
             return
-        rango = self._hoja(nombre).range((fila, col)).resize(len(filas), len(filas[0]))
+        hoja = self._hoja(nombre)
+        rango = hoja.range((fila, col)).resize(len(filas), len(filas[0]))
+        if nombre not in HOJAS_DEL_SCRIPT and fila > FILA_DATOS:
+            # filas nuevas de la planilla: mismo formato que la fila de arriba
+            hoja.range((fila - 1, col)).resize(1, len(filas[0])).copy()
+            rango.paste(paste="formats")
         if formulas:
             rango.formula = [[("" if v is None else v) for v in f] for f in filas]   # fórmulas en inglés
         else:
@@ -372,70 +391,84 @@ class _LibroExcel:
         self.app.quit()
 
 
-def _tiene_graficos(ruta):
+def _guardado_por_openpyxl(ruta):
+    """True si el archivo lo guardó openpyxl por última vez (se reescribe sin cambios de formato)."""
     with zipfile.ZipFile(ruta) as z:
-        return any(n.startswith(("xl/charts/", "xl/drawings/", "xl/pivotTables/")) for n in z.namelist())
+        app = z.read("docProps/app.xml").decode("utf-8", "ignore") if "docProps/app.xml" in z.namelist() else ""
+        graficos = any(n.startswith(("xl/charts/", "xl/drawings/", "xl/pivotTables/")) for n in z.namelist())
+    return "openpyxl" in app.lower(), graficos
 
 
 def encontrar_excel():
-    """IMCE.xlsx a usar: el de Outputs; si no, la ubicación anterior (se copia a Outputs); si no, None."""
-    if os.environ.get("IMCE_XLSX"):
-        p = Path(os.environ["IMCE_XLSX"])
-        if not p.is_file():
-            sys.exit(f"IMCE_XLSX apunta a un archivo que no existe: {p}")
-        return p
+    """Outputs/Base_IMCE.xlsx; si no existe, lo crea copiando la planilla de Inputs (o la ubicación anterior)."""
     if EXCEL.is_file():
         return EXCEL
-    # otro Excel de bases en Outputs (con hoja IMCE), ej. con otro nombre
-    from openpyxl import load_workbook
-    otros = []
-    for p in OUT.glob("*.xlsx"):
-        if p.name.startswith("~$") or p.stem.endswith("_datos"):
-            continue
-        try:
-            if "IMCE" in load_workbook(p, read_only=True).sheetnames:
-                otros.append(p)
-        except Exception:  # noqa: BLE001 - archivo dañado o bloqueado: se ignora
-            pass
-    if otros:
-        return max(otros, key=lambda p: p.stat().st_mtime)
-    # ubicación anterior: IMCE\Base\IMCE.xlsx o la carpeta compartida "Bases - Chartpack"
-    anteriores = [PROYECTO / "Base" / "IMCE.xlsx", PROYECTO / "IMCE.xlsx"]
+    fuentes = [PLANTILLA, OUT / "IMCE.xlsx", PROYECTO / "Base" / "IMCE.xlsx"]
     for raiz in _raices_onedrive():
-        anteriores += [raiz / RUTA_ANTERIOR] + [sub / RUTA_ANTERIOR for sub in raiz.iterdir() if sub.is_dir()]
-    encontrados = [p for p in anteriores if p.is_file()]
-    if encontrados:
-        origen = max(encontrados, key=lambda p: p.stat().st_mtime)
-        shutil.copy2(origen, EXCEL)
-        print(f"  📋 Copié {origen}\n     a {EXCEL} (de aquí en adelante se actualiza este)")
-        return EXCEL
-    return None
+        fuentes += [raiz / RUTA_ANTERIOR] + [sub / RUTA_ANTERIOR for sub in raiz.iterdir() if sub.is_dir()]
+    origen = next((p for p in fuentes if p.is_file()), None)
+    if origen is None:
+        return None
+    shutil.copy2(origen, EXCEL)
+    print(f"  📋 Creé {EXCEL.name} a partir de {origen}")
+    return EXCEL
 
 
 def _crear_excel(ruta):
+    """Último recurso (sin planilla): libro con la estructura de la hoja IMCE."""
     from openpyxl import Workbook
     wb = Workbook()
     ws = wb.active
-    ws.title = "Léeme"
-    ws = wb.create_sheet("IMCE")
-    ws["A1"] = "IMCE: Índice Mensual de Confianza Empresarial (ICARE/UAI), índices de difusión"
+    ws.title = "IMCE"
+    ws["A1"] = "Índice mensual de confianza empresarial (IMCE), total general e índices de difusión sectoriales"
     ws["A2"] = "Código BDE"
     ws.cell(FILA_TITULOS, 1).value = "Periodo"
     ws.column_dimensions["A"].width = 11
     ws.freeze_panes = ws.cell(FILA_DATOS, 2)
     wb.save(ruta)
-    print(f"  🆕 Creé {ruta}")
+    print(f"  🆕 No encontré la planilla {PLANTILLA.name}; creé {ruta.name} sin formato")
 
 
 def _abrir(ruta):
-    if _tiene_graficos(ruta):
+    de_openpyxl, graficos = _guardado_por_openpyxl(ruta)
+    if graficos and not de_openpyxl:
+        # guardado por Excel: con Excel (xlwings) no se pierde nada; si no, openpyxl con respaldo
         try:
             return _LibroExcel(ruta)
         except Exception as e:  # noqa: BLE001
-            sys.exit(f"{ruta.name} tiene gráficos y para no perderlos se actualiza con Excel (xlwings), "
-                     f"pero no pude abrirlo ({e}).\nInstala xlwings (python -m pip install xlwings) y "
-                     f"cierra el archivo si está abierto. Los datos ya quedaron en {CSV}.")
+            respaldo = OUT / "respaldo" / f"{ruta.stem}_{dt.date.today():%Y%m%d}.xlsx"
+            respaldo.parent.mkdir(exist_ok=True)
+            shutil.copy2(ruta, respaldo)
+            print(f"  ⚠️ No pude abrir Excel con xlwings ({str(e)[:80]}). Actualizo con openpyxl, que "
+                  f"conserva los gráficos pero puede simplificar parte de su formato.\n"
+                  f"     Respaldo del archivo anterior: {respaldo}")
     return _LibroOpenpyxl(ruta)
+
+
+def _extender_graficos(ruta, ultima):
+    """Rangos de los gráficos sobre la hoja IMCE (filas 4 a N) hasta la última fila con datos."""
+    patron = re.compile(r"((?:'IMCE'|IMCE)!\$[A-Z]{1,3}\$%d:\$[A-Z]{1,3}\$)(\d+)" % FILA_DATOS)
+    cache = re.compile(r"<(?:\w+:)?(?:numCache|strCache)>.*?</(?:\w+:)?(?:numCache|strCache)>", re.S)
+    with zipfile.ZipFile(ruta) as z:
+        partes = {i: z.read(i.filename) for i in z.infolist()}
+    cambios = 0
+    for info in list(partes):
+        if not (info.filename.startswith("xl/charts/chart") and info.filename.endswith(".xml")):
+            continue
+        xml = partes[info].decode("utf-8")
+        nuevo = patron.sub(lambda mt: mt.group(1) + str(ultima), xml)
+        if nuevo != xml:
+            # sin valores en caché: Excel y LibreOffice leen las celdas al abrir
+            nuevo = cache.sub("", nuevo)
+            partes[info] = nuevo.encode("utf-8")
+            cambios += 1
+    if cambios:
+        tmp = ruta.with_suffix(".tmp")
+        with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as z:
+            for info, datos in partes.items():
+                z.writestr(info, datos)
+        tmp.replace(ruta)
+    return cambios
 
 
 def _actualizar_hoja_imce(libro, m):
@@ -455,7 +488,9 @@ def _actualizar_hoja_imce(libro, m):
         filas[d] = i + 1
     # fechas nuevas al final
     ultima = max(filas.values(), default=FILA_DATOS - 1)
-    nuevas = [d for d in m.index if d not in filas and m.loc[d].notna().any()]
+    # meses posteriores al último de la planilla (los anteriores a su primer mes no se agregan)
+    desde = max(filas, default=pd.Timestamp.min)
+    nuevas = [d for d in m.index if d > desde and m.loc[d].notna().any()]
     for d in nuevas:
         ultima += 1
         filas[d] = ultima
@@ -487,7 +522,7 @@ def _actualizar_hoja_imce(libro, m):
                 previo = v[r - 1][j - 1] if r - 1 < len(v) and j - 1 < len(v[r - 1]) else None
                 bloque.append([_valor(nuevo) if not pd.isna(nuevo) else previo])
             libro.escribir("IMCE", FILA_DATOS, j, bloque)
-    return n_filas, len(nuevas)
+    return n_filas, len(nuevas), ultima
 
 
 def _hojas_calculo(libro, m, sa):
@@ -576,7 +611,7 @@ def actualizar_excel(m, sa):
     except PermissionError:
         sys.exit(f"{ruta.name} está abierto en Excel o bloqueado por OneDrive. Ciérralo y vuelve a correr.")
     try:
-        n, nuevas = _actualizar_hoja_imce(libro, m)
+        n, nuevas, ultima = _actualizar_hoja_imce(libro, m)
         _hojas_calculo(libro, m, sa)
         _leeme(libro, m)
         try:
@@ -585,7 +620,9 @@ def actualizar_excel(m, sa):
             sys.exit(f"No pude guardar {ruta.name}: está abierto en Excel. Ciérralo y vuelve a correr.")
     finally:
         libro.cerrar()
-    print(f"  💾 {ruta.name}: {n} meses en la hoja IMCE ({nuevas} nuevos); hojas SA, Pesos y Compuestos al día")
+    g = _extender_graficos(ruta, ultima)
+    print(f"  💾 {ruta.name}: {n} meses en la hoja IMCE ({nuevas} nuevos); hojas SA, Pesos y Compuestos al día"
+          + (f"; {g} gráficos extendidos hasta la fila {ultima}" if g else ""))
     return ruta
 
 

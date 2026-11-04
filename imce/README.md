@@ -9,25 +9,27 @@ Minuta mensual de 13 láminas (resumen con textos automáticos, resultados, grá
 | Carpeta | Contenido |
 |---|---|
 | `Code/` | `datos_imce.py` (descarga y Excel de bases) y `minuta_imce.py` (arma la minuta). |
-| `Inputs/` | `imce.csv` (series descargadas de la API del BCCh) y `hacienda_imce_sa.csv` (compuestos de Hacienda, referencia). |
-| `Outputs/` | `IMCE.xlsx` (bases y cálculos) y `AAAAMMDD_Minuta_IMCE.pptx`, `.pdf` y `_datos.xlsx` (datos de cada gráfico). |
+| `Inputs/` | `imce.csv` (series descargadas de la API del BCCh), `Base_IMCE_plantilla.xlsx` (planilla IMCE con sus hojas `IMCE` y `Grafs`) y `hacienda_imce_sa.csv` (compuestos de Hacienda, referencia). |
+| `Outputs/` | `Base_IMCE.xlsx` (bases y cálculos; siempre con ese nombre) y `AAAAMMDD_Minuta_IMCE.pptx`, `.pdf` y `_datos.xlsx` (datos de cada gráfico). |
 
 ```bash
 cd imce/Code
-python datos_imce.py      # descarga, actualiza Inputs/imce.csv y Outputs/IMCE.xlsx
+python datos_imce.py      # descarga, actualiza Inputs/imce.csv y Outputs/Base_IMCE.xlsx
 python minuta_imce.py     # genera la minuta en Outputs
 ```
 
-- `IMCE.xlsx`: usa el que ya esté en `Outputs`; si no, el de la ubicación anterior
-  (`IMCE\Base\IMCE.xlsx` o `Bases - Chartpack/.../IMCE/Base/IMCE.xlsx`), que copia a `Outputs`; si
-  no hay ninguno, crea uno nuevo. `IMCE_XLSX` permite forzar otro archivo.
-- En la hoja `IMCE` (fila 3 = nombres, como la planilla de siempre) solo escribe las columnas de las
-  series: agrega meses y series nuevas y conserva columnas y fórmulas propias. Las hojas `Léeme`,
-  `SA` (desestacionalizadas con STL), `Pesos` y `Compuestos` (con fórmulas de Excel) se reescriben en
-  cada corrida; los cálculos y gráficos propios van en otras hojas.
-- Si `IMCE.xlsx` tiene gráficos, lo actualiza con Excel mediante `xlwings` (openpyxl los borraría);
-  si `xlwings` no está instalado, no toca el archivo y avisa.
-- `datos_imce.py --sin-descarga` rehace `IMCE.xlsx` con el `Inputs/imce.csv` existente.
+- `Base_IMCE.xlsx` se actualiza en cada corrida. Si no existe, se crea copiando
+  `Inputs/Base_IMCE_plantilla.xlsx` (o, si falta, la ubicación anterior `IMCE\Base\IMCE.xlsx`).
+- Mantiene el formato de la planilla: en la hoja `IMCE` solo escribe los valores de las series
+  (fila 3 = nombres); los meses nuevos copian el formato de la fila de arriba, y los gráficos (hoja
+  `Grafs` y el de la hoja `IMCE`) se extienden hasta el último mes. Columnas, hojas y fórmulas propias
+  se conservan.
+- Agrega al final las hojas `SA` (desestacionalizadas con STL), `Pesos`, `Compuestos` (con fórmulas
+  de Excel) y `Léeme`, que se reescriben en cada corrida.
+- Si el archivo se guardó con Excel y tiene gráficos, se actualiza con Excel mediante `xlwings`; si
+  `xlwings` no está, se actualiza con openpyxl (conserva los gráficos, pero puede simplificar parte de
+  su formato) y deja un respaldo en `Outputs/respaldo/`.
+- `datos_imce.py --sin-descarga` rehace `Base_IMCE.xlsx` con el `Inputs/imce.csv` existente.
 - El token del BCCh lo lee `formato_graficos.py` (variable de entorno o Llavero; ver README
   principal). No hay credenciales en el código.
 

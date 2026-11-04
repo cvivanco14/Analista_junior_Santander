@@ -5,7 +5,7 @@ independiente con su propio README:
 
 | Carpeta | Qué hace |
 |---|---|
-| [`imce/`](imce/) | Minuta mensual del IMCE (PPTX/PDF con gráficos nativos), con `Code/`, `Inputs/` y `Outputs/` (incluye el Excel de bases `IMCE.xlsx`); y el chartbook anterior `imce_principal.py`. |
+| [`imce/`](imce/) | Minuta mensual del IMCE (PPTX/PDF con gráficos nativos), con `Code/`, `Inputs/` y `Outputs/` (incluye el Excel de bases `Base_IMCE.xlsx`); y el chartbook anterior `imce_principal.py`. |
 
 El formato común (`formato_graficos.py` y su carpeta `assets`) vive en SharePoint, en
 `Estudios - Documentos\General\Administrativos\Manual de Estilo`; los scripts lo encuentran solos

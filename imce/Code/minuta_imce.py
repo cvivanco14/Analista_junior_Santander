@@ -8,10 +8,10 @@ de formato_graficos.py (Administrativos\Manual de Estilo).
 Carpetas (relativas a este script; sirven para cualquier usuario):
     <IMCE>\Code\      datos_imce.py y minuta_imce.py
     <IMCE>\Inputs\    imce.csv (lo deja datos_imce.py)
-    <IMCE>\Outputs\   IMCE.xlsx (bases) y AAAAMMDD_Minuta_IMCE.pptx / .pdf / _datos.xlsx
+    <IMCE>\Outputs\   Base_IMCE.xlsx (bases) y AAAAMMDD_Minuta_IMCE.pptx / .pdf / _datos.xlsx
 
 Uso (no hay que editar nada):
-    python datos_imce.py      # descarga y actualiza Inputs\imce.csv y Outputs\IMCE.xlsx
+    python datos_imce.py      # descarga y actualiza Inputs\imce.csv y Outputs\Base_IMCE.xlsx
     python minuta_imce.py     # arma la minuta en Outputs
 """
 import datetime as dt
