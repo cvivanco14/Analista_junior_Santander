@@ -28,15 +28,15 @@ import datos_imce as di
 fg = di.fg
 OUT = di.OUT
 
-AUTOR = "Andrés Sansone"
+TITULO = "IMCE"
+AUTOR = "Andrés Sansone"   # aparece en la portada y en el pie de cada lámina
 FUENTE = "ICARE/UAI, publicado por el Banco Central de Chile"
 NOTA_50 = "Sobre (bajo) 50 indica optimismo (pesimismo)."
-MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre",
-         "octubre", "noviembre", "diciembre"]
+MESES = fg.MESES_LARGOS
 SECTORES = {"Comercio": "comercio", "Industria": "industria", "Construcción": "construccion", "Minería": "mineria"}
 
-# posiciones (cm), como en el chartpack de Expectativas
-Y0, ALTO = Cm(3.6), Cm(fg.ALTO_CM)
+# posiciones de gráficos (cm), como en el chartpack de Expectativas
+Y0, ALTO = Cm(fg.Y_CONTENIDO_CM), Cm(fg.ALTO_CM)
 DOS, ANCHO_DOS = [Cm(1.3), Cm(17.5)], Cm(fg.ANCHO_CM)
 TRES, ANCHO_TRES, TAM_TRES = [Cm(1.0), Cm(11.8), Cm(22.6)], Cm(10.2), 10
 X_UNO, ANCHO_UNO = Cm(1.3), Cm(31.2)
@@ -87,6 +87,7 @@ class Minuta:
         self.hoy = pd.Timestamp(hoy or dt.date.today())
         self.prs = fg.nueva_presentacion()
         self.n = 1
+        self.pie = f"{TITULO} {self.mes} {self.t.year}  |  {AUTOR}"   # pie de las láminas
         self.datos = {}   # hoja del Excel de respaldo -> DataFrame
 
     # ---- datos
@@ -112,7 +113,7 @@ class Minuta:
     # ---- maqueta
     def lamina(self, titulo):
         self.n += 1
-        return fg.lamina(self.prs, titulo, self.n)
+        return fg.lamina(self.prs, titulo, self.n, pie_texto=self.pie)
 
     def vinetas(self, lam, items, x, y, w, h, tam=14):
         """Viñetas con cuadrado rojo Santander."""
@@ -157,9 +158,9 @@ class Minuta:
 
     # ================================================================ láminas
     def portada(self):
-        s = fg.portada(self.prs, f"IMCE · {self.mes} de {self.t.year}", titulo="Confianza\nEmpresarial")
-        fg._caja_texto(s, f"{AUTOR}\n{self.hoy.day} de {MESES[self.hoy.month - 1]} de {self.hoy.year}",
-                       Cm(23.8), Cm(13.0), Cm(9), Cm(1.6), fg.tipografia("titulo"), 12, color=fg.PALETA[0])
+        fecha = f"{self.hoy.day:02d} de {MESES[self.hoy.month - 1]} de {self.hoy.year}"
+        fg.portada(self.prs, "Índice Mensual de Confianza\nEmpresarial (IMCE)",
+                   f"{self.mes.capitalize()} {self.t.year}", autor=AUTOR, fecha=fecha)
 
     def calendario(self, lam, clave, nombre):
         """Año en curso frente a años de referencia, por mes calendario."""
@@ -209,7 +210,7 @@ class Minuta:
         if minimo:
             txt += f" {lista(minimo).capitalize()} {'marca' if len(minimo) == 1 else 'marcan'} su menor valor del año."
         items.append(txt.strip())
-        self.vinetas(lam, items, Cm(1.3), Cm(2.8), Cm(15.2), Cm(14))
+        self.vinetas(lam, items, Cm(1.3), Cm(3.0), Cm(15.2), Cm(14))
         self.calendario(lam, "total", "IMCE total")
 
     def resumen_sin_mineria(self):
@@ -233,7 +234,7 @@ class Minuta:
             + f". La minería ({num(self.v('mineria'))} pts) deja al IMCE total {num(abs(brecha))} p. "
               f"{'por encima' if brecha > 0 else 'por debajo'} del indicador sin minería.",
         ]
-        self.vinetas(lam, items, Cm(1.3), Cm(2.8), Cm(15.2), Cm(14))
+        self.vinetas(lam, items, Cm(1.3), Cm(3.0), Cm(15.2), Cm(14))
         self.calendario(lam, k, "IMCE sin minería")
 
     def resultados(self):
@@ -256,7 +257,7 @@ class Minuta:
             f"construcción {num(v('con_empleo'))} ({mm('con_empleo')}; {aa('con_empleo')}) e industria "
             f"{num(v('ind_empleo'))} ({mm('ind_empleo')}; {aa('ind_empleo')}).",
         ]
-        self.vinetas(lam, items, Cm(1.3), Cm(2.8), Cm(31), Cm(13.5))
+        self.vinetas(lam, items, Cm(1.3), Cm(3.0), Cm(31), Cm(13.5))
         fg.pie(lam, Cm(1.3), Cm(16.1), Cm(31), FUENTE, NOTA_50)
 
         lam = self.lamina("Principales resultados (continuación)")
@@ -276,7 +277,7 @@ class Minuta:
             f"situación actual personal (PCSI) {cm('PCSI')}, expectativas para el país (CFEI) {cm('CFEI')} y "
             f"expectativas generales (OFEI) {cm('OFEI')}.",
         ]
-        self.vinetas(lam, items, Cm(1.3), Cm(2.8), Cm(31), Cm(13.5))
+        self.vinetas(lam, items, Cm(1.3), Cm(3.0), Cm(31), Cm(13.5))
         fg.pie(lam, Cm(1.3), Cm(16.1), Cm(31), FUENTE,
                "Demanda, ventas, producción e índices compuestos desestacionalizados con STL. " + NOTA_50)
 
@@ -334,14 +335,14 @@ class Minuta:
                 textos.append(f"{nombres[k].lower()} ({k}) {'mejoró' if d > 0 else 'empeoró'} {num(abs(d))} p., "
                               f"principalmente por {motor.lower()}")
             lam = self.lamina(titulo)
-            fg._caja_texto(lam, f"En {self.mes}, el índice de {textos[0]}; el de {textos[1]}.", Cm(1.3), Cm(2.2),
+            fg._caja_texto(lam, f"En {self.mes}, el índice de {textos[0]}; el de {textos[1]}.", Cm(1.3), Cm(2.6),
                            Cm(31), Cm(1.3), fg.tipografia("fuente"), 14, color=fg.GRIS_TEXTO)
             for x, k in zip(DOS, par):
                 c, tot = self.comp[k]
                 df = pd.concat([tot.rename(f"IMCE {k}"), c[di.SECTORES]], axis=1)
                 df = df[df.index >= "2018-09-01"].dropna(how="all")
                 y_min, y_max, paso = _limites_apilado(df)
-                self.grafico(lam, df, x, ANCHO_DOS, k, y=Cm(4.7), alto=Cm(10.2), nota=nota, apilado=True,
+                self.grafico(lam, df, x, ANCHO_DOS, k, y=Cm(5.0), alto=Cm(10.0), nota=nota, apilado=True,
                              titulo=f"IMCE: {nombres[k]} ({k})",
                              unidad="(Índice 50 = 0, desestacionalizado)",
                              posicion_unidad="arriba", barras=di.SECTORES, etiqueta_ultimo=[f"IMCE {k}"],

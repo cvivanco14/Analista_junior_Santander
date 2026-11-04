@@ -23,8 +23,8 @@ Uso (no hay que editar nada):
     python datos_imce.py                 # descarga y actualiza Inputs y Outputs\Base_IMCE.xlsx
     python datos_imce.py --sin-descarga  # solo rehace Base_IMCE.xlsx con el Inputs\imce.csv existente
 
-Credenciales: el token del BCCh lo lee formato_graficos.py desde la variable de entorno BDE_TOKEN
-(o BCCH_API_token) o desde el Llavero; nunca se escribe en el código (ver README principal).
+Credenciales: las maneja formato_graficos.py (API token BDE_TOKEN, o usuario y clave BDE_USER/BDE_PASS,
+desde variables de entorno o el Llavero); nunca se escriben en el código (ver README principal).
 """
 import argparse
 import datetime as dt
@@ -60,15 +60,42 @@ RUTA_ANTERIOR = Path("Bases - Chartpack") / "Bases" / "Local" / "IMCE" / "Base" 
 # Carpetas
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _raices_onedrive():
-    """Carpetas sincronizadas de OneDrive/SharePoint (Windows: C:\\Users\\<usuario>; macOS: CloudStorage)."""
-    raices = [Path(os.environ[v]) for v in ("OneDriveCommercial", "OneDrive") if os.environ.get(v)]
+ICLOUD = Path.home() / "Library" / "Mobile Documents" / "com~apple~CloudDocs"   # iCloud Drive (macOS)
+
+
+def _raices_sincronizadas():
+    """Carpetas de OneDrive/SharePoint/iCloud con 'Santander' (u OneDrive) en el nombre, de cualquier
+    usuario: C:\\Users\\<usuario>\\... (Windows), ~/Library/CloudStorage/... e iCloud Drive (macOS)."""
     casa = Path.home()
-    for base in (casa, casa / "Library" / "CloudStorage"):
+    raices = []
+    for base in (casa, casa / "Library" / "CloudStorage", ICLOUD):
         if base.is_dir():
-            raices += [p for p in base.iterdir()
-                       if p.is_dir() and re.search(r"santander|onedrive|sharepoint", p.name, re.I)]
-    return list({str(r).lower(): r for r in raices if r.is_dir()}.values())
+            for raiz in sorted(base.iterdir()):
+                if raiz.is_dir() and re.search(r"santander|onedrive|sharepoint", raiz.name, re.I):
+                    raices.append(raiz)
+    return raices
+
+
+def _formato_en(raiz, profundidad=6):
+    """Busca formato_graficos.py bajo 'raiz': primero en las rutas habituales y, en iCloud, en toda la
+    carpeta (hasta 'profundidad' niveles). Avisa si iCloud lo tiene solo en la nube."""
+    rutas = [raiz / BIBLIOTECA / MANUAL_ESTILO, raiz / "General" / MANUAL_ESTILO, raiz / MANUAL_ESTILO]
+    for sub in sorted(p for p in raiz.iterdir() if p.is_dir() and not p.name.startswith(".")):
+        rutas += [sub / BIBLIOTECA / MANUAL_ESTILO, sub / "General" / MANUAL_ESTILO, sub / MANUAL_ESTILO]
+    for r in rutas:
+        if (r / "formato_graficos.py").is_file():
+            return r
+    if ICLOUD not in raiz.parents:
+        return None
+    base = len(raiz.parts)
+    for carpeta, dirs, archivos in os.walk(raiz):
+        dirs[:] = [d for d in dirs if not d.startswith(".")] if len(Path(carpeta).parts) - base < profundidad else []
+        if "formato_graficos.py" in archivos:
+            return Path(carpeta)
+        if ".formato_graficos.py.icloud" in archivos:   # iCloud lo dejo solo en la nube
+            sys.exit(f"formato_graficos.py está en iCloud pero no descargado en este Mac:\n    {carpeta}\n"
+                     "Ábrelo en Finder y elige 'Descargar ahora' (o 'Mantener descargado'), y vuelve a correr.")
+    return None
 
 
 def _carpeta_formato() -> Path:
@@ -76,18 +103,21 @@ def _carpeta_formato() -> Path:
     candidatos = []
     if os.environ.get("FORMATO_GRAFICOS_DIR"):
         candidatos.append(Path(os.environ["FORMATO_GRAFICOS_DIR"]))
-    # 1) subiendo desde la carpeta de este script (...\General\Expectativas y Encuestas\IMCE\Code)
+    # 1) subiendo desde la carpeta de este script (...\General\...\IMCE\Code)
     for p in [CODE, *CODE.parents]:
         candidatos += [p / MANUAL_ESTILO, p / "formato"]   # "formato": estructura del repositorio
-    # 2) en la biblioteca sincronizada del usuario que corre el script
-    for raiz in _raices_onedrive():
-        candidatos.append(raiz / BIBLIOTECA / MANUAL_ESTILO)
     for carpeta in candidatos:
         if (carpeta / "formato_graficos.py").is_file():
             return carpeta
+    # 2) carpetas sincronizadas: OneDrive/SharePoint (Windows y macOS) e iCloud Drive (macOS)
+    for raiz in _raices_sincronizadas():
+        carpeta = _formato_en(raiz)
+        if carpeta:
+            return carpeta
     sys.exit("No encuentro formato_graficos.py. Debe estar en\n"
              f"    ...\\{BIBLIOTECA}\\{MANUAL_ESTILO}\n"
-             "(con su carpeta assets). Para indicar otra carpeta: variable FORMATO_GRAFICOS_DIR.")
+             "(también se busca en OneDrive/SharePoint y en la carpeta Santander de iCloud Drive).\n"
+             "Para indicar otra carpeta: variable FORMATO_GRAFICOS_DIR.")
 
 
 sys.path.insert(0, str(_carpeta_formato()))
@@ -404,7 +434,7 @@ def encontrar_excel():
     if EXCEL.is_file():
         return EXCEL
     fuentes = [PLANTILLA, OUT / "IMCE.xlsx", PROYECTO / "Base" / "IMCE.xlsx"]
-    for raiz in _raices_onedrive():
+    for raiz in _raices_sincronizadas():
         fuentes += [raiz / RUTA_ANTERIOR] + [sub / RUTA_ANTERIOR for sub in raiz.iterdir() if sub.is_dir()]
     origen = next((p for p in fuentes if p.is_file()), None)
     if origen is None:

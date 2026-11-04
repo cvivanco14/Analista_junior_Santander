@@ -30,7 +30,8 @@ python minuta_imce.py     # genera la minuta en Outputs
   `xlwings` no está, se actualiza con openpyxl (conserva los gráficos, pero puede simplificar parte de
   su formato) y deja un respaldo en `Outputs/respaldo/`.
 - `datos_imce.py --sin-descarga` rehace `Base_IMCE.xlsx` con el `Inputs/imce.csv` existente.
-- El token del BCCh lo lee `formato_graficos.py` (variable de entorno o Llavero; ver README
+- `formato_graficos.py` se busca como en el chartpack: subiendo desde `Code`, en OneDrive/SharePoint y en la carpeta Santander de iCloud Drive (o `FORMATO_GRAFICOS_DIR`). Usa la versión con portada roja y pie de lámina.
+- Las credenciales del BCCh las maneja `formato_graficos.py` (variable de entorno o Llavero; ver README
   principal). No hay credenciales en el código.
 
 ## Chartbook (`imce_principal.py`)
