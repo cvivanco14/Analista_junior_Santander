@@ -1,6 +1,39 @@
 # IMCE: proceso mensual
 
-`imce_principal.py` actualiza `IMCE.xlsx` desde la API del BCCh y genera el chartbook en PPTX
+## Minuta IMCE (`Code/`, `Inputs/`, `Outputs/`)
+
+Minuta mensual de 13 láminas (resumen con textos automáticos, resultados, gráficos por sector e
+índices compuestos OCSI/PCSI/CFEI/OFEI), en PPTX con gráficos nativos editables y en PDF, con
+`formato_graficos.py`. Misma estructura que el chartpack de Expectativas:
+
+| Carpeta | Contenido |
+|---|---|
+| `Code/` | `datos_imce.py` (descarga y Excel de bases) y `minuta_imce.py` (arma la minuta). |
+| `Inputs/` | `imce.csv` (series descargadas de la API del BCCh) y `hacienda_imce_sa.csv` (compuestos de Hacienda, referencia). |
+| `Outputs/` | `IMCE.xlsx` (bases y cálculos) y `AAAAMMDD_Minuta_IMCE.pptx`, `.pdf` y `_datos.xlsx` (datos de cada gráfico). |
+
+```bash
+cd imce/Code
+python datos_imce.py      # descarga, actualiza Inputs/imce.csv y Outputs/IMCE.xlsx
+python minuta_imce.py     # genera la minuta en Outputs
+```
+
+- `IMCE.xlsx`: usa el que ya esté en `Outputs`; si no, el de la ubicación anterior
+  (`IMCE\Base\IMCE.xlsx` o `Bases - Chartpack/.../IMCE/Base/IMCE.xlsx`), que copia a `Outputs`; si
+  no hay ninguno, crea uno nuevo. `IMCE_XLSX` permite forzar otro archivo.
+- En la hoja `IMCE` (fila 3 = nombres, como la planilla de siempre) solo escribe las columnas de las
+  series: agrega meses y series nuevas y conserva columnas y fórmulas propias. Las hojas `Léeme`,
+  `SA` (desestacionalizadas con STL), `Pesos` y `Compuestos` (con fórmulas de Excel) se reescriben en
+  cada corrida; los cálculos y gráficos propios van en otras hojas.
+- Si `IMCE.xlsx` tiene gráficos, lo actualiza con Excel mediante `xlwings` (openpyxl los borraría);
+  si `xlwings` no está instalado, no toca el archivo y avisa.
+- `datos_imce.py --sin-descarga` rehace `IMCE.xlsx` con el `Inputs/imce.csv` existente.
+- El token del BCCh lo lee `formato_graficos.py` (variable de entorno o Llavero; ver README
+  principal). No hay credenciales en el código.
+
+## Chartbook (`imce_principal.py`)
+
+Script anterior: `imce_principal.py` actualiza `IMCE.xlsx` desde la API del BCCh y genera el chartbook en PPTX
 (gráficos nativos editables) y PDF. No define formato propio: usa `formato_graficos.py`
 (en este repositorio, [`../formato/`](../formato/)), igual que el chartpack de Expectativas.
 
