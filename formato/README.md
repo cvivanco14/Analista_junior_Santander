@@ -8,8 +8,8 @@
   `base100`, `promedio`).
 - Barras nativas editables (`agregar_barras`) con el formato de la plantilla: columnas o barras
   horizontales, agrupadas o apiladas, valor sobre cada barra en el color de su serie (sin ceros
-  sobrantes), sin eje de valores y con líneas guía suaves, leyenda abajo; colores gris oscuro, rojo
-  y arena (`PALETA_BARRAS`).
+  sobrantes), sin eje de valores y con líneas guía suaves, leyenda abajo; colores en orden #EC0000,
+  #000000, #4DC4CA, #FFAE42 y #B2B2B2 (`PALETA_BARRAS`).
 - Leyenda de los gráficos de líneas (`leyenda="auto"`, por defecto): dentro del gráfico, en el
   rincón donde no tapa series, etiquetas ni el descriptor de unidad; si no hay espacio, arriba.
 - Gráficos nativos editables de PowerPoint (`agregar_grafico`, `grafico_lineas`): líneas de

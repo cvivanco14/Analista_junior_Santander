@@ -396,12 +396,12 @@ PALETA = [(236, 0, 0),      # rojo Santander (serie principal)
           (70, 196, 202),   # turquesa
           (255, 174, 66),   # amarillo
           (178, 178, 178)]  # gris
-# barras (plantilla Santander): gris oscuro, rojo y arena; luego turquesa y amarillo
-PALETA_BARRAS = [(68, 68, 68),     # gris oscuro
-                 (236, 0, 0),      # rojo Santander
-                 (210, 173, 141),  # arena / beige
-                 (70, 196, 202),   # turquesa
-                 (255, 174, 66)]   # amarillo
+# barras: rojo, negro, turquesa, amarillo y gris
+PALETA_BARRAS = [(236, 0, 0),      # #EC0000 rojo Santander
+                 (0, 0, 0),        # #000000 negro
+                 (77, 196, 202),   # #4DC4CA turquesa
+                 (255, 174, 66),   # #FFAE42 amarillo
+                 (178, 178, 178)]  # #B2B2B2 gris
 COLOR_GUIAS = (217, 217, 217)      # lineas guia horizontales de las barras
 COLOR_EJES = (191, 191, 191)  # "Blanco, fondo 1, oscuro 25%"
 GRIS_TEXTO = (89, 89, 89)
