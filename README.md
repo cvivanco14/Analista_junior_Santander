@@ -5,9 +5,11 @@ independiente con su propio README:
 
 | Carpeta | Qué hace |
 |---|---|
-| [`formato/`](formato/) | `formato_graficos.py`: datos (API BDE, FRED, FMI, GSCPI), transformaciones con nota metodológica y formato Santander de gráficos nativos de PowerPoint; portada y logos. En SharePoint vive en `Administrativos\Manual de Estilo`; lo usan el chartpack y el IMCE. |
-| [`chartpack_expectativas/`](chartpack_expectativas/) | Chartpack de Expectativas (PPTX/PDF con gráficos nativos editables), con `Code/`, `Inputs/` (EEE y EOF) y `Outputs/`. |
 | [`imce/`](imce/) | Minuta mensual del IMCE (PPTX/PDF con gráficos nativos), con `Code/`, `Inputs/` y `Outputs/` (incluye el Excel de bases `IMCE.xlsx`); y el chartbook anterior `imce_principal.py`. |
+
+El formato común (`formato_graficos.py` y su carpeta `assets`) vive en SharePoint, en
+`Estudios - Documentos\General\Administrativos\Manual de Estilo`; los scripts lo encuentran solos
+(o con la variable `FORMATO_GRAFICOS_DIR`).
 
 ```bash
 python -m pip install -r requirements.txt

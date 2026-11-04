@@ -35,7 +35,7 @@ python minuta_imce.py     # genera la minuta en Outputs
 
 Script anterior: `imce_principal.py` actualiza `IMCE.xlsx` desde la API del BCCh y genera el chartbook en PPTX
 (gráficos nativos editables) y PDF. No define formato propio: usa `formato_graficos.py`
-(en este repositorio, [`../formato/`](../formato/)), igual que el chartpack de Expectativas.
+(en SharePoint, `Administrativos\Manual de Estilo`), igual que el chartpack de Expectativas.
 
 ## Carpetas en SharePoint (sirven para cualquier usuario)
 
