@@ -9,10 +9,11 @@
 | Qué | Dónde |
 |---|---|
 | Este script | `...\Estudios - Documentos\General\Expectativas y Encuestas\IMCE\Code` |
-| `formato_graficos.py` + `assets\` | `...\Estudios - Documentos\General\Administrativos\Manual de Estilo` |
+| `formato_graficos.py` | `...\Estudios - Documentos\General\Administrativos\Manual de Estilo` |
 
 - El script ubica el Manual de Estilo subiendo desde su propia carpeta; si no lo encuentra,
-  lo busca en la carpeta sincronizada `Santander Office 365` del usuario que lo corre. No usa el
+  lo busca en la carpeta sincronizada `Santander Office 365` del usuario que lo corre o, en Mac,
+  en la carpeta `Santander` de iCloud Drive. No usa el
   nombre de usuario (`C:\Users\<usuario>`), así que funciona para cualquiera.
   `FORMATO_GRAFICOS_DIR` permite forzar otra carpeta.
 No hay que editar nada:

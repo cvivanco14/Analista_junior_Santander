@@ -21,9 +21,11 @@ Carpetas (relativas a este script, sirven para cualquier usuario):
     <Chartpack de Expectativas>\Inputs\   eee\ y eof\ (planillas raw y Excel resultante)
     <Chartpack de Expectativas>\Outputs\  chartpacks y datos finales
 
-Requisitos (una vez):
+Requisitos (una vez, con el mismo Python que corre este script):
     python -m pip install pandas openpyxl xlrd playwright
-    python -m playwright install chromium
+    python -m playwright install chromium   # opcional en Windows: si no esta, usa Microsoft Edge
+Si Playwright falta o la descarga falla, el script procesa las planillas que ya estan en
+Inputs\eee\raw e Inputs\eof\raw (se pueden bajar a mano desde bcentral.cl y dejarlas ahi).
 El sitio del Banco Central está detrás de Incapsula, que bloquea descargas con requests;
 por eso las planillas se bajan con un navegador (Chromium vía Playwright).
 """
@@ -90,17 +92,52 @@ def _anio(nombre):
 
 
 def descargar(encuesta, desde):
-    """Baja a Inputs/<encuesta>/raw/ las planillas que falten; devuelve cuantas bajo."""
+    """Baja a Inputs/<encuesta>/raw/ las planillas que falten; devuelve cuantas bajo.
+
+    Corre en un hilo aparte: la API sincronica de Playwright no funciona dentro del loop de
+    asyncio que tienen las consolas de Spyder, Jupyter e IPython.
+    """
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=1) as hilo:
+        return hilo.submit(_descargar, encuesta, desde).result()
+
+
+def _abrir_navegador(p):
+    """Chromium de Playwright o, si no esta instalado, el Edge o Chrome del computador."""
+    args = ["--disable-blink-features=AutomationControlled"]
+    opciones = []
+    ruta = os.environ.get("CHROMIUM_PATH", "/opt/pw-browsers/chromium")
+    if Path(ruta).exists():
+        opciones.append(("Chromium", {"executable_path": ruta}))
+    opciones += [("Chromium de Playwright", {}),
+                 ("Microsoft Edge", {"channel": "msedge"}),   # viene con Windows
+                 ("Google Chrome", {"channel": "chrome"})]
+    errores = []
+    for nombre, kw in opciones:
+        try:
+            navegador = p.chromium.launch(args=args, **kw)
+            print(f"  Navegador: {nombre}")
+            return navegador
+        except Exception as e:  # noqa: BLE001 - se prueba el siguiente navegador
+            errores.append(f"{nombre}: {str(e).splitlines()[0]}")
+    raise RuntimeError("No pude abrir ningún navegador para descargar.\n  " + "\n  ".join(errores) +
+                       "\nInstala Chromium una vez con: python -m playwright install chromium")
+
+
+def _playwright_disponible():
+    import importlib.util
+    return importlib.util.find_spec("playwright") is not None
+
+
+def _descargar(encuesta, desde):
     from playwright.sync_api import sync_playwright
 
     url, patron = PAGINAS[encuesta]
     raw = INPUTS / encuesta / "raw"
     raw.mkdir(parents=True, exist_ok=True)
-    chromium = os.environ.get("CHROMIUM_PATH", "/opt/pw-browsers/chromium")
     nuevas = 0
     with sync_playwright() as p:
-        browser = p.chromium.launch(executable_path=chromium if Path(chromium).exists() else None,
-                                    args=["--disable-blink-features=AutomationControlled"])
+        browser = _abrir_navegador(p)
         ctx = browser.new_context(accept_downloads=True, user_agent=UA)
         page = ctx.new_page()
         page.goto(url, wait_until="networkidle", timeout=90_000)
@@ -134,10 +171,23 @@ def descargar(encuesta, desde):
     return nuevas
 
 
+def _motor_excel(fuente):
+    """Lector de Excel segun el contenido (no la extension): xlrd para .xls antiguos, openpyxl
+    para .xlsx. Explicito para no depender del lector por defecto de cada version de pandas."""
+    if isinstance(fuente, (bytes, bytearray)):
+        firma = bytes(fuente[:4])
+    elif hasattr(fuente, "getvalue"):
+        firma = fuente.getvalue()[:4]
+    else:
+        with open(fuente, "rb") as f:
+            firma = f.read(4)
+    return "xlrd" if firma == b"\xd0\xcf\x11\xe0" else "openpyxl"
+
+
 def _leer_excel(path):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        return pd.read_excel(path, sheet_name=None, header=None)
+        return pd.read_excel(path, sheet_name=None, header=None, engine=_motor_excel(path))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -199,7 +249,7 @@ def eee_serie():
     serie = serie[serie["fecha"] >= EEE_DESDE]
     # meses que ya estaban en el Excel y cuya planilla no esta en raw/ se conservan
     if EEE_XLSX.exists():
-        previo = pd.read_excel(EEE_XLSX, sheet_name="deciles", parse_dates=["fecha"])
+        previo = pd.read_excel(EEE_XLSX, sheet_name="deciles", parse_dates=["fecha"], engine="openpyxl")
         previo = previo[["fecha", "horizonte", "mediana", "decil_1", "decil_9", "archivo"]]
         clave = set(zip(serie["fecha"], serie["horizonte"]))
         previo = previo[[k not in clave for k in zip(previo["fecha"], previo["horizonte"])]]
@@ -355,10 +405,20 @@ def main():
 
     for e in encuestas:
         (INPUTS / e / "raw").mkdir(parents=True, exist_ok=True)
+    if not args.sin_descarga and not _playwright_disponible():
+        print("⚠️ Falta la librería Playwright en este Python. Instálala una vez (en la terminal de\n"
+              "   VS Code o en Anaconda Prompt, con el mismo Python que corre este script):\n"
+              "       python -m pip install playwright\n"
+              "   Por ahora solo se procesan las planillas que ya están en Inputs/eee/raw e\n"
+              "   Inputs/eof/raw (también puedes bajarlas a mano desde bcentral.cl y dejarlas ahí).")
+        args.sin_descarga = True
     if not args.sin_descarga:
         print(">> Descargando planillas")
         for e in encuestas:
-            descargar(e, args.desde)
+            try:
+                descargar(e, args.desde)
+            except Exception as ex:  # noqa: BLE001 - se procesa lo que ya este descargado
+                print(f"⚠️ No pude descargar {e.upper()}: {ex}\n   Se procesan las planillas que ya están en raw/.")
     print(">> Procesando")
     if "eee" in encuestas:
         actualizar_eee()

@@ -33,6 +33,44 @@ MANUAL_ESTILO = Path("Administrativos") / "Manual de Estilo"
 BIBLIOTECA = Path("Estudios - Documentos") / "General"
 
 
+ICLOUD = Path.home() / "Library" / "Mobile Documents" / "com~apple~CloudDocs"   # iCloud Drive (macOS)
+
+
+def _raices_sincronizadas():
+    """Carpetas de OneDrive/SharePoint/iCloud con 'Santander' (u OneDrive) en el nombre, de cualquier
+    usuario: C:\\Users\\<usuario>\\... (Windows), ~/Library/CloudStorage/... e iCloud Drive (macOS)."""
+    casa = Path.home()
+    raices = []
+    for base in (casa, casa / "Library" / "CloudStorage", ICLOUD):
+        if base.is_dir():
+            for raiz in sorted(base.iterdir()):
+                if raiz.is_dir() and re.search(r"santander|onedrive|sharepoint", raiz.name, re.I):
+                    raices.append(raiz)
+    return raices
+
+
+def _formato_en(raiz, profundidad=6):
+    """Busca formato_graficos.py bajo 'raiz': primero en las rutas habituales y, en iCloud, en toda la
+    carpeta (hasta 'profundidad' niveles). Avisa si iCloud lo tiene solo en la nube."""
+    rutas = [raiz / BIBLIOTECA / MANUAL_ESTILO, raiz / "General" / MANUAL_ESTILO, raiz / MANUAL_ESTILO]
+    for sub in sorted(p for p in raiz.iterdir() if p.is_dir() and not p.name.startswith(".")):
+        rutas += [sub / BIBLIOTECA / MANUAL_ESTILO, sub / "General" / MANUAL_ESTILO, sub / MANUAL_ESTILO]
+    for r in rutas:
+        if (r / "formato_graficos.py").is_file():
+            return r
+    if ICLOUD not in raiz.parents:
+        return None
+    base = len(raiz.parts)
+    for carpeta, dirs, archivos in os.walk(raiz):
+        dirs[:] = [d for d in dirs if not d.startswith(".")] if len(Path(carpeta).parts) - base < profundidad else []
+        if "formato_graficos.py" in archivos:
+            return Path(carpeta)
+        if ".formato_graficos.py.icloud" in archivos:   # iCloud lo dejo solo en la nube
+            sys.exit(f"formato_graficos.py está en iCloud pero no descargado en este Mac:\n    {carpeta}\n"
+                     "Ábrelo en Finder y elige 'Descargar ahora' (o 'Mantener descargado'), y vuelve a correr.")
+    return None
+
+
 def _carpeta_formato() -> Path:
     """Carpeta de formato_graficos.py: Administrativos/Manual de Estilo de la biblioteca de Estudios."""
     candidatos = []
@@ -41,30 +79,31 @@ def _carpeta_formato() -> Path:
     # 1) subiendo desde la carpeta de este script (...\General\...\Code)
     for p in [CODE, *CODE.parents]:
         candidatos += [p / MANUAL_ESTILO, p / "formato"]   # "formato": estructura del repositorio
-    # 2) carpetas sincronizadas de OneDrive/SharePoint (Windows: C:\Users\<usuario>; macOS: CloudStorage)
-    casa = Path.home()
-    for base in (casa, casa / "Library" / "CloudStorage"):
-        if base.is_dir():
-            for raiz in base.iterdir():
-                if raiz.is_dir() and re.search(r"santander|onedrive|sharepoint", raiz.name, re.I):
-                    candidatos.append(raiz / BIBLIOTECA / MANUAL_ESTILO)
     for carpeta in candidatos:
         if (carpeta / "formato_graficos.py").is_file():
             return carpeta
+    # 2) carpetas sincronizadas: OneDrive/SharePoint (Windows y macOS) e iCloud Drive (macOS)
+    for raiz in _raices_sincronizadas():
+        carpeta = _formato_en(raiz)
+        if carpeta:
+            return carpeta
     sys.exit("No encuentro formato_graficos.py. Debe estar en\n"
              f"    ...\\{BIBLIOTECA}\\{MANUAL_ESTILO}\n"
-             "(con su carpeta assets). Para indicar otra carpeta: variable FORMATO_GRAFICOS_DIR.")
+             "(también se busca en OneDrive/SharePoint y en la carpeta Santander de iCloud Drive).\n"
+             "Para indicar otra carpeta: variable FORMATO_GRAFICOS_DIR.")
 
 
 sys.path.insert(0, str(_carpeta_formato()))
 import formato_graficos as fg  # noqa: E402
 
 BCCH = "Banco Central de Chile"
+TITULO = "Chartpack de Expectativas"
+AUTOR = "Estudios Económicos"   # aparece en la portada y en el pie de cada lámina
 MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto",
          "septiembre", "octubre", "noviembre", "diciembre"]
 
 # posiciones de graficos (cm): dos por lamina, tres por lamina y uno ancho
-Y0, ALTO = Cm(3.6), Cm(fg.ALTO_CM)
+Y0, ALTO = Cm(fg.Y_CONTENIDO_CM), Cm(fg.ALTO_CM)
 DOS = [Cm(1.3), Cm(17.5)]
 ANCHO_DOS = Cm(fg.ANCHO_CM)
 TRES = [Cm(1.0), Cm(11.8), Cm(22.6)]
@@ -74,12 +113,13 @@ ANCHO_UNO = Cm(31.2)
 
 DATOS = {}   # hoja del Excel de respaldo -> DataFrame
 _NUM = [1]   # numero de la lamina actual (1 = portada)
+_PIE = [""]  # pie de las laminas: "Chartpack de Expectativas <mes año> | <autor>"
 
 
 def lamina(prs, titulo):
     """Lamina nueva con numeracion automatica."""
     _NUM[0] += 1
-    return fg.lamina(prs, titulo, _NUM[0])
+    return fg.lamina(prs, titulo, _NUM[0], pie_texto=_PIE[0])
 
 
 def graficar(lam, df, x, w, hoja, fuente=BCCH, nota=None, **kw):
@@ -97,7 +137,7 @@ def _input(archivo):
 
 def eee_deciles(horizonte):
     """Mediana, deciles 1 y 9 y rango 9-1 de la EEE (Excel de encuestas_bcch.py)."""
-    d = pd.read_excel(_input(EEE_DECILES), sheet_name="deciles")
+    d = pd.read_excel(_input(EEE_DECILES), sheet_name="deciles", engine="openpyxl")
     d = d[d["horizonte"] == horizonte]
     d.index = pd.to_datetime(d["fecha"])
     return d[["mediana", "decil_1", "decil_9", "rango_9_1"]].rename(columns={
@@ -106,7 +146,7 @@ def eee_deciles(horizonte):
 
 def eof_umbrales():
     """% de operadores EOF con inflacion a 2 anios sobre/bajo umbrales (Excel de encuestas_bcch.py)."""
-    d = pd.read_excel(_input(EOF_UMBRALES), sheet_name="mensual")
+    d = pd.read_excel(_input(EOF_UMBRALES), sheet_name="mensual", engine="openpyxl")
     d.index = pd.to_datetime(d["mes"])
     return d
 
@@ -117,7 +157,9 @@ def main(hoy=None):
     OUT.mkdir(exist_ok=True)
 
     prs = fg.nueva_presentacion()
-    fg.portada(prs, f"{MESES[hoy.month - 1]} de {hoy.year}")
+    mes = f"{MESES[hoy.month - 1]} {hoy.year}"
+    fg.portada(prs, "Chartpack de\nExpectativas", mes.capitalize(), autor=AUTOR)
+    _PIE[0] = f"{TITULO} {mes}  |  {AUTOR}"
     _NUM[0] = 1
     DATOS.clear()
 

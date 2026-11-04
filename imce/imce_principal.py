@@ -26,9 +26,9 @@ Carpetas (sirven para cualquier usuario: no dependen de C:\Users\<usuario>):
     ...\Estudios - Documentos\General\Expectativas y Encuestas\IMCE\Code
   y el formato comun en
     ...\Estudios - Documentos\General\Administrativos\Manual de Estilo\formato_graficos.py
-  (con su carpeta assets\). El script sube desde su propia carpeta hasta encontrar
+  El script sube desde su propia carpeta hasta encontrar
   Administrativos\Manual de Estilo; si no, lo busca en la carpeta sincronizada
-  "Santander Office 365" del usuario. Para forzar otra: setx FORMATO_GRAFICOS_DIR 'C:\ruta'
+  "Santander Office 365" del usuario y, en Mac, en la carpeta Santander de iCloud Drive. Para forzar otra: setx FORMATO_GRAFICOS_DIR 'C:\ruta'
 
   IMCE.xlsx se busca primero dentro de la carpeta IMCE del script (IMCE\, IMCE\Code\ y sus
   subcarpetas, ej. IMCE\Base\) y luego en <OneDrive>/.../Bases - Chartpack/Bases/Local/IMCE/Base/.
@@ -150,6 +150,9 @@ def _diagnostico_credenciales(cred: Dict[str, str]) -> str:
     return "\n".join(lineas)
 
 
+ICLOUD = Path.home() / "Library" / "Mobile Documents" / "com~apple~CloudDocs"   # iCloud Drive (macOS)
+
+
 def _raices_onedrive() -> List[Path]:
     """Carpetas raiz de OneDrive / SharePoint sincronizadas en este computador."""
     raices = []
@@ -157,8 +160,8 @@ def _raices_onedrive() -> List[Path]:
         if os.environ.get(var):
             raices.append(Path(os.environ[var]))
     casa = Path.home()
-    # Windows: C:\Users\<usuario>\...; macOS: ~/Library/CloudStorage/OneDrive-...
-    for base in (casa, casa / "Library" / "CloudStorage"):
+    # Windows: C:\Users\<usuario>\...; macOS: ~/Library/CloudStorage/OneDrive-... e iCloud Drive
+    for base in (casa, casa / "Library" / "CloudStorage", ICLOUD):
         if base.is_dir():
             for p in base.iterdir():
                 if p.is_dir() and re.search(r"santander|onedrive|sharepoint", p.name, re.I):
@@ -469,6 +472,28 @@ def actualizar_excel(cred: Dict[str, str]):
 # 5. CHARTBOOK PPTX + PDF (formato de Estudios: ../formato/formato_graficos.py)
 # ─────────────────────────────────────────────────────────────────────────────
 
+def _formato_en(raiz, profundidad=6):
+    """Busca formato_graficos.py bajo 'raiz': primero en las rutas habituales y, en iCloud, en toda la
+    carpeta (hasta 'profundidad' niveles). Avisa si iCloud lo tiene solo en la nube."""
+    rutas = [raiz / BIBLIOTECA / MANUAL_ESTILO, raiz / "General" / MANUAL_ESTILO, raiz / MANUAL_ESTILO]
+    for sub in sorted(p for p in raiz.iterdir() if p.is_dir() and not p.name.startswith(".")):
+        rutas += [sub / BIBLIOTECA / MANUAL_ESTILO, sub / "General" / MANUAL_ESTILO, sub / MANUAL_ESTILO]
+    for r in rutas:
+        if (r / "formato_graficos.py").is_file():
+            return r
+    if ICLOUD not in raiz.parents:
+        return None
+    base = len(raiz.parts)
+    for carpeta, dirs, archivos in os.walk(raiz):
+        dirs[:] = [d for d in dirs if not d.startswith(".")] if len(Path(carpeta).parts) - base < profundidad else []
+        if "formato_graficos.py" in archivos:
+            return Path(carpeta)
+        if ".formato_graficos.py.icloud" in archivos:   # iCloud lo dejo solo en la nube
+            sys.exit(f"formato_graficos.py está en iCloud pero no descargado en este Mac:\n    {carpeta}\n"
+                     "Ábrelo en Finder y elige 'Descargar ahora' (o 'Mantener descargado'), y vuelve a correr.")
+    return None
+
+
 def _carpeta_formato() -> Path:
     """Carpeta de formato_graficos.py: Administrativos/Manual de Estilo de la biblioteca de Estudios."""
     candidatos = []
@@ -476,18 +501,19 @@ def _carpeta_formato() -> Path:
         candidatos.append(Path(os.environ["FORMATO_GRAFICOS_DIR"]))
     # 1) subiendo desde la carpeta de este script (...\General\Expectativas y Encuestas\IMCE\Code)
     candidatos += [p / MANUAL_ESTILO for p in [AQUI, *AQUI.parents]]
-    # 2) en la biblioteca sincronizada del usuario que corre el script
-    for raiz in _raices_onedrive():
-        candidatos.append(raiz / BIBLIOTECA / MANUAL_ESTILO)
-        candidatos += [sub / "General" / MANUAL_ESTILO for sub in raiz.iterdir() if sub.is_dir()]
-    # 3) estructura del repositorio de GitHub (formato/ junto a imce/) o junto a este script
+    # 2) estructura del repositorio de GitHub (formato/ junto a imce/) o junto a este script
     candidatos += [AQUI.parent / "formato", AQUI]
     for carpeta in candidatos:
         if (carpeta / "formato_graficos.py").is_file():
             return carpeta
+    # 3) carpetas sincronizadas: OneDrive/SharePoint (Windows y macOS) e iCloud Drive (macOS)
+    for raiz in _raices_onedrive():
+        carpeta = _formato_en(raiz)
+        if carpeta:
+            return carpeta
     sys.exit("No encuentro formato_graficos.py. Debe estar en\n"
              f"    ...\\{BIBLIOTECA}\\{MANUAL_ESTILO}\n"
-             "(con su carpeta assets). Para indicar otra carpeta, en PowerShell:\n"
+             "Para indicar otra carpeta, en PowerShell:\n"
              "    setx FORMATO_GRAFICOS_DIR 'C:\\ruta\\Manual de Estilo'")
 
 
@@ -502,6 +528,7 @@ def _importar_formato():
 MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto",
          "septiembre", "octubre", "noviembre", "diciembre"]
 FUENTE = "Banco Central de Chile"
+AUTOR = "Estudios Económicos"   # aparece en la portada y en el pie de cada lámina
 NOTA = "Sobre 50 indica optimismo; bajo 50, pesimismo."
 MESES_ENTRE_ETIQUETAS = 24
 
@@ -555,7 +582,7 @@ def find_col(df, candidates):
 
 
 def read_imce() -> pd.DataFrame:
-    df = pd.read_excel(IMCE_XLSX, sheet_name="IMCE", header=2)
+    df = pd.read_excel(IMCE_XLSX, sheet_name="IMCE", header=2, engine="openpyxl")
     df.columns = [str(c).strip() for c in df.columns]
     c_f = find_col(df, ["Periodo"])
     df = df.rename(columns={c_f: "Fecha"})
@@ -583,16 +610,18 @@ def generar_chartbook():
     df = read_imce().set_index("Fecha")
     ult = df.index.max()
     ts = pd.Timestamp.now().strftime("%Y%m%d")
-    x, y, ancho, alto = Cm(1.3), Cm(3.6), Cm(31.2), Cm(fg.ALTO_CM)
+    x, y, ancho, alto = Cm(1.3), Cm(fg.Y_CONTENIDO_CM), Cm(31.2), Cm(fg.ALTO_CM)
+    mes = f"{MESES[ult.month - 1]} {ult.year}"
 
     prs = fg.nueva_presentacion()
-    fg.portada(prs, f"IMCE · {MESES[ult.month - 1]} de {ult.year}")
+    fg.portada(prs, "Índice Mensual de Confianza\nEmpresarial (IMCE)", mes.capitalize(), autor=AUTOR)
+    pie_texto = f"IMCE {mes}  |  {AUTOR}"
     for num, (titulo, series, ylims) in enumerate(CHARTS, start=2):
         datos = df[[find_col(df, cand) for _, cand in series]]
         datos.columns = [nombre for nombre, _ in series]
         datos = datos.dropna(how="all")
         y_min, y_max = ylims or _ylim(datos)
-        lam = fg.lamina(prs, titulo, num)
+        lam = fg.lamina(prs, titulo, num, pie_texto=pie_texto)
         fg.agregar_grafico(lam, datos, x, y, ancho, alto, unidad="(Índice)", posicion_unidad="arriba",
                            y_min=y_min, y_max=y_max, y_paso=10, linea_ref=50,
                            meses_entre_etiquetas=MESES_ENTRE_ETIQUETAS)

@@ -5,7 +5,7 @@ independiente con su propio README:
 
 | Carpeta | Qué hace |
 |---|---|
-| [`formato/`](formato/) | `formato_graficos.py`: datos (API BDE, FRED, FMI, GSCPI), transformaciones con nota metodológica y formato Santander de gráficos nativos de PowerPoint; portada y logos. En SharePoint vive en `Administrativos\Manual de Estilo`; lo usan el chartpack y el IMCE. |
+| [`formato/`](formato/) | `formato_graficos.py`: datos (API BDE, FRED, FMI, GSCPI), transformaciones con nota metodológica y formato Santander de gráficos nativos de PowerPoint y plantilla de presentación. En SharePoint vive en `Administrativos\Manual de Estilo`; lo usan el chartpack y el IMCE. |
 | [`chartpack_expectativas/`](chartpack_expectativas/) | Chartpack de Expectativas (PPTX/PDF con gráficos nativos editables), con `Code/`, `Inputs/` (EEE y EOF) y `Outputs/`. |
 | [`imce/`](imce/) | Proceso mensual del IMCE: actualiza `IMCE.xlsx` y genera el chartbook en PPTX y PDF. |
 
