@@ -11,7 +11,8 @@ Para armar presentaciones de varias laminas (ej. chartpacks):
     prs = fg.nueva_presentacion()
     fg.portada(prs, "Chartpack de\nExpectativas", "Noviembre 2026", autor="Estudios Económicos")
     lam = fg.lamina(prs, "IMCE", numero=2, pie_texto="Chartpack de Expectativas noviembre 2026 | Estudios Económicos")
-    fg.agregar_grafico(lam, df, x, y, ancho, alto, titulo=..., unidad=...)
+    fg.agregar_grafico(lam, df, x, y, ancho, alto, titulo=..., unidad=...)   # lineas
+    fg.agregar_barras(lam, df_anual, x, y, ancho, alto, titulo=..., unidad=...)   # barras
     fg.pie(lam, x, y, ancho, fuente="Banco Central de Chile", nota=...)
 
 Requisitos (una vez, en la terminal de VS Code):
@@ -392,9 +393,16 @@ def _rgb(r, g, b):
 
 PALETA = [(236, 0, 0),      # rojo Santander (serie principal)
           (0, 0, 0),        # negro
-          (77, 196, 202),   # turquesa
+          (70, 196, 202),   # turquesa
           (255, 174, 66),   # amarillo
           (178, 178, 178)]  # gris
+# barras (plantilla Santander): gris oscuro, rojo y arena; luego turquesa y amarillo
+PALETA_BARRAS = [(68, 68, 68),     # gris oscuro
+                 (236, 0, 0),      # rojo Santander
+                 (210, 173, 141),  # arena / beige
+                 (70, 196, 202),   # turquesa
+                 (255, 174, 66)]   # amarillo
+COLOR_GUIAS = (217, 217, 217)      # lineas guia horizontales de las barras
 COLOR_EJES = (191, 191, 191)  # "Blanco, fondo 1, oscuro 25%"
 GRIS_TEXTO = (89, 89, 89)
 FUENTES_SANTANDER = {
@@ -779,12 +787,125 @@ def _a_barras(chart, columnas):
     linea.addprevious(barra)  # las columnas se dibujan detras de las lineas
 
 
+def _leyenda_libre(chart, df, w, h, tam, y_min, y_max, eje_derecho, y2_min, y2_max, barras,
+                   etiqueta_ultimo, unidad, unidad_derecha, posicion_unidad):
+    """
+    Ubica la leyenda dentro del grafico, en el rincon donde no tapa lineas, columnas, etiquetas del
+    ultimo dato ni el descriptor de unidad. Si no hay un rincon libre, la deja arriba, fuera del
+    area de las series (como antes). Estima la posicion de las series a partir de los datos; la
+    leyenda queda editable y se puede mover a mano en PowerPoint.
+    """
+    import numpy as np
+    from pptx.oxml.ns import qn
+    w_pt, h_pt = w / 12700, h / 12700
+    der = [str(c) for c in (eje_derecho or [])]
+    # area de las series dentro del marco del grafico (fracciones), aproximada como la deja Office
+    izq = (tam * 2.6 + 6) / w_pt
+    dcha = (tam * 3.4 if der else tam * 0.8) / w_pt + (0.06 if etiqueta_ultimo else 0)
+    arriba, abajo = 0.03, (tam * 2.2) / h_pt
+    pw, ph = 1 - izq - dcha, 1 - arriba - abajo
+
+    def rango(cols, lo, hi):
+        v = df[cols].to_numpy(dtype=float)
+        v = v[np.isfinite(v)]
+        if v.size == 0:
+            return 0.0, 1.0
+        lo = v.min() if lo is None else lo
+        hi = v.max() if hi is None else hi
+        if barras and any(c in barras for c in cols):
+            lo, hi = min(lo, 0), max(hi, 0)
+        margen = 0.05 * (hi - lo or 1)
+        return (lo - margen if y_min is None else lo), (hi + margen if y_max is None else hi)
+
+    izq_cols = [str(c) for c in df.columns if str(c) not in der]
+    r_izq = rango(izq_cols, y_min, y_max) if izq_cols else (0, 1)
+    r_der = rango(der, y2_min, y2_max) if der else (0, 1)
+    # posicion horizontal como fraccion del periodo (independiente de la unidad de las fechas)
+    inicio, total = df.index.min(), (df.index.max() - df.index.min()) or pd.Timedelta(days=1)
+    malla = np.linspace(0, 1, 400)
+    puntos = []                                     # (x, y) en fracciones del marco; y desde arriba
+    for col in df.columns:
+        s = df[col].dropna()
+        if s.empty:
+            continue
+        lo, hi = r_der if str(col) in der else r_izq
+        xs = np.asarray((s.index - inicio) / total, dtype=float)
+        ys = (s.to_numpy(dtype=float) - lo) / ((hi - lo) or 1)
+        if str(col) in barras:                      # columnas: toda la altura desde 0
+            base = (0 - lo) / ((hi - lo) or 1)
+            for xx, yy in zip(xs, ys):
+                for f in np.linspace(min(base, yy), max(base, yy), 6):
+                    puntos.append((izq + xx * pw, arriba + (1 - f) * ph))
+        else:                                       # lineas: muestreo fino entre observaciones
+            yi = np.interp(malla, xs, ys, left=np.nan, right=np.nan)
+            puntos += [(izq + xx * pw, arriba + (1 - yy) * ph) for xx, yy in zip(malla, yi) if np.isfinite(yy)]
+        if str(col) in (etiqueta_ultimo or []):     # etiqueta del ultimo dato, a la derecha
+            px, py = izq + xs[-1] * pw, arriba + (1 - ys[-1]) * ph
+            puntos += [(px + dx, py + dy) for dx in np.linspace(0, 0.09, 6) for dy in (-0.025, 0, 0.025)]
+    puntos = np.array(puntos) if puntos else np.zeros((0, 2))
+
+    # descriptores de unidad (cajas de 8 x 0,8 cm a 2 cm del borde, arriba o abajo)
+    obstaculos = []
+    y_u = (1.3 / (h_pt / 28.35)) if posicion_unidad != "abajo" else 1 - 2.2 / (h_pt / 28.35)
+    alto_u = 0.8 / (h_pt / 28.35)
+    if unidad:
+        obstaculos.append((2.0 / (w_pt / 28.35), y_u, 2.0 / (w_pt / 28.35) + len(unidad) * 0.55 * 11 / w_pt,
+                           y_u + alto_u))
+    if unidad_derecha:
+        fin = 1 - 1.5 / (w_pt / 28.35)
+        obstaculos.append((fin - len(unidad_derecha) * 0.55 * 11 / w_pt, y_u, fin, y_u + alto_u))
+
+    # tamano de la leyenda: entradas en filas que caben en 60% del ancho de las series
+    anchos = [(len(str(c)) * 0.6 * tam + 3.4 * tam) / w_pt for c in df.columns]
+    filas, fila = [], []
+    for a in anchos:
+        if fila and sum(fila) + a > 0.6 * pw:
+            filas.append(fila)
+            fila = []
+        fila.append(a)
+    filas.append(fila)
+    lw, lh = max(sum(f) for f in filas) + 0.02, (len(filas) * 1.7 * tam + 6) / h_pt
+
+    pad = 0.015
+    candidatos = []
+    for vert, y0 in (("arriba", arriba + pad), ("abajo", arriba + ph - lh - pad)):
+        for hor, x0 in (("izquierda", izq + pad), ("centro", izq + (pw - lw) / 2),
+                        ("derecha", izq + pw - lw - pad)):
+            candidatos.append((x0, y0))
+
+    def choca(x0, y0):
+        x1, y1 = x0 + lw, y0 + lh
+        n = int(((puntos[:, 0] > x0 - pad) & (puntos[:, 0] < x1 + pad) &
+                 (puntos[:, 1] > y0 - pad) & (puntos[:, 1] < y1 + pad)).sum()) if len(puntos) else 0
+        n += sum(1000 for (a0, b0, a1, b1) in obstaculos
+                 if a0 - pad < x1 and x0 < a1 + pad and b0 - pad < y1 and y0 < b1 + 2 * pad)
+        return n
+
+    libres = [(x0, y0) for x0, y0 in candidatos if 0 <= x0 and x0 + lw <= 1 and choca(x0, y0) == 0]
+    if not libres:
+        return False                                # queda arriba, fuera del area de las series
+    x0, y0 = libres[0]
+    chart.legend.include_in_layout = True           # superpuesta: no achica el area de las series
+    leg = chart.legend._element
+    capa = leg.find(qn("c:layout"))
+    if capa is None:
+        capa = _sub(leg, "c:layout")
+        leg.find(qn("c:overlay")).addprevious(capa)
+    for hijo in list(capa):
+        capa.remove(hijo)
+    manual = _sub(capa, "c:manualLayout")
+    for tag, val in (("c:xMode", "edge"), ("c:yMode", "edge"), ("c:x", x0), ("c:y", y0),
+                     ("c:w", lw), ("c:h", lh)):
+        _sub(manual, tag, val=round(val, 4) if isinstance(val, float) else val)
+    return True
+
+
 def agregar_grafico(slide, df, x, y, w, h, titulo=None, unidad=None, decimales=1,
                     proyecciones=None, etiqueta_ultimo=True,
                     y_min=None, y_max=None, y_paso=None,
                     eje_derecho=None, unidad_derecha=None, y2_min=None, y2_max=None, y2_paso=None,
                     meses_entre_etiquetas=None, formato_fecha=FORMATO_FECHA,
-                    linea_ref=None, posicion_unidad="abajo", tam=12, barras=None):
+                    linea_ref=None, posicion_unidad="abajo", tam=12, barras=None, leyenda="auto"):
     """
     Grafico de lineas nativo (editable) en formato Santander, en la posicion dada de una lamina.
     df           : DataFrame indexado por fecha; cada columna es una serie (max. 5)
@@ -798,6 +919,9 @@ def agregar_grafico(slide, df, x, y, w, h, titulo=None, unidad=None, decimales=1
     posicion_unidad : "abajo" (izquierda abajo, por defecto) o "arriba" (izquierda arriba)
     etiqueta_ultimo : True (todas las series), False o lista de columnas con etiqueta
     barras       : lista de columnas que se dibujan como columnas (mismo eje Y que las lineas)
+    leyenda      : "auto" (por defecto: dentro del grafico, en el rincon donde no tapa series ni
+                   rotulos; si no hay espacio libre, arriba fuera del area de las series),
+                   "arriba" o "abajo"
     """
     from pptx.chart.data import CategoryChartData
     from pptx.enum.chart import (XL_CHART_TYPE, XL_LABEL_POSITION, XL_LEGEND_POSITION,
@@ -841,6 +965,11 @@ def agregar_grafico(slide, df, x, y, w, h, titulo=None, unidad=None, decimales=1
         chart.legend.font.size = Pt(tam)
         chart.legend.font.name = f_ejes
         chart.legend.font.color.rgb = _rgb(0, 0, 0)
+        if leyenda == "abajo":
+            chart.legend.position = XL_LEGEND_POSITION.BOTTOM
+        elif leyenda == "auto":
+            _leyenda_libre(chart, df, w, h, tam, y_min, y_max, eje_derecho, y2_min, y2_max, barras,
+                           etiqueta_ultimo, unidad, unidad_derecha, posicion_unidad)
 
     # --- eje X: fechas siempre abajo, formato ene.26 ---
     ex = chart.category_axis
@@ -934,6 +1063,117 @@ def agregar_grafico(slide, df, x, y, w, h, titulo=None, unidad=None, decimales=1
         from pptx.enum.text import PP_ALIGN
         _caja_texto(slide, unidad_derecha, x + w - Cm(9.5), y_unidad, Cm(8), Cm(0.8), f_ejes, TAM_UNIDAD,
                     alineacion=PP_ALIGN.RIGHT)
+    return chart
+
+
+def _texto_categoria(c, formato):
+    """Etiqueta de categoria: texto tal cual; fechas como año (enero) o 'ene.26'."""
+    if not isinstance(c, (pd.Timestamp, dt.date)):
+        return str(c)
+    c = pd.Timestamp(c)
+    if formato:
+        return c.strftime(formato)
+    return str(c.year) if c.month == 1 and c.day == 1 else f"{MESES_ABREV[c.month - 1]}.{c.year % 100:02d}"
+
+
+def agregar_barras(slide, df, x, y, w, h, titulo=None, unidad=None, decimales=1,
+                   apiladas=False, horizontal=False, etiquetas=True, leyenda="abajo",
+                   formato_categoria=None, colores=None, tam=12, posicion_unidad="arriba"):
+    """
+    Grafico de barras nativo (editable) con el formato de la plantilla Santander.
+    df           : una fila por categoria (indice: texto, años o fechas) y una columna por serie (max. 5)
+    apiladas     : barras apiladas en vez de agrupadas
+    horizontal   : barras horizontales en vez de columnas
+    etiquetas    : valor sobre cada barra, en el color de su serie (sin ceros sobrantes); con
+                   etiquetas no se muestra el eje de valores, solo lineas guia suaves
+    leyenda      : "abajo" (por defecto, como la plantilla), "arriba" o None
+    formato_categoria : formato strftime para fechas, ej. "%Y"; por defecto año o 'ene.26'
+    """
+    from pptx.chart.data import CategoryChartData
+    from pptx.enum.chart import XL_CHART_TYPE, XL_LABEL_POSITION, XL_LEGEND_POSITION, XL_TICK_MARK
+    from pptx.enum.chart import XL_TICK_LABEL_POSITION
+    from pptx.util import Cm, Pt
+
+    if df.shape[1] > 5:
+        raise ValueError("Máximo 5 series por gráfico (legibilidad y paleta).")
+    colores = colores or PALETA_BARRAS
+    f_tit, f_ejes = tipografia("titulo"), tipografia("ejes")
+    if titulo:
+        _caja_texto(slide, titulo, x, y - Cm(1.1), w, Cm(1), f_tit, 14, negrita=True)
+
+    datos = CategoryChartData(number_format="General")
+    datos.categories = [_texto_categoria(c, formato_categoria) for c in df.index]
+    for col in df.columns:
+        # valores redondeados a 'decimales': con formato General no quedan ceros sobrantes
+        datos.add_series(str(col), [None if pd.isna(v) else round(float(v), decimales) for v in df[col]])
+    tipo = {(False, False): XL_CHART_TYPE.COLUMN_CLUSTERED, (True, False): XL_CHART_TYPE.COLUMN_STACKED,
+            (False, True): XL_CHART_TYPE.BAR_CLUSTERED, (True, True): XL_CHART_TYPE.BAR_STACKED}
+    chart = slide.shapes.add_chart(tipo[(apiladas, horizontal)], x, y, w, h, datos).chart
+    chart.has_title = False
+    chart.font.name = f_ejes
+    chart.font.size = Pt(tam)
+
+    plot = chart.plots[0]
+    plot.gap_width = 60
+    plot.overlap = 100 if apiladas else 0
+    if horizontal:   # primera categoria arriba, como se lee
+        chart.category_axis.reverse_order = True
+
+    # eje de categorias: linea gris, sin marcas
+    ex = chart.category_axis
+    ex.major_tick_mark = XL_TICK_MARK.NONE
+    ex.minor_tick_mark = XL_TICK_MARK.NONE
+    ex.tick_label_position = XL_TICK_LABEL_POSITION.LOW
+    ex.format.line.width = Pt(0.75)
+    ex.format.line.color.rgb = _rgb(*COLOR_EJES)
+    ex.tick_labels.font.size = Pt(tam)
+    ex.tick_labels.font.name = f_ejes
+    ex.tick_labels.font.color.rgb = _rgb(0, 0, 0)
+    ex.has_major_gridlines = False
+
+    # eje de valores: con etiquetas, oculto y con lineas guia suaves; sin etiquetas, eje normal
+    ey = chart.value_axis
+    if etiquetas:
+        ey.visible = False
+        ey.has_major_gridlines = True
+        ey.major_gridlines.format.line.color.rgb = _rgb(*COLOR_GUIAS)
+        ey.major_gridlines.format.line.width = Pt(0.5)
+    else:
+        _formato_eje_valor(ey, decimales, None, tam, f_ejes)
+
+    for i, serie in enumerate(plot.series):
+        color = _rgb(*colores[i])
+        serie.format.fill.solid()
+        serie.format.fill.fore_color.rgb = color
+        serie.format.line.fill.background()
+        serie.invert_if_negative = False
+        if etiquetas:
+            dl = serie.data_labels
+            dl.show_value = True
+            dl.number_format = IDIOMA_FORMATO + "General"
+            dl.number_format_is_linked = False
+            dl.font.size = Pt(TAM_ETIQUETA + 1)
+            dl.font.name = f_ejes
+            # apiladas: valor al centro en blanco (gris claro y arena: en negro); agrupadas: sobre la barra
+            if apiladas:
+                dl.position = XL_LABEL_POSITION.CENTER
+                claro = sum(colores[i]) > 450
+                dl.font.color.rgb = _rgb(0, 0, 0) if claro else _rgb(255, 255, 255)
+            else:
+                dl.position = XL_LABEL_POSITION.OUTSIDE_END
+                dl.font.color.rgb = color
+
+    chart.has_legend = df.shape[1] > 1 and leyenda is not None
+    if chart.has_legend:
+        chart.legend.position = XL_LEGEND_POSITION.TOP if leyenda == "arriba" else XL_LEGEND_POSITION.BOTTOM
+        chart.legend.include_in_layout = False
+        chart.legend.font.size = Pt(tam - 1)
+        chart.legend.font.name = f_ejes
+        chart.legend.font.color.rgb = _rgb(0, 0, 0)
+
+    if unidad:
+        y_unidad = y + h - Cm(2.2) if posicion_unidad == "abajo" else y + Cm(0.1)
+        _caja_texto(slide, unidad, x + Cm(0.4), y_unidad, Cm(8), Cm(0.8), f_ejes, TAM_UNIDAD)
     return chart
 
 
