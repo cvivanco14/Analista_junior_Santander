@@ -14,7 +14,7 @@ IMCE vs Imacec no minero.
 | `Inputs/eof/` | Planillas de la EOF (`raw/`) y el Excel resultante `eof_inflacion_2a_umbrales.xlsx` (hojas `mensual` y `por_encuesta`). |
 | `Outputs/` | `AAAAMMDD_Chartpack_Expectativas.pptx`, `.pdf` y `_datos.xlsx` (datos de cada gráfico). |
 
-El formato (`formato_graficos.py`, con su carpeta `assets`) está en
+El formato (`formato_graficos.py`) está en
 `Estudios - Documentos\General\Administrativos\Manual de Estilo` (en este repositorio,
 [`../formato/`](../formato/)). Los scripts lo encuentran subiendo desde su propia carpeta o en la
 carpeta sincronizada de SharePoint del usuario, en Windows o macOS; no usan el nombre de usuario.

@@ -11,7 +11,8 @@
   dato etiquetado (con el día en series diarias), descriptor de la serie en 11, nota y fuente en
   Santander Text Light 9, eje derecho y columnas.
 - Presentación: `nueva_presentacion`, `portada`, `lamina`, `pie` y `exportar_pdf`.
-- `assets/`: foto de portada y logos.
+- Plantilla de presentación (minuta mensual de Estudios): portada roja y láminas con franja roja,
+  título rojo, línea gris inferior, pie "documento | autor" y número de página.
 
 Para usarlo desde otra carpeta del repositorio:
 

@@ -53,18 +53,20 @@ def _carpeta_formato() -> Path:
             return carpeta
     sys.exit("No encuentro formato_graficos.py. Debe estar en\n"
              f"    ...\\{BIBLIOTECA}\\{MANUAL_ESTILO}\n"
-             "(con su carpeta assets). Para indicar otra carpeta: variable FORMATO_GRAFICOS_DIR.")
+             "Para indicar otra carpeta: variable FORMATO_GRAFICOS_DIR.")
 
 
 sys.path.insert(0, str(_carpeta_formato()))
 import formato_graficos as fg  # noqa: E402
 
 BCCH = "Banco Central de Chile"
+TITULO = "Chartpack de Expectativas"
+AUTOR = "Estudios Económicos"   # aparece en la portada y en el pie de cada lámina
 MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto",
          "septiembre", "octubre", "noviembre", "diciembre"]
 
 # posiciones de graficos (cm): dos por lamina, tres por lamina y uno ancho
-Y0, ALTO = Cm(3.6), Cm(fg.ALTO_CM)
+Y0, ALTO = Cm(fg.Y_CONTENIDO_CM), Cm(fg.ALTO_CM)
 DOS = [Cm(1.3), Cm(17.5)]
 ANCHO_DOS = Cm(fg.ANCHO_CM)
 TRES = [Cm(1.0), Cm(11.8), Cm(22.6)]
@@ -74,12 +76,13 @@ ANCHO_UNO = Cm(31.2)
 
 DATOS = {}   # hoja del Excel de respaldo -> DataFrame
 _NUM = [1]   # numero de la lamina actual (1 = portada)
+_PIE = [""]  # pie de las laminas: "Chartpack de Expectativas <mes año> | <autor>"
 
 
 def lamina(prs, titulo):
     """Lamina nueva con numeracion automatica."""
     _NUM[0] += 1
-    return fg.lamina(prs, titulo, _NUM[0])
+    return fg.lamina(prs, titulo, _NUM[0], pie_texto=_PIE[0])
 
 
 def graficar(lam, df, x, w, hoja, fuente=BCCH, nota=None, **kw):
@@ -117,7 +120,9 @@ def main(hoy=None):
     OUT.mkdir(exist_ok=True)
 
     prs = fg.nueva_presentacion()
-    fg.portada(prs, f"{MESES[hoy.month - 1]} de {hoy.year}")
+    mes = f"{MESES[hoy.month - 1]} {hoy.year}"
+    fg.portada(prs, "Chartpack de\nExpectativas", mes.capitalize(), autor=AUTOR)
+    _PIE[0] = f"{TITULO} {mes}  |  {AUTOR}"
     _NUM[0] = 1
     DATOS.clear()
 

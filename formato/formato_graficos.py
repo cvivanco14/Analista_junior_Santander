@@ -9,8 +9,8 @@ Uso basico:
 
 Para armar presentaciones de varias laminas (ej. chartpacks):
     prs = fg.nueva_presentacion()
-    fg.portada(prs, "octubre de 2026")
-    lam = fg.lamina(prs, "IMCE", numero=2)
+    fg.portada(prs, "Chartpack de\nExpectativas", "Noviembre 2026", autor="Estudios Económicos")
+    lam = fg.lamina(prs, "IMCE", numero=2, pie_texto="Chartpack de Expectativas noviembre 2026 | Estudios Económicos")
     fg.agregar_grafico(lam, df, x, y, ancho, alto, titulo=..., unidad=...)
     fg.pie(lam, x, y, ancho, fuente="Banco Central de Chile", nota=...)
 
@@ -23,6 +23,9 @@ Credenciales (una vez por computador; nunca en el codigo):
     (igual para 'FRED_API_KEY')
   Windows, variables de entorno (Anaconda Prompt: comillas DOBLES; PowerShell: SIMPLES):
     setx BDE_TOKEN "tu_token"        # API Key Token del BCCh (tambien acepta BCCH_API_token)
+    setx BDE_USER "tu_correo"        # usuario y clave de la cuenta del BDE: alternativa al token;
+    setx BDE_PASS "tu_clave"         #   se usan si no hay token o si el BCCh lo rechaza
+  Si no hay token valido ni usuario y clave guardados, el modulo los pide en pantalla.
     setx FRED_API_KEY "tu_key"       # FRED (St. Louis Fed) (tambien acepta FRED_API)
     setx IMF_API_KEY "tu_key"        # opcional, FMI
 
@@ -47,7 +50,8 @@ from pathlib import Path
 import pandas as pd
 import requests
 
-ASSETS = Path(__file__).parent / "assets"
+MESES_LARGOS = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto",
+                "septiembre", "octubre", "noviembre", "diciembre"]
 
 # =============================================================================
 # 1. CREDENCIALES
@@ -55,7 +59,11 @@ ASSETS = Path(__file__).parent / "assets"
 
 # nombres alternativos con que la variable puede estar definida
 _ALIAS = {
-    "BDE_TOKEN": ["BCCH_API_token", "BCCH_API_TOKEN"],
+    # API Key Token del BDE: metodo de acceso propio (no es la clave de la cuenta)
+    "BDE_TOKEN": ["BDE_API_TOKEN", "BCCH_API_token", "BCCH_API_TOKEN"],
+    # usuario y clave de la cuenta del BDE: van siempre juntos
+    "BDE_USER": ["BCCH_USER"],
+    "BDE_PASS": ["BCCH_PASS"],
     "FRED_API_KEY": ["FRED_API"],
 }
 
@@ -114,8 +122,10 @@ def _credencial(nombre, obligatoria=True):
 _SIETE = None
 
 
-def _nueva_siete(token):
+def _nueva_siete(token=None, usuario=None, clave=None):
     import bcchapi
+    if token is None:
+        return bcchapi.Siete(usuario, clave)        # usuario y clave de la cuenta del BDE
     # La documentacion oficial del BCCh usa Siete(token=...).
     try:
         return bcchapi.Siete(token=token)
@@ -123,41 +133,103 @@ def _nueva_siete(token):
         return bcchapi.Siete(api_key=token)
 
 
+def _es_rechazo(e):
+    texto = f"{type(e).__name__} {e}".lower()
+    return "invalidcredentials" in texto or "invalid username or password" in texto
+
+
+def _probar_siete(siete):
+    """None si la conexion funciona; la excepcion si el BCCh rechaza la credencial."""
+    try:
+        siete.cuadro(series=["F073.TCO.PRE.Z.D"],
+                     desde=(dt.date.today() - dt.timedelta(days=10)).isoformat())
+        return None
+    except Exception as e:  # noqa: BLE001
+        if _es_rechazo(e):
+            return e
+        raise
+
+
+def _pedir_usuario_clave():
+    """Pide usuario y clave del BDE en pantalla (la clave no se muestra). None si no hay consola."""
+    import getpass
+    try:
+        print("Ingresa tu usuario y clave de la API del BDE (si3.bcentral.cl):")
+        usuario = _limpiar(input("  Usuario (correo): "))
+        clave = getpass.getpass("  Clave: ")
+    except (EOFError, OSError, KeyboardInterrupt):
+        return None
+    return (usuario, clave) if usuario and clave else None
+
+
+def _ofrecer_guardar(usuario, clave):
+    try:
+        import keyring
+        r = input("¿Guardar usuario y clave en el llavero para la próxima vez? [s/N]: ").strip().lower()
+        if r in ("s", "si", "sí", "y", "yes"):
+            keyring.set_password(LLAVERO, "BDE_USER", usuario)
+            keyring.set_password(LLAVERO, "BDE_PASS", clave)
+            print("Guardados en el llavero.")
+    except Exception:  # noqa: BLE001 - sin keyring o sin consola: no se guarda
+        pass
+
+
 def _siete():
     """
-    Conexion unica a la API BDE (se reutiliza entre llamadas). Prueba el token de la variable
-    BDE_TOKEN, sus alias y el Llavero, en ese orden, y usa el primero que el BCCh acepta.
+    Conexion unica a la API BDE (se reutiliza entre llamadas).
+      1) API Key Token: BDE_TOKEN (o sus alias) en variables de entorno y en el llavero.
+      2) Si no hay token o el BCCh lo rechaza: usuario y clave de la cuenta (BDE_USER y BDE_PASS,
+         juntos), desde variables de entorno o el llavero; si no estan, se piden en pantalla.
+    El token nunca se usa como clave ni al reves.
     """
     global _SIETE
     if _SIETE is not None:
         return _SIETE
-    candidatos = _candidatos("BDE_TOKEN")
-    if not candidatos:
-        sys.exit("No encuentro el token del BCCh (BDE_TOKEN). " + _como_guardar("BDE_TOKEN"))
     rechazados = []
-    for origen, token in candidatos:
-        siete = _nueva_siete(token)
-        try:
-            siete.cuadro(series=["F073.TCO.PRE.Z.D"],
-                         desde=(dt.date.today() - dt.timedelta(days=10)).isoformat())
-        except Exception as e:  # noqa: BLE001
-            texto = f"{type(e).__name__} {e}".lower()
-            if "invalidcredentials" in texto or "invalid username or password" in texto:
-                rechazados.append((origen, token))
-                continue
-            raise
-        for o, _ in rechazados:
-            print(f"Aviso: el token de {o} no es válido; uso el de {origen}. "
-                  f"Conviene borrar o corregir {o.replace('variable ', '')}.")
-        _SIETE = siete
-        return _SIETE
-    detalle = "\n".join(f"  - {o}: {len(t)} caracteres (un token del BCCh suele tener 60), "
-                        f"empieza con '$2a$': {'sí' if t.startswith('$2a$') else 'NO'}"
-                        for o, t in rechazados)
-    sys.exit("El Banco Central rechazó el token (Invalid username or password).\n" + detalle +
-             "\nVuelve a guardarlo. " + _como_guardar("BDE_TOKEN") +
-             "\nSi hay una variable BDE_TOKEN con un valor equivocado, bórrala (en Mac: revisa "
-             "~/.zshrc y ejecuta launchctl unsetenv BDE_TOKEN).")
+
+    # 1) API Key Token
+    for origen, token in _candidatos("BDE_TOKEN"):
+        siete = _nueva_siete(token=token)
+        if _probar_siete(siete) is None:
+            for o in rechazados:
+                print(f"Aviso: el token de {o} no es válido; uso el de {origen}.")
+            print(f"BDE: conectado con API token ({origen}).")
+            _SIETE = siete
+            return _SIETE
+        rechazados.append(f"token ({origen}, {len(token)} caracteres)")
+
+    # 2) usuario y clave, siempre juntos
+    usuarios, claves = _candidatos("BDE_USER"), _candidatos("BDE_PASS")
+    pares = []
+    for o_u, u in usuarios:
+        for o_c, c in claves:
+            # misma procedencia primero: variable con variable, llavero con llavero
+            if (o_u == "Llavero") == (o_c == "Llavero"):
+                pares.append((f"{o_u} / {o_c}", u, c))
+    for origen, u, c in pares:
+        siete = _nueva_siete(usuario=u, clave=c)
+        if _probar_siete(siete) is None:
+            print(f"BDE: conectado con usuario y clave ({origen}).")
+            _SIETE = siete
+            return _SIETE
+        rechazados.append(f"usuario y clave ({origen})")
+
+    if rechazados:
+        print("El Banco Central rechazó: " + "; ".join(rechazados) + ".")
+    else:
+        print("No encuentro API token ni usuario y clave del BDE.")
+    par = _pedir_usuario_clave()
+    if par:
+        siete = _nueva_siete(usuario=par[0], clave=par[1])
+        if _probar_siete(siete) is None:
+            print("BDE: conectado con usuario y clave (ingresados).")
+            _ofrecer_guardar(*par)
+            _SIETE = siete
+            return _SIETE
+        sys.exit("El Banco Central rechazó el usuario y la clave ingresados (Invalid username or password).")
+    sys.exit("No pude conectarme al BDE. Guarda el API token o el usuario y la clave.\n"
+             "API token: " + _como_guardar("BDE_TOKEN") + "\n"
+             "Usuario y clave (juntos): " + _como_guardar("BDE_USER") + " Y lo mismo para BDE_PASS.")
 
 
 def bde(series, nombres=None, desde=None, hasta=None, quitar_vacios=True):
@@ -491,33 +563,80 @@ def _linea_horizontal(slide, x, y, w, color=COLOR_EJES, grosor_pt=0.75):
     return forma
 
 
-def portada(prs, fecha_texto, titulo="Estudios\nEconómicos"):
-    """Portada institucional: foto, logo Santander, titulo y fecha."""
-    from pptx.util import Cm
+# Plantilla de presentacion (minuta mensual de Estudios): portada roja y laminas con franja roja
+# superior, titulo rojo, linea gris inferior, pie "documento | autor" y numero de pagina en rojo.
+GRIS_PIE = (111, 119, 121)      # #6F7779
+GRIS_LINEA = (200, 205, 208)    # #C8CDD0
+BLANCO = (255, 255, 255)
+MARGEN_PT = 43.2                # 4,5% del ancho de la lamina
+Y_CONTENIDO_CM = 4.0            # borde superior sugerido para graficos (bajo el titulo)
+
+
+def _texto_plantilla(slide, texto, x_pt, y_pt, w_pt, h_pt, nombre_fuente, tam, color, negrita=False,
+                     alineacion=None, ancla="top"):
+    """Caja de texto sin margenes internos, para ubicar exactamente los elementos de la plantilla."""
+    from pptx.enum.text import MSO_ANCHOR
+    from pptx.util import Pt
+    caja = _caja_texto(slide, texto, Pt(x_pt), Pt(y_pt), Pt(w_pt), Pt(h_pt), nombre_fuente, tam,
+                       negrita=negrita, color=color, alineacion=alineacion)
+    tf = caja.text_frame
+    tf.margin_left = tf.margin_right = tf.margin_top = tf.margin_bottom = 0
+    tf.vertical_anchor = {"top": MSO_ANCHOR.TOP, "middle": MSO_ANCHOR.MIDDLE}[ancla]
+    return caja
+
+
+def _rectangulo(slide, x_pt, y_pt, w_pt, h_pt, color):
+    from pptx.util import Pt
+    forma = _linea_horizontal(slide, Pt(x_pt), Pt(y_pt), Pt(w_pt), color=color, grosor_pt=h_pt)
+    return forma
+
+
+def portada(prs, titulo, subtitulo="", autor="", fecha=None):
+    """
+    Portada roja: titulo en blanco (puede tener saltos de linea), barra blanca, subtitulo
+    (ej. "Noviembre 2026") y, abajo, autor y fecha (por defecto, la de hoy).
+    """
     s = prs.slides.add_slide(prs.slide_layouts[6])
-    s.shapes.add_picture(str(ASSETS / "portada.png"), Cm(0.39), Cm(0.35), Cm(33.09), Cm(18.34))
-    s.shapes.add_picture(str(ASSETS / "logo_portada.png"), Cm(28.68), Cm(0.32), Cm(4.09), Cm(5.12))
-    _caja_texto(s, titulo, Cm(23.6), Cm(7.9), Cm(9.5), Cm(3.6), tipografia("titulo"), 36,
-                color=PALETA[0])
-    _linea_horizontal(s, Cm(23.74), Cm(11.78), Cm(7.44), color=(31, 78, 121))
-    _caja_texto(s, fecha_texto, Cm(23.8), Cm(11.9), Cm(7), Cm(0.9), tipografia("titulo"), 14,
-                color=PALETA[0])
+    ancho_pt, alto_pt = prs.slide_width.pt, prs.slide_height.pt
+    _rectangulo(s, 0, 0, ancho_pt, alto_pt, PALETA[0])
+    x = 0.08 * ancho_pt
+    lineas = titulo.split("\n")
+    for k, linea in enumerate(lineas):           # 38 pt, lineas cada 48,6 pt
+        _texto_plantilla(s, linea, x, 175 + 48.6 * k - 48.6 * (len(lineas) - 2), 0.84 * ancho_pt, 46,
+                         tipografia("titulo"), 38, BLANCO)
+    _rectangulo(s, x, 283, 0.12 * ancho_pt, 3.24, BLANCO)
+    if subtitulo:
+        _texto_plantilla(s, subtitulo, x, 305, 0.84 * ancho_pt, 28, tipografia("titulo"), 22, BLANCO)
+    if fecha is None:
+        hoy = dt.date.today()
+        fecha = f"{hoy.day:02d} de {MESES_LARGOS[hoy.month - 1]} de {hoy.year}"
+    if autor:
+        _texto_plantilla(s, autor, x, 447, 0.6 * ancho_pt, 18, tipografia("titulo"), 14, BLANCO, negrita=True)
+    if fecha:
+        _texto_plantilla(s, fecha, x, 470, 0.6 * ancho_pt, 16, tipografia("titulo"), 12, BLANCO)
     return s
 
 
-def lamina(prs, titulo_lamina, numero=None):
-    """Lamina en blanco con titulo rojo (24, negrita), logo, separadores y numero."""
+def lamina(prs, titulo_lamina, numero=None, pie_texto=""):
+    """
+    Lamina de contenido: franja roja superior, titulo rojo (20), linea gris inferior, pie a la
+    izquierda (ej. "Chartpack de Expectativas noviembre 2026 | Estudios Economicos") y numero.
+    """
     from pptx.enum.text import PP_ALIGN
-    from pptx.util import Cm
     s = prs.slides.add_slide(prs.slide_layouts[6])
-    _caja_texto(s, titulo_lamina, Cm(1.1), Cm(0.25), Cm(29), Cm(1.5), tipografia("titulo"), 24,
-                negrita=True, color=PALETA[0])
-    _linea_horizontal(s, Cm(1.3), Cm(2.03), Cm(30.1))
-    s.shapes.add_picture(str(ASSETS / "logo.png"), Cm(32.1), Cm(0), Cm(1.2), Cm(1.55))
-    _linea_horizontal(s, Cm(1.45), Cm(17.5), Cm(31))
+    ancho_pt, alto_pt = prs.slide_width.pt, prs.slide_height.pt
+    util = ancho_pt - 2 * MARGEN_PT
+    _rectangulo(s, 0, 0, ancho_pt, 0.035 * alto_pt, PALETA[0])
+    _texto_plantilla(s, titulo_lamina, MARGEN_PT, 0.095 * alto_pt - 14, util, 28,
+                     tipografia("titulo"), 20, PALETA[0], ancla="middle")
+    _rectangulo(s, MARGEN_PT, 0.955 * alto_pt, util, 0.65, GRIS_LINEA)
+    if pie_texto:
+        _texto_plantilla(s, pie_texto, MARGEN_PT, 0.975 * alto_pt - 6, 0.7 * util, 12,
+                         tipografia("fuente"), 8, GRIS_PIE, ancla="middle")
     if numero is not None:
-        _caja_texto(s, str(numero), Cm(30.2), Cm(17.75), Cm(2), Cm(0.9), tipografia("titulo"), 14,
-                    negrita=True, color=(127, 127, 127), alineacion=PP_ALIGN.RIGHT)
+        _texto_plantilla(s, str(numero), ancho_pt - MARGEN_PT - 60, 0.975 * alto_pt - 6, 60, 12,
+                         tipografia("titulo"), 8.5, PALETA[0], negrita=True,
+                         alineacion=PP_ALIGN.RIGHT, ancla="middle")
     return s
 
 

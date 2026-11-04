@@ -26,7 +26,7 @@ Carpetas (sirven para cualquier usuario: no dependen de C:\Users\<usuario>):
     ...\Estudios - Documentos\General\Expectativas y Encuestas\IMCE\Code
   y el formato comun en
     ...\Estudios - Documentos\General\Administrativos\Manual de Estilo\formato_graficos.py
-  (con su carpeta assets\). El script sube desde su propia carpeta hasta encontrar
+  El script sube desde su propia carpeta hasta encontrar
   Administrativos\Manual de Estilo; si no, lo busca en la carpeta sincronizada
   "Santander Office 365" del usuario. Para forzar otra: setx FORMATO_GRAFICOS_DIR 'C:\ruta'
 
@@ -487,7 +487,7 @@ def _carpeta_formato() -> Path:
             return carpeta
     sys.exit("No encuentro formato_graficos.py. Debe estar en\n"
              f"    ...\\{BIBLIOTECA}\\{MANUAL_ESTILO}\n"
-             "(con su carpeta assets). Para indicar otra carpeta, en PowerShell:\n"
+             "Para indicar otra carpeta, en PowerShell:\n"
              "    setx FORMATO_GRAFICOS_DIR 'C:\\ruta\\Manual de Estilo'")
 
 
@@ -502,6 +502,7 @@ def _importar_formato():
 MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto",
          "septiembre", "octubre", "noviembre", "diciembre"]
 FUENTE = "Banco Central de Chile"
+AUTOR = "Estudios Económicos"   # aparece en la portada y en el pie de cada lámina
 NOTA = "Sobre 50 indica optimismo; bajo 50, pesimismo."
 MESES_ENTRE_ETIQUETAS = 24
 
@@ -583,16 +584,18 @@ def generar_chartbook():
     df = read_imce().set_index("Fecha")
     ult = df.index.max()
     ts = pd.Timestamp.now().strftime("%Y%m%d")
-    x, y, ancho, alto = Cm(1.3), Cm(3.6), Cm(31.2), Cm(fg.ALTO_CM)
+    x, y, ancho, alto = Cm(1.3), Cm(fg.Y_CONTENIDO_CM), Cm(31.2), Cm(fg.ALTO_CM)
+    mes = f"{MESES[ult.month - 1]} {ult.year}"
 
     prs = fg.nueva_presentacion()
-    fg.portada(prs, f"IMCE · {MESES[ult.month - 1]} de {ult.year}")
+    fg.portada(prs, "Índice Mensual de Confianza\nEmpresarial (IMCE)", mes.capitalize(), autor=AUTOR)
+    pie_texto = f"IMCE {mes}  |  {AUTOR}"
     for num, (titulo, series, ylims) in enumerate(CHARTS, start=2):
         datos = df[[find_col(df, cand) for _, cand in series]]
         datos.columns = [nombre for nombre, _ in series]
         datos = datos.dropna(how="all")
         y_min, y_max = ylims or _ylim(datos)
-        lam = fg.lamina(prs, titulo, num)
+        lam = fg.lamina(prs, titulo, num, pie_texto=pie_texto)
         fg.agregar_grafico(lam, datos, x, y, ancho, alto, unidad="(Índice)", posicion_unidad="arriba",
                            y_min=y_min, y_max=y_max, y_paso=10, linea_ref=50,
                            meses_entre_etiquetas=MESES_ENTRE_ETIQUETAS)
