@@ -222,3 +222,6 @@ __marimo__/
 # Planillas EEE/EOF descargadas (~260 MB; se regeneran con chartpack_expectativas/Code/encuestas_bcch.py)
 chartpack_expectativas/Inputs/*/raw/*
 !chartpack_expectativas/Inputs/*/raw/.gitkeep
+
+# Archivos temporales de Office (Excel/PowerPoint abiertos)
+~$*
