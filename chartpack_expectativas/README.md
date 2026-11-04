@@ -17,7 +17,8 @@ IMCE vs Imacec no minero.
 El formato (`formato_graficos.py`) está en
 `Estudios - Documentos\General\Administrativos\Manual de Estilo` (en este repositorio,
 [`../formato/`](../formato/)). Los scripts lo encuentran subiendo desde su propia carpeta o en la
-carpeta sincronizada de SharePoint del usuario, en Windows o macOS; no usan el nombre de usuario.
+carpeta sincronizada de SharePoint del usuario, en Windows o macOS, o en la carpeta `Santander`
+de iCloud Drive (macOS); no usan el nombre de usuario.
 
 ## Uso (no hay que editar nada)
 

@@ -33,6 +33,44 @@ MANUAL_ESTILO = Path("Administrativos") / "Manual de Estilo"
 BIBLIOTECA = Path("Estudios - Documentos") / "General"
 
 
+ICLOUD = Path.home() / "Library" / "Mobile Documents" / "com~apple~CloudDocs"   # iCloud Drive (macOS)
+
+
+def _raices_sincronizadas():
+    """Carpetas de OneDrive/SharePoint/iCloud con 'Santander' (u OneDrive) en el nombre, de cualquier
+    usuario: C:\\Users\\<usuario>\\... (Windows), ~/Library/CloudStorage/... e iCloud Drive (macOS)."""
+    casa = Path.home()
+    raices = []
+    for base in (casa, casa / "Library" / "CloudStorage", ICLOUD):
+        if base.is_dir():
+            for raiz in sorted(base.iterdir()):
+                if raiz.is_dir() and re.search(r"santander|onedrive|sharepoint", raiz.name, re.I):
+                    raices.append(raiz)
+    return raices
+
+
+def _formato_en(raiz, profundidad=6):
+    """Busca formato_graficos.py bajo 'raiz': primero en las rutas habituales y, en iCloud, en toda la
+    carpeta (hasta 'profundidad' niveles). Avisa si iCloud lo tiene solo en la nube."""
+    rutas = [raiz / BIBLIOTECA / MANUAL_ESTILO, raiz / "General" / MANUAL_ESTILO, raiz / MANUAL_ESTILO]
+    for sub in sorted(p for p in raiz.iterdir() if p.is_dir() and not p.name.startswith(".")):
+        rutas += [sub / BIBLIOTECA / MANUAL_ESTILO, sub / "General" / MANUAL_ESTILO, sub / MANUAL_ESTILO]
+    for r in rutas:
+        if (r / "formato_graficos.py").is_file():
+            return r
+    if ICLOUD not in raiz.parents:
+        return None
+    base = len(raiz.parts)
+    for carpeta, dirs, archivos in os.walk(raiz):
+        dirs[:] = [d for d in dirs if not d.startswith(".")] if len(Path(carpeta).parts) - base < profundidad else []
+        if "formato_graficos.py" in archivos:
+            return Path(carpeta)
+        if ".formato_graficos.py.icloud" in archivos:   # iCloud lo dejo solo en la nube
+            sys.exit(f"formato_graficos.py está en iCloud pero no descargado en este Mac:\n    {carpeta}\n"
+                     "Ábrelo en Finder y elige 'Descargar ahora' (o 'Mantener descargado'), y vuelve a correr.")
+    return None
+
+
 def _carpeta_formato() -> Path:
     """Carpeta de formato_graficos.py: Administrativos/Manual de Estilo de la biblioteca de Estudios."""
     candidatos = []
@@ -41,18 +79,17 @@ def _carpeta_formato() -> Path:
     # 1) subiendo desde la carpeta de este script (...\General\...\Code)
     for p in [CODE, *CODE.parents]:
         candidatos += [p / MANUAL_ESTILO, p / "formato"]   # "formato": estructura del repositorio
-    # 2) carpetas sincronizadas de OneDrive/SharePoint (Windows: C:\Users\<usuario>; macOS: CloudStorage)
-    casa = Path.home()
-    for base in (casa, casa / "Library" / "CloudStorage"):
-        if base.is_dir():
-            for raiz in base.iterdir():
-                if raiz.is_dir() and re.search(r"santander|onedrive|sharepoint", raiz.name, re.I):
-                    candidatos.append(raiz / BIBLIOTECA / MANUAL_ESTILO)
     for carpeta in candidatos:
         if (carpeta / "formato_graficos.py").is_file():
             return carpeta
+    # 2) carpetas sincronizadas: OneDrive/SharePoint (Windows y macOS) e iCloud Drive (macOS)
+    for raiz in _raices_sincronizadas():
+        carpeta = _formato_en(raiz)
+        if carpeta:
+            return carpeta
     sys.exit("No encuentro formato_graficos.py. Debe estar en\n"
              f"    ...\\{BIBLIOTECA}\\{MANUAL_ESTILO}\n"
+             "(también se busca en OneDrive/SharePoint y en la carpeta Santander de iCloud Drive).\n"
              "Para indicar otra carpeta: variable FORMATO_GRAFICOS_DIR.")
 
 
