@@ -185,10 +185,11 @@ def _estilo_ejes(ax, tam=7):
     ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: num(v, 1)))
 
 
-def _eje_anios(ax):
+def _eje_anios(ax, fechas):
     import matplotlib.dates as mdates
     ax.xaxis.set_major_locator(mdates.YearLocator())
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
+    ax.set_xlim(fechas.min() - pd.Timedelta(days=30), fechas.max() + pd.Timedelta(days=45))
 
 
 def _leyenda(ax, ncol, tam=6.5):
@@ -218,7 +219,7 @@ def _figura_lineas(df, colores, ruta, leyenda=True, promedios=None):
             ax.axhline(valor, color=color, lw=0.9, ls=(0, (4, 2)))
         ax.plot([], [], color=C_TEXTO, lw=0.9, ls=(0, (4, 2)), label="Prom. histórico")
     _estilo_ejes(ax)
-    _eje_anios(ax)
+    _eje_anios(ax, df.index)
     if df.min().min() < 0 < df.max().max():
         ax.axhline(0, color=C_GRIS, lw=0.8)
     if leyenda:
@@ -243,7 +244,7 @@ def _figura_contribuciones(total, barras, colores, ruta, promedio=None):
                 va="center", fontsize=6.5, fontweight="bold")
     ax.axhline(0, color=C_GRIS, lw=0.8)
     _estilo_ejes(ax)
-    _eje_anios(ax)
+    _eje_anios(ax, total.index)
     _leyenda(ax, 3)
     return _guardar(fig, ruta)
 

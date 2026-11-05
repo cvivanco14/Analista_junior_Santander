@@ -5,7 +5,7 @@ documento PDF, presentación PPTX/PDF (con `formato_graficos.py`) e `IRL_Base.xl
 que la minuta IMCE: un script de datos y uno de minuta.
 
 ```
-masa salarial real = ocupados (sa INE) × horas habituales semanales (sa) × IR real (sa INE)
+masa salarial real = ocupados (sa INE) × horas habituales semanales (sa STL) × IR real (sa INE)
 ```
 
 | Carpeta | Contenido |
@@ -23,17 +23,22 @@ python minuta_remuneraciones.py     # arma la minuta en Outputs
 En Spyder: corre (F5) primero `datos_remuneraciones.py` y después `minuta_remuneraciones.py`.
 `datos_remuneraciones.py --sin-descarga` rehace las bases con los archivos que ya están en `Inputs`.
 
-## Series desestacionalizadas (sa)
+## Datos que se descargan del INE
 
-Se usan las que publica el INE, no una desestacionalización propia:
+Solo lo que usa la minuta (7 archivos, a `Inputs`):
 
-- **IR, ICL e IR real**: el script busca la serie desestacionalizada en todas las hojas de los tabulados
-  del INE (columna u hoja con "desestacionalizada"). Si el INE la publica en un archivo aparte, agrega
-  su URL en `URLS_SA` (al inicio de `datos_remuneraciones.py`) y se descarga y usa.
-- **Ocupados**: `ajuste_estacional.xlsx` del INE. **Horas**: la de `ajuste_estacional.xlsx` si la trae;
-  si no, STL sobre `horas.xlsx`.
-- Si no encuentra la serie del INE, usa STL y avisa en la consola, en la nota del Cuadro 1 y en la
-  hoja `Léeme` de `IRL_Base.xlsx` (que dice de dónde salió cada serie).
+| Archivo | Uso |
+|---|---|
+| `tabulado_ir_empalmado.xlsx`, `tabulado_icl_empalmado.xlsx`, `tabulado_ir_real_empalmado.xlsx` | IR, ICL e IR real, series originales (nsa) |
+| `tabulado_ir_icl_nominal_general_empalmado_desestacionalizado.xlsx` | IR e ICL desestacionalizados por el INE (sa) |
+| `tabulado_ir_real_general_empalmado_desestacionalizado.xlsx` | IR real desestacionalizado por el INE (sa) |
+| `ajuste_estacional.xlsx` | Personas ocupadas desestacionalizadas por el INE |
+| `horas.xlsx` | Horas habitualmente trabajadas (el INE no las publica desestacionalizadas: se desestacionalizan con STL) |
+
+Los archivos desestacionalizados del INE traen una hoja por publicación (`DDMMAAAA`); se usa la más
+reciente. Si alguno no se puede leer, el script usa STL y lo avisa en la consola, en la nota del
+Cuadro 1 y en la hoja `Léeme` de `IRL_Base.xlsx`. Las URLs están en `URLS`, al inicio de
+`datos_remuneraciones.py`.
 
 ## Documento `Minuta_Remuneraciones_<mes>_<año>.pdf`
 
@@ -77,8 +82,7 @@ actualiza con Excel (`xlwings`); si no hay Excel disponible, con openpyxl y un r
 
 - **`Masa_salarial_Base.xlsx`**: masa salarial real (componentes, índice 2023 = 100, a/a,
   contribuciones y horas × salario real), con gráficos de Excel y hoja Léeme.
-- **`Cifras_empleo.xlsx`**: indicadores principales, categoría, informalidad, ajuste estacional,
-  comparación ENE-RRAA, horas, rama y remuneraciones (nsa y sa).
+- **`Cifras_empleo.xlsx`**: hojas ajuste_estacional, horas y remuneraciones (nsa y sa).
 
 `Periodo` es el último mes del trimestre móvil de la ENE (`Nov - Ene` de 2015 = enero 2016); el IR es
 mensual y se cruza con ese mes.
