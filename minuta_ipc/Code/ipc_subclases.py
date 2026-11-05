@@ -3,7 +3,7 @@ IPC Subclases — Proceso mensual completo
 =========================================
 Reemplaza el notebook. Ejecutar una vez al mes desde la carpeta Code:
 
-    cd ipc/Code
+    cd minuta_ipc/Code
     python ipc_subclases.py
 
 Carpetas (relativas a este archivo, funciona en cualquier computador):

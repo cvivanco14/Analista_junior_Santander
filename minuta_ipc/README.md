@@ -9,7 +9,7 @@ Misma estructura que IMCE y masa salarial:
 | `Outputs/` | `Base_IPC.xlsx` (se actualiza en cada corrida), `respaldo/` (copia antes de modificar), `Chartbook_SubClases_4panel.pdf`, `Chartbook_Analiticos_4panel.pdf` y los PNG de cada chartbook. |
 
 ```bash
-cd ipc/Code
+cd minuta_ipc/Code
 python ipc_subclases.py
 ```
 
