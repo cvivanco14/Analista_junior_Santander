@@ -55,8 +55,8 @@ MASA = f"Masa salarial real ({ANIO_BASE}=100)"
 MASA_AA = "Masa salarial real a/a (%)"
 CONTRIB = {OCUPADOS: "Contribución ocupados (pp)", HORAS: "Contribución horas (pp)",
            IR_REAL: "Contribución salario real (pp)"}
-MASA_SH = f"Masa salarial real sin horas ({ANIO_BASE}=100)"
-MASA_SH_AA = "Masa salarial real sin horas a/a (%)"
+MASA_HS = f"Horas × salario real ({ANIO_BASE}=100)"
+MASA_HS_AA = "Horas × salario real a/a (%)"
 ROJO, GRIS, GRIS_CLARO, NEGRO = "EC0000", "6F7779", "BFC5C7", "1D1D1B"
 
 _INE = "https://www.ine.gob.cl/docs/default-source/"
@@ -77,10 +77,15 @@ URLS = {
 }
 
 COL_HORAS_SA = "Promedio de horas habitualmente trabajadas a la semana (desest.)"
-REMUNERACIONES = {   # archivo -> nombre de la serie desestacionalizada
-    "tabulado_ir_empalmado.xlsx": "IR (Desest.)",
-    "tabulado_icl_empalmado.xlsx": "ICL (Desest.)",
-    "tabulado_ir_real_empalmado.xlsx": "IR Real (Desest.)",
+REMUNERACIONES = {   # archivo -> nombre de la serie (original); la desestacionalizada es '<serie> (SA)'
+    "tabulado_ir_empalmado.xlsx": "IR",
+    "tabulado_icl_empalmado.xlsx": "ICL",
+    "tabulado_ir_real_empalmado.xlsx": "IR Real",
+}
+# Series desestacionalizadas del INE publicadas en un archivo aparte (si no vienen en los tabulados de
+# arriba). Nombre del archivo: el del tabulado + '_desest.xlsx', p. ej.
+#   "tabulado_ir_empalmado_desest.xlsx": "https://www.ine.gob.cl/docs/default-source/.../archivo.xlsx",
+URLS_SA = {
 }
 
 
@@ -95,8 +100,9 @@ def descargar(archivos=None):
     sesion.mount("https://", HTTPAdapter(max_retries=Retry(total=3, backoff_factor=1,
                                                            status_forcelist=[429, 500, 502, 503, 504])))
     sesion.headers["User-Agent"] = "Mozilla/5.0"
-    for nombre in archivos or URLS:
-        url = URLS[nombre]
+    todas = {**URLS, **URLS_SA}
+    for nombre in archivos or todas:
+        url = todas[nombre]
         destino = INPUTS / nombre
         # el parámetro sfvrsn es la versión del archivo en la web del INE; si cambió, se pide sin él
         for intento in (url, url.split("?")[0]):
@@ -265,31 +271,87 @@ def rama():
     return _tabla_ine(INPUTS / "rama.xlsx", "AS")
 
 
+def _mes_num(v):
+    """Mes como número: 8, '8', 'ago', 'Agosto'."""
+    if pd.isna(v):
+        return np.nan
+    try:
+        return int(float(v))
+    except (TypeError, ValueError):
+        texto = str(v).strip().lower()
+        return _MESES.get(texto, _MESES.get(texto[:3], np.nan))
+
+
+def _serie_mensual(df_raw, idx, col):
+    """Serie mensual desde un cuadro del INE: columnas 0 (año) y 1 (mes), datos bajo la fila 'idx'."""
+    d = df_raw.iloc[idx + 1:, [0, 1, col]].copy()
+    d.columns = ["Anio", "Mes", "Valor"]
+    d["Anio"] = d["Anio"].ffill()   # algunos cuadros escriben el año solo en enero
+    d["Anio"] = pd.to_numeric(d["Anio"], errors="coerce")
+    d["Mes"] = d["Mes"].map(_mes_num)
+    d["Valor"] = pd.to_numeric(d["Valor"], errors="coerce")
+    d = d.dropna()
+    d = d[(d["Mes"] >= 1) & (d["Mes"] <= 12)]
+    if d.empty:
+        return pd.Series(dtype=float)
+    idx_fecha = pd.to_datetime(dict(year=d.Anio.astype(int), month=d.Mes.astype(int), day=1))
+    return pd.Series(d["Valor"].to_numpy(), index=idx_fecha).sort_index().rename_axis("Periodo")
+
+
+def _sa_ine(archivos):
+    """Busca la serie desestacionalizada del INE en los archivos (todas las hojas): una columna cuyo
+    encabezado dice 'desestacionaliz', o la columna de índice de una hoja cuyo nombre lo dice.
+    Prefiere la hoja General (total) frente a las de sectores. Devuelve (serie, 'archivo/hoja') o (None, None)."""
+    candidatos = []
+    for archivo in archivos:
+        if not archivo.exists():
+            continue
+        for hoja, df_raw in pd.read_excel(archivo, sheet_name=None, header=None).items():
+            filas = df_raw[df_raw.apply(lambda x: x.astype(str).str.contains("Año", case=False).any(), axis=1)]
+            if filas.empty:
+                continue
+            idx = filas.index[0]
+            enc = df_raw.iloc[max(idx - 2, 0):idx + 1].fillna("").astype(str).agg(" ".join).str.lower()
+            hoja_sa = bool(re.search(r"desest|_sa\b|\bsa\b|ajust", hoja.lower()))
+            cols = [j for j, h in enumerate(enc) if j > 1 and ("desestacionaliz" in h or "desest." in h)]
+            if not cols and hoja_sa:
+                cols = [j for j, h in enumerate(enc) if j > 1 and "ndice" in h][:1] or [2]
+            for j in cols[:1]:
+                s = _serie_mensual(df_raw, idx, j)
+                if len(s) > 24:
+                    puntaje = 2 * ("general" in hoja.lower()) + ("desest" in archivo.name.lower()) + hoja_sa
+                    candidatos.append((puntaje, -cols.index(j), s, f"{archivo.name}/{hoja}"))
+    if not candidatos:
+        return None, None
+    _, _, s, origen = max(candidatos, key=lambda c: (c[0], c[1]))
+    return s, origen
+
+
+FUENTE_SA = {}   # serie -> origen de su desestacionalización ('INE: archivo/hoja' o 'STL')
+
+
 def remuneraciones():
-    """IR, ICL e IR real (base anual 2023 = 100): originales, desestacionalizados con STL y, si el cuadro
-    del INE la trae, su serie desestacionalizada ('<serie> (SA INE)')."""
+    """IR, ICL e IR real (base anual 2023 = 100): series originales (NSA) y desestacionalizadas (SA).
+    La SA es la que publica el INE (en el mismo cuadro o en un archivo aparte de URLS_SA); solo si no
+    la encuentra se desestacionaliza con STL, y avisa."""
     series = []
-    for nombre, col_sa in REMUNERACIONES.items():
+    for nombre, base in REMUNERACIONES.items():
         archivo = INPUTS / nombre
         if not archivo.exists():
             print(f"  ⚠️ No encontré {nombre}")
             continue
         df_raw = pd.read_excel(archivo, sheet_name="General", header=None)
         idx = df_raw[df_raw.apply(lambda x: x.astype(str).str.contains("Año", case=False).any(), axis=1)].index[0]
-        # columna desestacionalizada por el INE, si el cuadro la trae (encabezado con "desestacionaliz")
-        encabezados = df_raw.iloc[max(idx - 1, 0):idx + 2].fillna("").astype(str).agg(" ".join).str.lower()
-        col_ine = next((j for j, h in enumerate(encabezados) if "desestacionaliz" in h and j > 1), None)
-        cols = [0, 1, 3] + ([col_ine] if col_ine not in (None, 3) else [])
-        df = df_raw.iloc[idx + 1:, cols].copy()
-        df.columns = ["Anio", "Mes", "Valor"] + (["SA"] if len(cols) == 4 else [])
-        df = df.apply(pd.to_numeric, errors="coerce").dropna(subset=["Anio", "Mes", "Valor"])
-        df["Periodo"] = pd.to_datetime(dict(year=df.Anio, month=df.Mes, day=1))
-        df = df.sort_values("Periodo").set_index("Periodo")
-        base = col_sa.replace(" (Desest.)", "")
-        tabla = pd.DataFrame({base: df["Valor"], col_sa: _stl(df["Valor"])})
-        if "SA" in df and df["SA"].notna().sum() > 24:
-            tabla[f"{base} (SA INE)"] = df["SA"]
-        series.append(tabla)
+        nsa = _serie_mensual(df_raw, idx, 3)
+        sa, origen = _sa_ine([INPUTS / a for a in URLS_SA if a.startswith(Path(nombre).stem)] + [archivo])
+        if sa is None:
+            print(f"  ⚠️ {base}: no encontré la serie desestacionalizada del INE; uso STL. "
+                  "Revisa URLS_SA en datos_remuneraciones.py.")
+            sa, origen = _stl(nsa), "STL"
+        else:
+            origen = f"INE ({origen})"
+        FUENTE_SA[base] = origen
+        series.append(pd.DataFrame({base: nsa, f"{base} (SA)": sa}))
     if not series:
         return pd.DataFrame(columns=["Periodo"])
     df = reduce(lambda a, b: a.join(b, how="outer"), series)
@@ -314,6 +376,7 @@ def cargar(descarga=True, hojas=None):
     if descarga:
         archivos = [a for a in URLS if any(a.startswith(h) for h in hojas)
                     or (a in REMUNERACIONES and "remuneraciones" in hojas)]
+        archivos += list(URLS_SA) if "remuneraciones" in hojas else []
         descargar(archivos)
     datos = {}
     for hoja in hojas:
@@ -382,12 +445,17 @@ def masa_salarial(datos):
     rem = datos["remuneraciones"].set_index("Periodo")
     # la columna 5 es la que usaba el notebook (usecols=[0, 5] de la hoja ajuste_estacional)
     col_ocu = _columna(ae, "ocupad", respaldo=4, hoja="ajuste_estacional")
-    col_hrs = COL_HORAS_SA if COL_HORAS_SA in hr else _columna(hr, "desest", hoja="horas")
-    col_ir = "IR Real (Desest.)" if "IR Real (Desest.)" in rem else _columna(rem, "real", "desest",
-                                                                                 hoja="remuneraciones")
-    print(f"  Ocupados: '{col_ocu}'\n  Horas:    '{col_hrs}'\n  IR real:  '{col_ir}'")
+    # horas: la serie desestacionalizada del INE si ajuste_estacional la trae; si no, STL de horas.xlsx
+    col_hrs_ine = next((c for c in ae.columns if "hora" in c.lower() and "tasa" not in c.lower()), None)
+    if col_hrs_ine:
+        horas_sa, FUENTE_SA["Horas"] = ae[col_hrs_ine], f"INE (ajuste_estacional.xlsx: {col_hrs_ine})"
+    else:
+        horas_sa, FUENTE_SA["Horas"] = hr[COL_HORAS_SA], "STL (horas.xlsx)"
+    col_ir = "IR Real (SA)"
+    print(f"  Ocupados: '{col_ocu}'\n  Horas SA: {FUENTE_SA['Horas']}\n"
+          f"  IR real SA: {FUENTE_SA.get('IR Real', '?')}")
 
-    df = pd.concat({OCUPADOS: ae[col_ocu], HORAS: hr[col_hrs], IR_REAL: rem[col_ir]}, axis=1, join="inner")
+    df = pd.concat({OCUPADOS: ae[col_ocu], HORAS: horas_sa, IR_REAL: rem[col_ir]}, axis=1, join="inner")
     df = df.apply(pd.to_numeric, errors="coerce").dropna().sort_index()
     df.index.name = "Periodo"
     df[IR_REAL] = _indice(df[IR_REAL])
@@ -399,8 +467,8 @@ def masa_salarial(datos):
     escala = (df[MASA_AA] / log_total).where(log_total.abs() > 1e-12, 100.0)
     for comp, nombre in CONTRIB.items():
         df[nombre] = np.log(df[comp] / df[comp].shift(12)) * escala
-    df[MASA_SH] = _indice(df[OCUPADOS] * df[IR_REAL])
-    df[MASA_SH_AA] = _aa(df[MASA_SH])
+    df[MASA_HS] = _indice(df[HORAS] * df[IR_REAL])
+    df[MASA_HS_AA] = _aa(df[MASA_HS])
     return df
 
 
@@ -416,12 +484,13 @@ def guardar_base(df, ruta=EXCEL, desde=DESDE_GRAFICO):
     leeme = pd.DataFrame({"Masa salarial real": [
         "Masa salarial real = ocupados × horas habituales semanales × índice de remuneraciones real.",
         "Ocupados: ENE, cifras desestacionalizadas por el INE (archivo ajuste_estacional.xlsx), en miles.",
-        "Horas: promedio de horas habitualmente trabajadas a la semana (horas.xlsx), desestacionalizado con STL.",
-        "IR real: índice de remuneraciones real empalmado (base anual 2023 = 100), desestacionalizado con STL.",
+        f"Horas: promedio de horas habitualmente trabajadas a la semana; desestacionalización: {FUENTE_SA.get('Horas')}.",
+        f"IR real: índice de remuneraciones real empalmado (base anual 2023 = 100); desestacionalización: "
+        f"{FUENTE_SA.get('IR Real')}.",
         "Periodo: último mes del trimestre móvil de la ENE (el IR es mensual y se cruza con ese mes).",
         f"Índices: promedio {ANIO_BASE} = 100. Variación a/a: respecto del mismo mes del año anterior.",
         "Contribuciones: descomposición logarítmica de la variación a/a; las tres suman la variación total.",
-        "Sin horas: ocupados × IR real, la medida más usada cuando no se ajusta por jornada.",
+        "Horas × salario real: remuneración real por persona ocupada ajustada por jornada (sin el efecto del empleo).",
         FUENTE,
         "Se reescribe en cada corrida con datos_remuneraciones.py (proyecto remuneraciones del repositorio).",
     ]})
@@ -481,14 +550,14 @@ def guardar_base(df, ruta=EXCEL, desde=DESDE_GRAFICO):
             gs.add_chart(barras, "A1")
 
             nivel = LineChart()
-            for nombre, color, ancho in ((MASA, ROJO, 25000), (MASA_SH, GRIS, 19000)):
+            for nombre, color, ancho in ((MASA, ROJO, 25000), (MASA_HS, GRIS, 19000)):
                 nivel.add_data(Reference(ws, min_col=col[nombre], min_row=ini, max_row=fin), titles_from_data=False)
                 s = nivel.series[-1]
                 s.tx = SeriesLabel(v=nombre)
                 s.graphicalProperties = GraphicalProperties(ln=LineProperties(solidFill=color, w=ancho))
                 s.smooth = False
             nivel.set_categories(fechas)
-            tramo = tabla.iloc[ini - 2:][[MASA, MASA_SH]]
+            tramo = tabla.iloc[ini - 2:][[MASA, MASA_HS]]
             nivel.y_axis.scaling.min = 10 * np.floor(np.nanmin(tramo.to_numpy()) / 10)
             nivel.y_axis.scaling.max = 10 * np.ceil(np.nanmax(tramo.to_numpy()) / 10)
             nivel.title = "Masa salarial real: nivel"
