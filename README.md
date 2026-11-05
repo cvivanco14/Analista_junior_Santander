@@ -6,6 +6,7 @@ independiente con su propio README:
 | Carpeta | Qué hace |
 |---|---|
 | [`imce/`](imce/) | Minuta mensual del IMCE (PPTX/PDF con gráficos nativos), con `Code/`, `Inputs/` y `Outputs/` (incluye el Excel de bases `Base_IMCE.xlsx`); y el chartbook anterior `imce_principal.py`. |
+| [`minuta_remuneraciones/`](minuta_remuneraciones/) | Minuta mensual de Remuneraciones del INE (IR, ICL, IR real y horas) en PDF con colores Santander, con `Code/`, `Inputs/` y `Outputs/`. |
 
 El formato común (`formato_graficos.py` y su carpeta `assets`) vive en SharePoint, en
 `Estudios - Documentos\General\Administrativos\Manual de Estilo`; los scripts lo encuentran solos
