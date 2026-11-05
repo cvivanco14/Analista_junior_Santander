@@ -12,6 +12,8 @@ buscando las columnas por nombre (antes por posición).
 Salidas en Outputs\:
     Masa_salarial_Base.xlsx   hojas 'Masa salarial' (series), 'Gráficos' (gráficos de Excel) y 'Léeme'
     Masa_salarial.png         gráfico: variación a/a y contribuciones de ocupados, horas y salario real
+    AAAAMMDD_Masa_salarial.pptx / .pdf / _datos.xlsx
+                              lámina con formato_graficos.py (lamina_masa_salarial.py), si se encuentra
     Cifras_empleo.xlsx        todas las hojas de empleo del INE (las de datos_empleo.py)
 
 Uso (no hay que editar nada):
@@ -279,3 +281,5 @@ if __name__ == "__main__":
           f"salario real {ms[CONTRIB[IR_REAL]].iloc[-1]:+.1f} pp)")
     print(f"  ✅ Excel: {guardar_base(ms)}")
     print(f"  ✅ Gráfico: {grafico_png(ms)}")
+    import lamina_masa_salarial
+    lamina_masa_salarial.construir(ms, OUT)

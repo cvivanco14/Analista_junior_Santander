@@ -9,15 +9,16 @@ masa salarial real = ocupados (desest. INE) × horas habituales semanales (deses
 
 | Carpeta | Contenido |
 |---|---|
-| `Code/` | `datos_empleo.py` (descarga del INE y hojas de empleo) y `masa_salarial.py` (cálculo, Excel y gráfico). |
+| `Code/` | `datos_empleo.py` (descarga del INE y hojas de empleo), `masa_salarial.py` (cálculo, Excel y gráfico) y `lamina_masa_salarial.py` (lámina PPTX/PDF con `formato_graficos.py`). |
 | `Inputs/` | Archivos descargados del INE (`ajuste_estacional.xlsx`, `horas.xlsx`, `tabulado_ir_real_empalmado.xlsx`, etc.). |
-| `Outputs/` | `Masa_salarial_Base.xlsx`, `Masa_salarial.png` y `Cifras_empleo.xlsx`. |
+| `Outputs/` | `Masa_salarial_Base.xlsx`, `Masa_salarial.png`, `Cifras_empleo.xlsx` y `AAAAMMDD_Masa_salarial.pptx` / `.pdf` / `_datos.xlsx`. |
 
 ```bash
 cd masa_salarial/Code
 python masa_salarial.py                 # descarga del INE y genera todo en Outputs
 python masa_salarial.py --sin-descarga  # usa los archivos que ya están en Inputs
 python datos_empleo.py                  # solo las cifras de empleo (Outputs/Cifras_empleo.xlsx)
+python lamina_masa_salarial.py          # solo la lámina, con los archivos de Inputs
 ```
 
 En Spyder: abre `Code/masa_salarial.py` y córrelo con F5.
@@ -34,6 +35,14 @@ En Spyder: abre `Code/masa_salarial.py` y córrelo con F5.
 
 `Periodo` es el último mes del trimestre móvil de la ENE (`Nov - Ene` de 2015 = enero 2016); el IR es
 mensual y se cruza con ese mes. Todo se reescribe en cada corrida.
+
+## Lámina PPTX (`lamina_masa_salarial.py`)
+
+Portada y una lámina con un texto automático del último dato y dos gráficos nativos (editables): la
+variación anual con las contribuciones apiladas y el nivel de las dos medidas. Se exporta a PDF y deja
+los datos de cada gráfico en `_datos.xlsx`. Usa `formato_graficos.py` del Manual de Estilo y lo busca
+igual que la minuta IMCE (subiendo desde `Code`, en OneDrive/SharePoint y en la carpeta Santander de
+iCloud Drive, o en `FORMATO_GRAFICOS_DIR`). Si no lo encuentra, avisa y genera igual el Excel y el PNG.
 
 ## Cambios respecto del notebook "Series empleo3.ipynb"
 
