@@ -5,11 +5,17 @@ Láminas: portada, resumen (textos automáticos del último dato), remuneracione
 masa salarial real (variación anual con contribuciones de ocupados, horas y salario real, y nivel).
 Formato de formato_graficos.py (Administrativos\Manual de Estilo), como la minuta IMCE.
 
+Documento: Minuta_Remuneraciones_<mes>_<año>.pdf (reportlab), con colores Santander: título con el
+resultado del mes, principales resultados (IR, ICL, salarios reales y masa salarial), cuadro de
+variaciones m/m (sa) y a/a, y cuatro figuras (IR real, variación anual de los índices y variación m/m
+del IR nominal y real por mes calendario frente a su rango histórico).
+
 Carpetas (relativas a este script; sirven para cualquier usuario):
     <Remuneraciones>\Code\      datos_remuneraciones.py y minuta_remuneraciones.py
     <Remuneraciones>\Inputs\    archivos del INE (los deja datos_remuneraciones.py)
     <Remuneraciones>\Outputs\   Masa_salarial_Base.xlsx y Cifras_empleo.xlsx (bases) y
-                                AAAAMMDD_Minuta_Remuneraciones.pptx / .pdf / _datos.xlsx y Masa_salarial.png
+                                AAAAMMDD_Minuta_Remuneraciones.pptx / .pdf / _datos.xlsx,
+                                Minuta_Remuneraciones_<mes>_<año>.pdf (documento) y Masa_salarial.png
 
 Uso (no hay que editar nada):
     python datos_remuneraciones.py     # descarga del INE y actualiza los Excel de bases
@@ -35,7 +41,7 @@ BIBLIOTECA = Path("Estudios - Documentos") / "General"
 ICLOUD = Path.home() / "Library" / "Mobile Documents" / "com~apple~CloudDocs"
 
 TITULO = "Remuneraciones"
-AUTOR = "Estudios Santander"   # aparece en la portada y en el pie de cada lámina
+AUTOR = "Andrés Sansone"   # aparece en la portada, en el pie de las láminas y en el documento
 FUENTE = "INE (Índice de Remuneraciones y Encuesta Nacional de Empleo)"
 NOTA_MASA = ("Masa salarial real = ocupados (desestacionalizados por el INE) × horas habituales semanales × "
              "índice de remuneraciones real (ambos desestacionalizados con STL). Contribuciones: descomposición "
@@ -214,6 +220,126 @@ def grafico_png(ms, ruta=PNG, desde=DESDE):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Documento PDF (minuta escrita): textos automáticos, cuadro y figuras
+# ─────────────────────────────────────────────────────────────────────────────
+
+# colores Santander (formato_graficos.PALETA): rojo, negro, turquesa, amarillo, gris
+C_ROJO, C_NEGRO, C_TURQUESA, C_AMARILLO, C_GRIS = "#EC0000", "#000000", "#4DC4CA", "#FFAE42", "#B2B2B2"
+C_BANDA, C_GRILLA, C_TEXTO = "#DADADA", "#E5E5E5", "#595959"
+MESES_CORTOS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
+
+
+def _pct(x, dec=1):
+    return f"{num(round(x, dec) + 0.0, dec)}%"
+
+
+def _comparar(a, b, dec=1, articulo=""):
+    """'por encima de' / 'por debajo de' / 'en línea con' comparando a y b redondeados.
+    articulo="el": 'por encima del' / 'por debajo del' / 'en línea con el'."""
+    a, b = round(a, dec), round(b, dec)
+    if a == b:
+        return "en línea con" + (f" {articulo}" if articulo else "")
+    base = "por encima" if a > b else "por debajo"
+    return f"{base} del" if articulo == "el" else f"{base} de" + (f" {articulo}" if articulo else "")
+
+
+def _racha(s):
+    """Meses consecutivos al final de la serie con el mismo signo que el último dato."""
+    s = s.dropna()
+    signo_ultimo = np.sign(s.iloc[-1])
+    n = 0
+    for v in s.iloc[::-1]:
+        if np.sign(v) != signo_ultimo or v == 0:
+            break
+        n += 1
+    return n
+
+
+def _estilo_ejes(ax, tam=7):
+    ax.spines[["top", "right", "left"]].set_visible(False)
+    ax.spines["bottom"].set_color(C_GRIS)
+    ax.grid(axis="y", color=C_GRILLA, lw=0.6)
+    ax.set_axisbelow(True)
+    ax.tick_params(labelsize=tam, length=0, colors="#333333")
+    from matplotlib.ticker import MaxNLocator
+    ax.yaxis.set_major_locator(MaxNLocator(nbins=6, steps=[1, 2, 5, 10]))
+    ax.yaxis.set_major_formatter(_formato_coma())
+
+
+def _formato_coma(dec=1):
+    from matplotlib.ticker import FuncFormatter
+    return FuncFormatter(lambda v, _: num(v, dec))
+
+
+def _png(fig):
+    import io
+    import matplotlib.pyplot as plt
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", dpi=200)
+    plt.close(fig)
+    buf.seek(0)
+    return buf
+
+
+def _figura_lineas(df, colores, leyenda=True, tam=(3.45, 2.25)):
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.dates as mdates
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots(figsize=tam)
+    for col, color in zip(df.columns, colores):
+        ax.plot(df.index, df[col], color=color, lw=1.4, label=col)
+    _estilo_ejes(ax)
+    ax.xaxis.set_major_locator(mdates.YearLocator())
+    ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
+    if df.min().min() < 0 < df.max().max():
+        ax.axhline(0, color=C_GRIS, lw=0.8)
+    if leyenda:
+        ax.legend(loc="lower center", bbox_to_anchor=(0.5, 1.0), ncol=len(df.columns), frameon=False,
+                  fontsize=7, handlelength=1.6)
+    fig.tight_layout(pad=0.4)
+    return _png(fig)
+
+
+def _figura_estacional(mm, t):
+    """Variación m/m por mes calendario: banda mín-máx y promedio de los años de referencia, los dos años
+    anteriores en líneas y el año en curso en rombos. Devuelve (png, DataFrame con los datos)."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    tabla = mm.dropna().to_frame("v").assign(anio=lambda d: d.index.year, mes=lambda d: d.index.month)
+    tabla = tabla.pivot(index="mes", columns="anio", values="v").reindex(range(1, 13))
+    completos = [a for a in tabla.columns if tabla[a].notna().sum() == 12]
+    ref = [a for a in completos if 2010 <= a <= t.year - 3] or [a for a in completos if a <= t.year - 3]
+    a0, a1 = min(ref), max(ref)
+    banda = tabla[ref]
+    datos = pd.DataFrame({f"Mín {a0}-{a1}": banda.min(axis=1), f"Máx {a0}-{a1}": banda.max(axis=1),
+                          f"Prom. {a0}-{a1}": banda.mean(axis=1)})
+    for a in (t.year - 2, t.year - 1, t.year):
+        if a in tabla:
+            datos[str(a)] = tabla[a]
+    datos.index = pd.Index(MESES_CORTOS, name="Mes")
+
+    x = np.arange(12)
+    fig, ax = plt.subplots(figsize=(3.45, 2.25))
+    ax.fill_between(x, datos.iloc[:, 0], datos.iloc[:, 1], color=C_BANDA, lw=0, label=f"Mín-Máx {a0}-{a1}")
+    ax.plot(x, datos.iloc[:, 2], color=C_TURQUESA, lw=1.4, label=f"Prom. {a0}-{a1}")
+    for a, color in ((t.year - 2, C_NEGRO), (t.year - 1, C_AMARILLO)):
+        if str(a) in datos:
+            ax.plot(x, datos[str(a)], color=color, lw=1.2, label=str(a))
+    if str(t.year) in datos:
+        ax.scatter(x, datos[str(t.year)], marker="D", s=14, color=C_ROJO, zorder=5, label=str(t.year))
+    ax.axhline(0, color=C_GRIS, lw=0.8)
+    _estilo_ejes(ax)
+    ax.set_xticks(x, MESES_CORTOS)
+    ax.set_xlim(-0.5, 11.5)
+    ax.legend(loc="lower center", bbox_to_anchor=(0.5, 1.0), ncol=5, frameon=False, fontsize=6,
+              handlelength=1.4, columnspacing=0.9)
+    fig.tight_layout(pad=0.4)
+    return _png(fig), datos
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Minuta
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -369,6 +495,169 @@ class Minuta:
                      y_min=y_min, y_max=y_max, y_paso=5, meses_entre_etiquetas=12, formato_fecha="yyyy",
                      tam=11)
 
+    # ================================================================ documento PDF
+    def sa(self, base):
+        """Serie desestacionalizada: la del INE si el cuadro la trae; si no, la de STL."""
+        col = f"{base} (SA INE)"
+        return self.rem[col] if col in self.rem and self.rem[col].notna().any() else self.rem[f"{base} (Desest.)"]
+
+    def documento(self):
+        """Minuta escrita en PDF (reportlab), con colores Santander. Devuelve la ruta del PDF."""
+        from reportlab.lib import colors
+        from reportlab.lib.enums import TA_JUSTIFY
+        from reportlab.lib.pagesizes import letter
+        from reportlab.lib.styles import ParagraphStyle
+        from reportlab.lib.units import cm
+        from reportlab.platypus import (HRFlowable, Image, KeepTogether, ListFlowable, ListItem, PageBreak,
+                                        Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle)
+
+        t = self.t
+        ant = t - pd.DateOffset(months=1)
+        mes, mes_ant = MESES[t.month - 1], MESES[ant.month - 1]
+        ine_sa = all(f"{b} (SA INE)" in self.rem for b in (IR, ICL, IR_REAL))
+        mm = {b: 100 * (self.sa(b) / self.sa(b).shift(1) - 1) for b in (IR, ICL, IR_REAL)}
+        aa = self.aa
+        mm_orig = 100 * (self.rem[IR] / self.rem[IR].shift(1) - 1)
+        hist = mm_orig[(mm_orig.index.month == t.month) & (mm_orig.index.year.isin(range(2010, 2020)))]
+        v = lambda s, f=t: s.get(f, np.nan)  # noqa: E731
+
+        # ---- textos
+        r_mm, r_aa = v(mm[IR_REAL]), v(aa[IR_REAL])
+        verbo = "subieron" if round(r_mm, 1) > 0 else "cayeron" if round(r_mm, 1) < 0 else "no variaron"
+        titulo = (f"Remuneraciones {mes} {t.year} | En {mes}, los salarios reales {verbo}"
+                  f"{' ' + _pct(abs(r_mm)) if verbo != 'no variaron' else ''} m/m (sa) y "
+                  f"{'crecen' if r_aa >= 0 else 'caen'} {_pct(abs(r_aa))} en doce meses.")
+        ir_mm, ir_mm_ant = v(mm[IR]), v(mm[IR], ant)
+        mov = (f"un aumento de {_pct(ir_mm)}" if round(ir_mm, 1) > 0 else
+               f"una caída de {_pct(abs(ir_mm))}" if round(ir_mm, 1) < 0 else "una variación nula")
+        b1 = (f"<b>El Índice de Remuneraciones nominal (IR) registró {mov} m/m (sa), "
+              f"{_comparar(ir_mm, ir_mm_ant)} lo observado en {mes_ant} ({_pct(ir_mm_ant)}).</b> "
+              f"En términos anuales, el índice muestra una {'expansión' if v(aa[IR]) >= 0 else 'contracción'} de "
+              f"{_pct(abs(v(aa[IR])))}.")
+        if len(hist):
+            b1 += (f" La variación mensual de {mes} en la serie original ({_pct(v(mm_orig))}) se ubica "
+                   f"{_comparar(v(mm_orig), hist.mean(), articulo='el')} "
+                   f"promedio {hist.index.year.min()}-{hist.index.year.max()} para el mismo mes ({_pct(hist.mean())}).")
+        b1 += (f" Por su parte, el Índice de Costos Laborales (ICL) varió {_pct(v(mm[ICL]))} m/m (sa) y "
+               f"{_pct(v(aa[ICL]))} a/a.")
+        inflacion = 100 * ((1 + v(aa[IR]) / 100) / (1 + r_aa / 100) - 1)
+        racha = _racha(aa[IR_REAL][aa.index <= t])
+        mov_r = (f"un alza de {_pct(r_mm)}" if round(r_mm, 1) > 0 else
+                 f"una caída de {_pct(abs(r_mm))}" if round(r_mm, 1) < 0 else "una variación nula")
+        b2 = (f"<b>Los salarios reales registraron {mov_r} m/m (sa) en {mes}.</b> En términos anuales, "
+              f"considerando una inflación de {_pct(inflacion)} (IPC implícito en el IR real del INE), los salarios "
+              f"reales se {'expandieron' if r_aa >= 0 else 'contrajeron'} {_pct(abs(r_aa))}, con lo que acumulan "
+              f"{racha} {'mes consecutivo' if racha == 1 else 'meses consecutivos'} de "
+              f"{'alzas' if r_aa >= 0 else 'caídas'} anuales.")
+        ms, tm = self.ms, self.tm
+        b3 = (f"<b>La masa salarial real varió {signo(ms.loc[tm, dr.MASA_AA])}% a/a</b> en el trimestre móvil "
+              f"terminado en {MESES[tm.month - 1]} (ocupados × horas habituales × salario real): ocupados "
+              f"{signo(ms.loc[tm, dr.CONTRIB[dr.OCUPADOS]])} pp, horas {signo(ms.loc[tm, dr.CONTRIB[dr.HORAS]])} pp "
+              f"y salario real {signo(ms.loc[tm, dr.CONTRIB[dr.IR_REAL]])} pp.")
+
+        # ---- estilos (colores Santander)
+        rojo, gris = colors.HexColor(C_ROJO), colors.HexColor(C_TEXTO)
+        st = {
+            "titulo": ParagraphStyle("titulo", fontName="Helvetica-Bold", fontSize=15, leading=19, textColor=rojo),
+            "fecha": ParagraphStyle("fecha", fontName="Helvetica-Bold", fontSize=10.5, leading=14, spaceBefore=8),
+            "autor": ParagraphStyle("autor", fontName="Helvetica-Oblique", fontSize=9, leading=12, textColor=gris),
+            "h1": ParagraphStyle("h1", fontName="Helvetica-Bold", fontSize=14, leading=18, textColor=rojo,
+                                 spaceBefore=6, spaceAfter=4),
+            "texto": ParagraphStyle("texto", fontName="Helvetica", fontSize=10, leading=14, alignment=TA_JUSTIFY),
+            "cuadro": ParagraphStyle("cuadro", fontName="Helvetica", fontSize=9, leading=12, alignment=1),
+            "nota": ParagraphStyle("nota", fontName="Helvetica", fontSize=7.5, leading=10, textColor=gris),
+            "fig": ParagraphStyle("fig", fontName="Helvetica", fontSize=8.5, leading=10.5),
+            "unidad": ParagraphStyle("unidad", fontName="Helvetica", fontSize=7, leading=9, textColor=gris),
+            "fuente": ParagraphStyle("fuente", fontName="Helvetica", fontSize=6.5, leading=8, textColor=gris),
+        }
+        fecha = f"{self.hoy.day} de {MESES[self.hoy.month - 1]} de {self.hoy.year}"
+
+        # ---- cuadro 1
+        etq_ant, etq = f"{MESES_CORTOS[ant.month - 1]}-{ant:%y}", f"{MESES_CORTOS[t.month - 1]}-{t:%y}"
+        filas = [["Índice", f"m/m (sa) {etq_ant}", f"m/m (sa) {etq}", f"a/a {etq_ant}", f"a/a {etq}"]]
+        cuadro_df = {}
+        for nombre, b in (("IR nominal", IR), ("ICL nominal", ICL), ("IR real", IR_REAL)):
+            vals = [v(mm[b], ant), v(mm[b]), v(aa[b], ant), v(aa[b])]
+            filas.append([nombre] + [_pct(x, 2) for x in vals])
+            cuadro_df[nombre] = vals
+        self.datos["Doc Cuadro 1"] = pd.DataFrame(cuadro_df, index=filas[0][1:]).T.rename_axis("Índice")
+        cuadro = Table(filas, colWidths=[4.0 * cm] + [3.2 * cm] * 4)
+        cuadro.setStyle(TableStyle([
+            ("FONT", (0, 0), (-1, 0), "Helvetica-Bold", 8.5), ("FONT", (0, 1), (-1, -1), "Helvetica", 8.5),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white), ("BACKGROUND", (0, 0), (-1, 0), rojo),
+            ("ALIGN", (1, 0), (-1, -1), "CENTER"), ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F2F2F2")]),
+            ("LINEBELOW", (0, -1), (-1, -1), 0.8, rojo),
+            ("TOPPADDING", (0, 0), (-1, -1), 4), ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ]))
+        nota_sa = ("sa = serie desestacionalizada por el INE" if ine_sa else
+                   "sa = serie desestacionalizada con STL a partir de la serie original del INE")
+
+        # ---- figuras
+        w, h = 8.6 * cm, 5.6 * cm
+        desde_nivel = pd.Timestamp(year=t.year - 5, month=1, day=1)
+        f1 = self.sa(IR_REAL)[lambda s: s.index >= desde_nivel].dropna().rename("IR real (sa)").to_frame()
+        f2 = aa.loc[aa.index >= pd.Timestamp(year=t.year - 7, month=1, day=1)].rename(
+            columns={IR: "IR", ICL: "ICL", IR_REAL: "IR real"})
+        png3, d3 = _figura_estacional(mm[IR], t)
+        png4, d4 = _figura_estacional(mm[IR_REAL], t)
+        figuras = [
+            ("Figura 1: Índice de Remuneraciones real", f"(serie desestacionalizada, {dr.ANIO_BASE}=100)",
+             _figura_lineas(f1, [C_ROJO], leyenda=False)),
+            ("Figura 2: Variación anual de los índices", "(%, serie original)",
+             _figura_lineas(f2, [C_ROJO, C_NEGRO, C_TURQUESA])),
+            ("Figura 3: Índice de Remuneraciones nominal", "(var. % m/m, serie desestacionalizada)", png3),
+            ("Figura 4: Índice de Remuneraciones real", "(var. % m/m, serie desestacionalizada)", png4),
+        ]
+        for k, df in (("Doc Fig1 IR real", f1), ("Doc Fig2 var anual", f2), ("Doc Fig3 IR nominal mm", d3),
+                      ("Doc Fig4 IR real mm", d4)):
+            self.datos[k] = df
+
+        def bloque(tit, uni, png):
+            return [Paragraph(tit, st["fig"]), Paragraph(uni, st["unidad"]), Image(png, width=w, height=h),
+                    Paragraph("Fuente: INE.", st["fuente"])]
+
+        celdas = [bloque(*f) for f in figuras]
+        grilla = Table([[celdas[0], celdas[1]], [celdas[2], celdas[3]]], colWidths=[9.0 * cm, 9.0 * cm])
+        grilla.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                                    ("BOTTOMPADDING", (0, 0), (-1, -1), 14)]))
+
+        # ---- armado
+        bullets = ListFlowable([ListItem(Paragraph(b, st["texto"]), value="■", bulletColor=rojo,
+                                         bulletFontSize=7) for b in (b1, b2, b3)],
+                               bulletType="bullet", start="■", leftIndent=14, bulletOffsetY=-1)
+        historia = [
+            Paragraph(titulo, st["titulo"]), Paragraph(fecha, st["fecha"]), Paragraph(f"Autor: {AUTOR}", st["autor"]),
+            Spacer(1, 4), HRFlowable(width="100%", thickness=1.2, color=rojo, spaceAfter=8),
+            Paragraph("Principales resultados", st["h1"]), bullets, Spacer(1, 14),
+            KeepTogether([Paragraph("Cuadro 1: Variaciones de los índices de remuneraciones y costos laborales",
+                                    st["cuadro"]), Spacer(1, 4), cuadro, Spacer(1, 4),
+                          Paragraph(f"Nota: {nota_sa}. El último dato es provisorio. Fuente: INE.", st["nota"])]),
+            PageBreak(), Paragraph("Figuras", st["h1"]), Spacer(1, 4), grilla,
+        ]
+
+        def pie(canvas, doc):
+            canvas.saveState()
+            canvas.setFont("Helvetica", 8)
+            canvas.setFillColor(gris)
+            canvas.drawString(2 * cm, 1.3 * cm, AUTOR)
+            canvas.setFillColor(colors.black)
+            canvas.drawCentredString(letter[0] / 2, 1.3 * cm, str(doc.page))
+            canvas.setStrokeColor(rojo)
+            canvas.setLineWidth(2)
+            canvas.line(2 * cm, letter[1] - 1.4 * cm, letter[0] - 2 * cm, letter[1] - 1.4 * cm)
+            canvas.restoreState()
+
+        ruta = OUT / f"Minuta_Remuneraciones_{mes}_{t.year}.pdf"
+        doc = SimpleDocTemplate(str(ruta), pagesize=letter, leftMargin=2 * cm, rightMargin=2 * cm,
+                                topMargin=2.2 * cm, bottomMargin=2.2 * cm, title=f"Remuneraciones {mes} {t.year}",
+                                author=AUTOR)
+        try:
+            doc.build(historia, onFirstPage=pie, onLaterPages=pie)
+        except PermissionError:
+            sys.exit(f"No pude guardar {ruta}: está abierto. Ciérralo y vuelve a correr.")
+        return ruta
+
     # ---- armar y guardar
     def construir(self):
         OUT.mkdir(parents=True, exist_ok=True)
@@ -376,6 +665,8 @@ class Minuta:
         self.resumen()
         self.remuneraciones()
         self.masa_salarial()
+        pdf_doc = self.documento()
+        print(f"  ✅ Documento: {pdf_doc}")
         nombre = f"{self.hoy:%Y%m%d}_Minuta_Remuneraciones"
         pptx = OUT / f"{nombre}.pptx"
         try:

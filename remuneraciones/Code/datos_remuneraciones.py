@@ -266,7 +266,8 @@ def rama():
 
 
 def remuneraciones():
-    """IR, ICL e IR real (base anual 2023 = 100), originales y desestacionalizados con STL."""
+    """IR, ICL e IR real (base anual 2023 = 100): originales, desestacionalizados con STL y, si el cuadro
+    del INE la trae, su serie desestacionalizada ('<serie> (SA INE)')."""
     series = []
     for nombre, col_sa in REMUNERACIONES.items():
         archivo = INPUTS / nombre
@@ -275,12 +276,20 @@ def remuneraciones():
             continue
         df_raw = pd.read_excel(archivo, sheet_name="General", header=None)
         idx = df_raw[df_raw.apply(lambda x: x.astype(str).str.contains("Año", case=False).any(), axis=1)].index[0]
-        df = df_raw.iloc[idx + 1:, [0, 1, 3]].copy()
-        df.columns = ["Anio", "Mes", "Valor"]
-        df = df.apply(pd.to_numeric, errors="coerce").dropna()
+        # columna desestacionalizada por el INE, si el cuadro la trae (encabezado con "desestacionaliz")
+        encabezados = df_raw.iloc[max(idx - 1, 0):idx + 2].fillna("").astype(str).agg(" ".join).str.lower()
+        col_ine = next((j for j, h in enumerate(encabezados) if "desestacionaliz" in h and j > 1), None)
+        cols = [0, 1, 3] + ([col_ine] if col_ine not in (None, 3) else [])
+        df = df_raw.iloc[idx + 1:, cols].copy()
+        df.columns = ["Anio", "Mes", "Valor"] + (["SA"] if len(cols) == 4 else [])
+        df = df.apply(pd.to_numeric, errors="coerce").dropna(subset=["Anio", "Mes", "Valor"])
         df["Periodo"] = pd.to_datetime(dict(year=df.Anio, month=df.Mes, day=1))
-        valor = df.sort_values("Periodo").set_index("Periodo")["Valor"]
-        series.append(pd.DataFrame({col_sa.replace(" (Desest.)", ""): valor, col_sa: _stl(valor)}))
+        df = df.sort_values("Periodo").set_index("Periodo")
+        base = col_sa.replace(" (Desest.)", "")
+        tabla = pd.DataFrame({base: df["Valor"], col_sa: _stl(df["Valor"])})
+        if "SA" in df and df["SA"].notna().sum() > 24:
+            tabla[f"{base} (SA INE)"] = df["SA"]
+        series.append(tabla)
     if not series:
         return pd.DataFrame(columns=["Periodo"])
     df = reduce(lambda a, b: a.join(b, how="outer"), series)

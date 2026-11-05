@@ -12,7 +12,7 @@ masa salarial real = ocupados (desest. INE) × horas habituales semanales (deses
 |---|---|
 | `Code/` | `datos_remuneraciones.py` (descarga del INE, cálculos y Excel de bases) y `minuta_remuneraciones.py` (minuta PPTX/PDF y Excel de los gráficos). |
 | `Inputs/` | Archivos descargados del INE (`ajuste_estacional.xlsx`, `horas.xlsx`, `tabulado_ir_real_empalmado.xlsx`, etc.). |
-| `Outputs/` | Bases: `Masa_salarial_Base.xlsx` y `Cifras_empleo.xlsx`. Minuta: `AAAAMMDD_Minuta_Remuneraciones.pptx`, `.pdf` y `_datos.xlsx`, y `Masa_salarial.png`. |
+| `Outputs/` | Bases: `Masa_salarial_Base.xlsx` y `Cifras_empleo.xlsx`. Minuta: documento `Minuta_Remuneraciones_<mes>_<año>.pdf`, láminas `AAAAMMDD_Minuta_Remuneraciones.pptx` y `.pdf`, `_datos.xlsx` y `Masa_salarial.png`. |
 
 ```bash
 cd remuneraciones/Code
@@ -25,6 +25,24 @@ En Spyder: abre y corre (F5) primero `datos_remuneraciones.py` y después `minut
 
 ## Minuta (`minuta_remuneraciones.py`)
 
+### Documento `Minuta_Remuneraciones_<mes>_<año>.pdf`
+
+Minuta escrita (como la de Coordinación Macroeconómica) con colores Santander, generada con `reportlab`:
+
+- Título con el resultado del mes (salarios reales m/m sa y a/a), fecha y autor.
+- **Principales resultados** (textos automáticos): IR nominal m/m (sa) frente al mes anterior, a/a, la
+  variación m/m de la serie original frente al promedio 2010-2019 del mismo mes, e ICL; salarios reales
+  m/m (sa) y a/a, inflación implícita en el IR real y meses consecutivos de alzas (o caídas) anuales;
+  masa salarial real con sus contribuciones.
+- **Cuadro 1**: variaciones m/m (sa) y a/a de IR nominal, ICL nominal e IR real (mes anterior y actual).
+- **Figuras**: IR real desestacionalizado; variación anual de IR, ICL e IR real; y variación m/m (sa)
+  del IR nominal y real por mes calendario, con la banda mín-máx y el promedio de 2010 a tres años
+  antes, los dos años anteriores en líneas y el año en curso en rombos.
+- "sa" usa la serie desestacionalizada del INE si el cuadro del INE la trae; si no, la de STL (la nota
+  del cuadro dice cuál se usó).
+
+### Láminas `AAAAMMDD_Minuta_Remuneraciones.pptx`
+
 | Lámina | Contenido |
 |---|---|
 | Portada | Mes del último dato del IR y fecha. |
@@ -32,10 +50,10 @@ En Spyder: abre y corre (F5) primero `datos_remuneraciones.py` y después `minut
 | Remuneraciones y costo laboral | IR e ICL nominales (a/a) e IR real en nivel (original y desestacionalizado). |
 | Masa salarial real | Variación anual con contribuciones apiladas de ocupados, horas y salario real, y nivel con y sin horas. |
 
-- `_datos.xlsx` tiene una hoja con los datos de cada gráfico.
+- `_datos.xlsx` tiene una hoja con los datos de cada gráfico de las láminas y del documento (`Doc ...`).
 - `formato_graficos.py` se busca como en la minuta IMCE: subiendo desde `Code`, en OneDrive/SharePoint
   y en la carpeta Santander de iCloud Drive (o en `FORMATO_GRAFICOS_DIR`).
-- El autor de la portada y del pie de las láminas se cambia en `AUTOR`, al inicio del script.
+- El autor (portada, pie de las láminas y documento) se cambia en `AUTOR`, al inicio del script.
 
 ## Bases (`datos_remuneraciones.py`)
 
