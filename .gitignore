@@ -226,11 +226,13 @@ chartpack_expectativas/Inputs/*/raw/*
 # Archivos temporales de Office (Excel/PowerPoint abiertos)
 ~$*
 
-# Archivos del INE descargados por masa_salarial (se regeneran con masa_salarial/Code/masa_salarial.py)
-masa_salarial/Inputs/*.xlsx
-
 # Descargas del INE e imágenes intermedias del IPC (se regeneran con minuta_ipc/Code/ipc_subclases.py)
 minuta_ipc/Inputs/*.xlsx
 !minuta_ipc/Inputs/Base_IPC_plantilla.xlsx
 minuta_ipc/Outputs/PNG_*/
 minuta_ipc/Outputs/respaldo/
+
+# Archivos del INE descargados (se regeneran con remuneraciones/Code/datos_remuneraciones.py)
+remuneraciones/Inputs/*.xlsx
+remuneraciones/Inputs/Figuras/
+remuneraciones/Inputs/respaldo/
