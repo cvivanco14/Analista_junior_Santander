@@ -6,7 +6,7 @@ independiente con su propio README:
 | Carpeta | Qué hace |
 |---|---|
 | [`imce/`](imce/) | Minuta mensual del IMCE (PPTX/PDF con gráficos nativos), con `Code/`, `Inputs/` y `Outputs/` (incluye el Excel de bases `Base_IMCE.xlsx`); y el chartbook anterior `imce_principal.py`. |
-| [`masa_salarial/`](masa_salarial/) | Masa salarial real (ocupados × horas × IR real, INE): descarga del INE, series y gráficos en `Outputs/Masa_salarial_Base.xlsx`. |
+| [`remuneraciones/`](remuneraciones/) | Minuta de Remuneraciones (INE): `datos_remuneraciones.py` descarga y deja las bases (`Masa_salarial_Base.xlsx`); `minuta_remuneraciones.py` arma la minuta PPTX/PDF con gráficos nativos (IR, ICL y masa salarial real). |
 
 El formato común (`formato_graficos.py` y su carpeta `assets`) vive en SharePoint, en
 `Estudios - Documentos\General\Administrativos\Manual de Estilo`; los scripts lo encuentran solos

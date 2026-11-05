@@ -226,5 +226,5 @@ chartpack_expectativas/Inputs/*/raw/*
 # Archivos temporales de Office (Excel/PowerPoint abiertos)
 ~$*
 
-# Archivos del INE descargados por masa_salarial (se regeneran con masa_salarial/Code/masa_salarial.py)
-masa_salarial/Inputs/*.xlsx
+# Archivos del INE descargados (se regeneran con remuneraciones/Code/datos_remuneraciones.py)
+remuneraciones/Inputs/*.xlsx

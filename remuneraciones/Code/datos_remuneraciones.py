@@ -1,23 +1,29 @@
 # -*- coding: utf-8 -*-
-r"""Cifras de empleo del INE (ENE e Índice de Remuneraciones).
+r"""Datos de la Minuta de Remuneraciones (INE: Encuesta Nacional de Empleo e Índice de Remuneraciones).
 
 1. Descarga los cuadros estadísticos del INE a Inputs\ (indicadores principales, categoría,
    informalidad, comparación ENE-RRAA, ajuste estacional, horas, rama e índices de remuneraciones).
 2. Los ordena como series mensuales (columna 'Periodo' = último mes del trimestre móvil) y
    desestacionaliza con STL las horas y los índices de remuneraciones.
-3. Deja todas las hojas en Outputs\Cifras_empleo.xlsx.
+3. Calcula la masa salarial real:
+       ocupados (desest. INE) × horas habituales semanales (desest. STL) × IR real (desest. STL)
+   con su variación a/a, las contribuciones de cada componente y la versión sin horas.
+4. Deja en Outputs\:
+       Masa_salarial_Base.xlsx   hojas 'Masa salarial' (series), 'Gráficos' (gráficos de Excel) y 'Léeme'
+       Cifras_empleo.xlsx        todas las hojas de empleo y remuneraciones del INE
 
-Viene del notebook "Series empleo3.ipynb" (Masa_salarial.py): mismas descargas y mismos cálculos, con
-rutas relativas al proyecto (sirve para cualquier usuario, en Windows y macOS) y sin xlwings.
+Viene del notebook "Series empleo3.ipynb" (Masa_salarial.py): mismas descargas y cálculos, con rutas
+relativas al proyecto (sirve para cualquier usuario, en Windows y macOS), sin xlwings, con la masa
+salarial calculada en la misma corrida y las columnas buscadas por nombre.
 
-Carpetas:
-    <Masa salarial>\Code\      datos_empleo.py y masa_salarial.py
-    <Masa salarial>\Inputs\    archivos descargados del INE
-    <Masa salarial>\Outputs\   Cifras_empleo.xlsx y Masa_salarial_Base.xlsx
+Carpetas (relativas a este script):
+    <Remuneraciones>\Code\      datos_remuneraciones.py y minuta_remuneraciones.py
+    <Remuneraciones>\Inputs\    archivos descargados del INE
+    <Remuneraciones>\Outputs\   Masa_salarial_Base.xlsx, Cifras_empleo.xlsx y la minuta
 
-Uso:
-    python datos_empleo.py                 # descarga y deja Outputs\Cifras_empleo.xlsx
-    python datos_empleo.py --sin-descarga  # usa los archivos que ya están en Inputs
+Uso (no hay que editar nada):
+    python datos_remuneraciones.py                 # descarga y actualiza los Excel de Outputs
+    python datos_remuneraciones.py --sin-descarga  # usa los archivos que ya están en Inputs
 """
 import argparse
 import re
@@ -25,6 +31,7 @@ import sys
 from functools import reduce
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import requests
 from requests.adapters import HTTPAdapter
@@ -36,6 +43,21 @@ PROYECTO = CODE.parent
 INPUTS = PROYECTO / "Inputs"
 OUT = PROYECTO / "Outputs"
 EXCEL_CIFRAS = OUT / "Cifras_empleo.xlsx"
+EXCEL = OUT / "Masa_salarial_Base.xlsx"
+DESDE_GRAFICO = "2015-01-01"
+ANIO_BASE = 2023          # base de los índices (como el IR del INE: base anual 2023 = 100)
+FUENTE = "Fuente: INE (Encuesta Nacional de Empleo e Índice de Remuneraciones)."
+
+OCUPADOS = "Ocupados SA (miles)"
+HORAS = "Horas habituales semanales SA"
+IR_REAL = f"IR real SA ({ANIO_BASE}=100)"
+MASA = f"Masa salarial real ({ANIO_BASE}=100)"
+MASA_AA = "Masa salarial real a/a (%)"
+CONTRIB = {OCUPADOS: "Contribución ocupados (pp)", HORAS: "Contribución horas (pp)",
+           IR_REAL: "Contribución salario real (pp)"}
+MASA_SH = f"Masa salarial real sin horas ({ANIO_BASE}=100)"
+MASA_SH_AA = "Masa salarial real sin horas a/a (%)"
+ROJO, GRIS, GRIS_CLARO, NEGRO = "EC0000", "6F7779", "BFC5C7", "1D1D1B"
 
 _INE = "https://www.ine.gob.cl/docs/default-source/"
 _ENE = _INE + "ocupacion-y-desocupacion/cuadros-estadisticos/series-vigentes/"
@@ -319,9 +341,172 @@ def guardar_excel(datos, ruta, formato_fecha="mmm-yyyy"):
     return ruta
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Masa salarial real
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _columna(df, *palabras, excluir=("tasa", "variación", "variacion"), respaldo=None, hoja=""):
+    """Primera columna cuyo nombre contiene todas las 'palabras' (sin mayúsculas) y ninguna de 'excluir'."""
+    for c in df.columns:
+        n = c.lower()
+        if all(p in n for p in palabras) and not any(e in n for e in excluir):
+            return c
+    if respaldo is not None and respaldo < len(df.columns):
+        c = df.columns[respaldo]
+        print(f"  ⚠️ En '{hoja}' no encontré {palabras}; uso la columna {respaldo}: '{c}'")
+        return c
+    raise KeyError(f"En '{hoja}' no encontré una columna con {palabras}. Columnas: {list(df.columns)}")
+
+
+def _indice(s, anio=ANIO_BASE):
+    return 100 * s / s[s.index.year == anio].mean()
+
+
+def _aa(s):
+    return 100 * (s / s.shift(12) - 1)
+
+
+def masa_salarial(datos):
+    """DataFrame mensual (índice = Periodo) con componentes, masa salarial, variación a/a y contribuciones."""
+    ae = datos["ajuste_estacional"].set_index("Periodo")
+    hr = datos["horas"].set_index("Periodo")
+    rem = datos["remuneraciones"].set_index("Periodo")
+    # la columna 5 es la que usaba el notebook (usecols=[0, 5] de la hoja ajuste_estacional)
+    col_ocu = _columna(ae, "ocupad", respaldo=4, hoja="ajuste_estacional")
+    col_hrs = COL_HORAS_SA if COL_HORAS_SA in hr else _columna(hr, "desest", hoja="horas")
+    col_ir = "IR Real (Desest.)" if "IR Real (Desest.)" in rem else _columna(rem, "real", "desest",
+                                                                                 hoja="remuneraciones")
+    print(f"  Ocupados: '{col_ocu}'\n  Horas:    '{col_hrs}'\n  IR real:  '{col_ir}'")
+
+    df = pd.concat({OCUPADOS: ae[col_ocu], HORAS: hr[col_hrs], IR_REAL: rem[col_ir]}, axis=1, join="inner")
+    df = df.apply(pd.to_numeric, errors="coerce").dropna().sort_index()
+    df.index.name = "Periodo"
+    df[IR_REAL] = _indice(df[IR_REAL])
+
+    df[MASA] = _indice(df[OCUPADOS] * df[HORAS] * df[IR_REAL])
+    df[MASA_AA] = _aa(df[MASA])
+    # contribuciones a la variación a/a (descomposición logarítmica: suman exactamente la variación)
+    log_total = np.log(df[MASA] / df[MASA].shift(12))
+    escala = (df[MASA_AA] / log_total).where(log_total.abs() > 1e-12, 100.0)
+    for comp, nombre in CONTRIB.items():
+        df[nombre] = np.log(df[comp] / df[comp].shift(12)) * escala
+    df[MASA_SH] = _indice(df[OCUPADOS] * df[IR_REAL])
+    df[MASA_SH_AA] = _aa(df[MASA_SH])
+    return df
+
+
+def guardar_base(df, ruta=EXCEL, desde=DESDE_GRAFICO):
+    from openpyxl.chart import BarChart, LineChart, Reference
+    from openpyxl.chart.series import SeriesLabel
+    from openpyxl.chart.shapes import GraphicalProperties
+    from openpyxl.drawing.line import LineProperties
+    from openpyxl.styles import Alignment, Font, PatternFill
+    from openpyxl.utils import get_column_letter
+
+    tabla = df.reset_index()
+    leeme = pd.DataFrame({"Masa salarial real": [
+        "Masa salarial real = ocupados × horas habituales semanales × índice de remuneraciones real.",
+        "Ocupados: ENE, cifras desestacionalizadas por el INE (archivo ajuste_estacional.xlsx), en miles.",
+        "Horas: promedio de horas habitualmente trabajadas a la semana (horas.xlsx), desestacionalizado con STL.",
+        "IR real: índice de remuneraciones real empalmado (base anual 2023 = 100), desestacionalizado con STL.",
+        "Periodo: último mes del trimestre móvil de la ENE (el IR es mensual y se cruza con ese mes).",
+        f"Índices: promedio {ANIO_BASE} = 100. Variación a/a: respecto del mismo mes del año anterior.",
+        "Contribuciones: descomposición logarítmica de la variación a/a; las tres suman la variación total.",
+        "Sin horas: ocupados × IR real, la medida más usada cuando no se ajusta por jornada.",
+        FUENTE,
+        "Se reescribe en cada corrida con datos_remuneraciones.py (proyecto remuneraciones del repositorio).",
+    ]})
+    try:
+        with pd.ExcelWriter(ruta, engine="openpyxl") as xl:
+            tabla.to_excel(xl, sheet_name="Masa salarial", index=False)
+            leeme.to_excel(xl, sheet_name="Léeme", index=False)
+            ws = xl.sheets["Masa salarial"]
+            for celda in ws[1]:
+                celda.font = Font(bold=True)
+                celda.fill = PatternFill("solid", start_color="CCEAFF")
+                celda.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+            ws.row_dimensions[1].height = 45
+            ws.freeze_panes = "B2"
+            ws.column_dimensions["A"].width = 11
+            for j in range(2, ws.max_column + 1):
+                ws.column_dimensions[get_column_letter(j)].width = 15
+            formatos = {OCUPADOS: "#,##0.0", HORAS: "0.00"}
+            for j, col in enumerate(tabla.columns, start=1):
+                fmt = "mmm-yyyy" if j == 1 else formatos.get(col, "0.0")
+                for (c,) in ws.iter_rows(min_row=2, min_col=j, max_col=j):
+                    c.number_format = fmt
+            xl.sheets["Léeme"].column_dimensions["A"].width = 110
+
+            # gráficos de Excel (nativos), desde DESDE_GRAFICO hasta el último mes
+            gs = xl.book.create_sheet("Gráficos", 1)
+            ini = 2 + int((tabla["Periodo"] < pd.Timestamp(desde)).sum())
+            fin = len(tabla) + 1
+            col = {c: j for j, c in enumerate(tabla.columns, start=1)}
+            fechas = Reference(ws, min_col=1, min_row=ini, max_row=fin)
+
+            barras = BarChart()
+            barras.type, barras.grouping, barras.overlap, barras.gapWidth = "col", "stacked", 100, 30
+            for nombre, color in zip(CONTRIB.values(), (ROJO, GRIS, GRIS_CLARO)):
+                barras.add_data(Reference(ws, min_col=col[nombre], min_row=ini, max_row=fin),
+                                titles_from_data=False)
+                s = barras.series[-1]
+                s.tx = SeriesLabel(v=nombre.replace(" (pp)", ""))
+                s.graphicalProperties = GraphicalProperties(solidFill=color)
+                s.graphicalProperties.line.noFill = True
+            linea = LineChart()
+            linea.add_data(Reference(ws, min_col=col[MASA_AA], min_row=ini, max_row=fin), titles_from_data=False)
+            linea.series[0].tx = SeriesLabel(v="Masa salarial real")
+            linea.series[0].graphicalProperties = GraphicalProperties(ln=LineProperties(solidFill=NEGRO, w=22000))
+            linea.series[0].smooth = False
+            barras.set_categories(fechas)
+            barras += linea
+            barras.title = "Masa salarial real: variación anual y contribuciones"
+            barras.y_axis.title = "Var. a/a %, contribuciones en pp"
+            barras.x_axis.number_format = "yyyy"
+            barras.x_axis.tickLblSkip = 12
+            barras.x_axis.tickMarkSkip = 12
+            barras.x_axis.tickLblPos = "low"
+            barras.x_axis.delete = barras.y_axis.delete = False
+            barras.legend.position = "b"
+            barras.height, barras.width = 10, 24
+            gs.add_chart(barras, "A1")
+
+            nivel = LineChart()
+            for nombre, color, ancho in ((MASA, ROJO, 25000), (MASA_SH, GRIS, 19000)):
+                nivel.add_data(Reference(ws, min_col=col[nombre], min_row=ini, max_row=fin), titles_from_data=False)
+                s = nivel.series[-1]
+                s.tx = SeriesLabel(v=nombre)
+                s.graphicalProperties = GraphicalProperties(ln=LineProperties(solidFill=color, w=ancho))
+                s.smooth = False
+            nivel.set_categories(fechas)
+            tramo = tabla.iloc[ini - 2:][[MASA, MASA_SH]]
+            nivel.y_axis.scaling.min = 10 * np.floor(np.nanmin(tramo.to_numpy()) / 10)
+            nivel.y_axis.scaling.max = 10 * np.ceil(np.nanmax(tramo.to_numpy()) / 10)
+            nivel.title = "Masa salarial real: nivel"
+            nivel.y_axis.title = f"Índice {ANIO_BASE} = 100, desestacionalizado"
+            nivel.x_axis.number_format = "yyyy"
+            nivel.x_axis.tickLblSkip = 12
+            nivel.x_axis.tickMarkSkip = 12
+            nivel.x_axis.delete = nivel.y_axis.delete = False
+            nivel.legend.position = "b"
+            nivel.height, nivel.width = 10, 24
+            gs.add_chart(nivel, "A22")
+            gs["A43"] = FUENTE
+    except PermissionError:
+        sys.exit(f"No pude guardar {ruta}: está abierto. Ciérralo y vuelve a correr.")
+    return ruta
+
+
 if __name__ == "__main__":
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--sin-descarga", action="store_true", help="usa los archivos que ya están en Inputs")
     args = p.parse_args()
-    print("=" * 60 + "\n  Cifras de empleo INE\n" + "=" * 60)
-    print(f"  ✅ Excel: {guardar_excel(cargar(descarga=not args.sin_descarga), EXCEL_CIFRAS)}")
+    print("=" * 60 + "\n  Datos Minuta de Remuneraciones (INE)\n" + "=" * 60)
+    datos = cargar(descarga=not args.sin_descarga)
+    print(f"  ✅ Cifras de empleo: {guardar_excel(datos, EXCEL_CIFRAS)}")
+    faltan = [h for h in ("ajuste_estacional", "horas", "remuneraciones") if h not in datos]
+    if faltan:
+        sys.exit(f"Faltan datos para la masa salarial: {', '.join(faltan)}")
+    ms = masa_salarial(datos)
+    print(f"  Último dato: {ms.index[-1]:%m-%Y}  masa salarial real {ms[MASA_AA].iloc[-1]:+.1f}% a/a")
+    print(f"  ✅ Bases: {guardar_base(ms)}")
