@@ -228,3 +228,4 @@ chartpack_expectativas/Inputs/*/raw/*
 
 # Archivos del INE descargados (se regeneran con remuneraciones/Code/datos_remuneraciones.py)
 remuneraciones/Inputs/*.xlsx
+remuneraciones/Inputs/Figuras/

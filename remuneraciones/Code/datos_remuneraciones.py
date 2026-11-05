@@ -8,7 +8,7 @@ r"""Datos de la Minuta de Remuneraciones (INE: Encuesta Nacional de Empleo e Ín
 3. Calcula la masa salarial real:
        ocupados (desest. INE) × horas habituales semanales (desest. STL) × IR real (desest. STL)
    con su variación a/a, las contribuciones de cada componente y la versión sin horas.
-4. Deja en Outputs\:
+4. Deja en Inputs\ (bases intermedias que usa minuta_remuneraciones.py):
        Masa_salarial_Base.xlsx   hojas 'Masa salarial' (series), 'Gráficos' (gráficos de Excel) y 'Léeme'
        Cifras_empleo.xlsx        todas las hojas de empleo y remuneraciones del INE
 
@@ -18,11 +18,11 @@ salarial calculada en la misma corrida y las columnas buscadas por nombre.
 
 Carpetas (relativas a este script):
     <Remuneraciones>\Code\      datos_remuneraciones.py y minuta_remuneraciones.py
-    <Remuneraciones>\Inputs\    archivos descargados del INE
-    <Remuneraciones>\Outputs\   Masa_salarial_Base.xlsx, Cifras_empleo.xlsx y la minuta
+    <Remuneraciones>\Inputs\    archivos descargados del INE, Masa_salarial_Base.xlsx y Cifras_empleo.xlsx
+    <Remuneraciones>\Outputs\   la minuta e IRL_Base.xlsx (los deja minuta_remuneraciones.py)
 
 Uso (no hay que editar nada):
-    python datos_remuneraciones.py                 # descarga y actualiza los Excel de Outputs
+    python datos_remuneraciones.py                 # descarga y actualiza las bases en Inputs
     python datos_remuneraciones.py --sin-descarga  # usa los archivos que ya están en Inputs
 """
 import argparse
@@ -42,8 +42,8 @@ CODE = Path(__file__).resolve().parent
 PROYECTO = CODE.parent
 INPUTS = PROYECTO / "Inputs"
 OUT = PROYECTO / "Outputs"
-EXCEL_CIFRAS = OUT / "Cifras_empleo.xlsx"
-EXCEL = OUT / "Masa_salarial_Base.xlsx"
+EXCEL_CIFRAS = INPUTS / "Cifras_empleo.xlsx"        # bases intermedias: quedan en Inputs
+EXCEL = INPUTS / "Masa_salarial_Base.xlsx"
 DESDE_GRAFICO = "2015-01-01"
 ANIO_BASE = 2023          # base de los índices (como el IR del INE: base anual 2023 = 100)
 FUENTE = "Fuente: INE (Encuesta Nacional de Empleo e Índice de Remuneraciones)."

@@ -7,15 +7,18 @@ Formato de formato_graficos.py (Administrativos\Manual de Estilo), como la minut
 
 Documento: Minuta_Remuneraciones_<mes>_<año>.pdf (reportlab), con colores Santander: título con el
 resultado del mes, principales resultados (IR, ICL, salarios reales y masa salarial), cuadro de
-variaciones m/m (sa) y a/a, y cuatro figuras (IR real, variación anual de los índices y variación m/m
-del IR nominal y real por mes calendario frente a su rango histórico).
+variaciones m/m (sa) y a/a, y seis figuras (IR real, variación anual de los índices, variación m/m
+del IR nominal y real por mes calendario frente a su rango histórico, y masa salarial real: variación
+anual con contribuciones y nivel).
 
 Carpetas (relativas a este script; sirven para cualquier usuario):
     <Remuneraciones>\Code\      datos_remuneraciones.py y minuta_remuneraciones.py
-    <Remuneraciones>\Inputs\    archivos del INE (los deja datos_remuneraciones.py)
-    <Remuneraciones>\Outputs\   Masa_salarial_Base.xlsx y Cifras_empleo.xlsx (bases) y
-                                AAAAMMDD_Minuta_Remuneraciones.pptx / .pdf / _datos.xlsx,
-                                Minuta_Remuneraciones_<mes>_<año>.pdf (documento) y Masa_salarial.png
+    <Remuneraciones>\Inputs\    archivos del INE y bases intermedias (Masa_salarial_Base.xlsx,
+                                Cifras_empleo.xlsx), que deja datos_remuneraciones.py, e
+                                Inputs\Figuras\ (imágenes del documento y Masa_salarial.png)
+    <Remuneraciones>\Outputs\   IRL_Base.xlsx (datos de todos los gráficos), documento
+                                Minuta_Remuneraciones_<mes>_<año>.pdf y láminas
+                                AAAAMMDD_Minuta_Remuneraciones.pptx / .pdf
 
 Uso (no hay que editar nada):
     python datos_remuneraciones.py     # descarga del INE y actualiza los Excel de bases
@@ -35,13 +38,15 @@ import datos_remuneraciones as dr
 
 CODE = Path(__file__).resolve().parent
 OUT = dr.OUT
-PNG = OUT / "Masa_salarial.png"
+FIGURAS = dr.INPUTS / "Figuras"             # imágenes del documento y PNG de masa salarial
+PNG = FIGURAS / "Masa_salarial.png"
+IRL_BASE = OUT / "IRL_Base.xlsx"             # datos de todos los gráficos de la minuta
 MANUAL_ESTILO = Path("Administrativos") / "Manual de Estilo"
 BIBLIOTECA = Path("Estudios - Documentos") / "General"
 ICLOUD = Path.home() / "Library" / "Mobile Documents" / "com~apple~CloudDocs"
 
 TITULO = "Remuneraciones"
-AUTOR = "Andrés Sansone"   # aparece en la portada, en el pie de las láminas y en el documento
+AUTOR = "Gerencia de Estudios"   # aparece en la portada, en el pie de las láminas y en el documento
 FUENTE = "INE (Índice de Remuneraciones y Encuesta Nacional de Empleo)"
 NOTA_MASA = ("Masa salarial real = ocupados (desestacionalizados por el INE) × horas habituales semanales × "
              "índice de remuneraciones real (ambos desestacionalizados con STL). Contribuciones: descomposición "
@@ -271,17 +276,15 @@ def _formato_coma(dec=1):
     return FuncFormatter(lambda v, _: num(v, dec))
 
 
-def _png(fig):
-    import io
+def _png(fig, ruta):
     import matplotlib.pyplot as plt
-    buf = io.BytesIO()
-    fig.savefig(buf, format="png", dpi=200)
+    ruta.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(ruta, format="png", dpi=200)
     plt.close(fig)
-    buf.seek(0)
-    return buf
+    return str(ruta)
 
 
-def _figura_lineas(df, colores, leyenda=True, tam=(3.45, 2.25)):
+def _figura_lineas(df, colores, ruta, leyenda=True, tam=(3.45, 2.1)):
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.dates as mdates
@@ -298,10 +301,36 @@ def _figura_lineas(df, colores, leyenda=True, tam=(3.45, 2.25)):
         ax.legend(loc="lower center", bbox_to_anchor=(0.5, 1.0), ncol=len(df.columns), frameon=False,
                   fontsize=7, handlelength=1.6)
     fig.tight_layout(pad=0.4)
-    return _png(fig)
+    return _png(fig, ruta)
 
 
-def _figura_estacional(mm, t):
+def _figura_contribuciones(total, barras, colores, ruta, tam=(3.45, 2.1)):
+    """Columnas apiladas (contribuciones) y línea (total), con etiqueta del último dato."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.dates as mdates
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots(figsize=tam)
+    pos = np.zeros(len(barras))
+    neg = np.zeros(len(barras))
+    for col, color in zip(barras.columns, colores):
+        v = barras[col].to_numpy()
+        ax.bar(barras.index, v, bottom=np.where(v >= 0, pos, neg), width=25, color=color, label=col, lw=0)
+        pos, neg = pos + np.clip(v, 0, None), neg + np.clip(v, None, 0)
+    ax.plot(total.index, total, color=C_NEGRO, lw=1.3, label=total.name)
+    ax.annotate(num(total.iloc[-1]), (total.index[-1], total.iloc[-1]), xytext=(4, 0), textcoords="offset points",
+                va="center", fontsize=6.5, fontweight="bold")
+    ax.axhline(0, color=C_GRIS, lw=0.8)
+    _estilo_ejes(ax)
+    ax.xaxis.set_major_locator(mdates.YearLocator())
+    ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
+    ax.legend(loc="lower center", bbox_to_anchor=(0.5, 1.0), ncol=4, frameon=False, fontsize=6.5,
+              handlelength=1.4, columnspacing=0.9)
+    fig.tight_layout(pad=0.4)
+    return _png(fig, ruta)
+
+
+def _figura_estacional(mm, t, ruta):
     """Variación m/m por mes calendario: banda mín-máx y promedio de los años de referencia, los dos años
     anteriores en líneas y el año en curso en rombos. Devuelve (png, DataFrame con los datos)."""
     import matplotlib
@@ -321,7 +350,7 @@ def _figura_estacional(mm, t):
     datos.index = pd.Index(MESES_CORTOS, name="Mes")
 
     x = np.arange(12)
-    fig, ax = plt.subplots(figsize=(3.45, 2.25))
+    fig, ax = plt.subplots(figsize=(3.45, 2.1))
     ax.fill_between(x, datos.iloc[:, 0], datos.iloc[:, 1], color=C_BANDA, lw=0, label=f"Mín-Máx {a0}-{a1}")
     ax.plot(x, datos.iloc[:, 2], color=C_TURQUESA, lw=1.4, label=f"Prom. {a0}-{a1}")
     for a, color in ((t.year - 2, C_NEGRO), (t.year - 1, C_AMARILLO)):
@@ -336,7 +365,7 @@ def _figura_estacional(mm, t):
     ax.legend(loc="lower center", bbox_to_anchor=(0.5, 1.0), ncol=5, frameon=False, fontsize=6,
               handlelength=1.4, columnspacing=0.9)
     fig.tight_layout(pad=0.4)
-    return _png(fig), datos
+    return _png(fig, ruta), datos
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -553,7 +582,7 @@ class Minuta:
         b3 = (f"<b>La masa salarial real varió {signo(ms.loc[tm, dr.MASA_AA])}% a/a</b> en el trimestre móvil "
               f"terminado en {MESES[tm.month - 1]} (ocupados × horas habituales × salario real): ocupados "
               f"{signo(ms.loc[tm, dr.CONTRIB[dr.OCUPADOS]])} pp, horas {signo(ms.loc[tm, dr.CONTRIB[dr.HORAS]])} pp "
-              f"y salario real {signo(ms.loc[tm, dr.CONTRIB[dr.IR_REAL]])} pp.")
+              f"y salario real {signo(ms.loc[tm, dr.CONTRIB[dr.IR_REAL]])} pp (Figuras 5 y 6).")
 
         # ---- estilos (colores Santander)
         rojo, gris = colors.HexColor(C_ROJO), colors.HexColor(C_TEXTO)
@@ -594,33 +623,47 @@ class Minuta:
                    "sa = serie desestacionalizada con STL a partir de la serie original del INE")
 
         # ---- figuras
-        w, h = 8.6 * cm, 5.6 * cm
+        w, h = 8.6 * cm, 5.25 * cm
         desde_nivel = pd.Timestamp(year=t.year - 5, month=1, day=1)
+        desde_aa = pd.Timestamp(year=t.year - 7, month=1, day=1)
         f1 = self.sa(IR_REAL)[lambda s: s.index >= desde_nivel].dropna().rename("IR real (sa)").to_frame()
-        f2 = aa.loc[aa.index >= pd.Timestamp(year=t.year - 7, month=1, day=1)].rename(
-            columns={IR: "IR", ICL: "ICL", IR_REAL: "IR real"})
-        png3, d3 = _figura_estacional(mm[IR], t)
-        png4, d4 = _figura_estacional(mm[IR_REAL], t)
+        f2 = aa.loc[aa.index >= desde_aa].rename(columns={IR: "IR", ICL: "ICL", IR_REAL: "IR real"})
+        png3, d3 = _figura_estacional(mm[IR], t, FIGURAS / "Figura_3_IR_nominal_mm.png")
+        png4, d4 = _figura_estacional(mm[IR_REAL], t, FIGURAS / "Figura_4_IR_real_mm.png")
+        dm = ms[ms.index >= desde_aa].dropna(subset=[dr.MASA_AA])
+        contrib = {v: v.replace("Contribución ", "").replace(" (pp)", "").capitalize() for v in dr.CONTRIB.values()}
+        f5 = pd.concat([dm[dr.MASA_AA].rename("Masa salarial real"), dm[list(contrib)].rename(columns=contrib)],
+                       axis=1)
+        f6 = dm[[dr.MASA, dr.MASA_SH]].rename(columns={dr.MASA: "Ocupados × horas × salario real",
+                                                        dr.MASA_SH: "Ocupados × salario real"})
         figuras = [
             ("Figura 1: Índice de Remuneraciones real", f"(serie desestacionalizada, {dr.ANIO_BASE}=100)",
-             _figura_lineas(f1, [C_ROJO], leyenda=False)),
+             _figura_lineas(f1, [C_ROJO], FIGURAS / "Figura_1_IR_real.png", leyenda=False), "INE"),
             ("Figura 2: Variación anual de los índices", "(%, serie original)",
-             _figura_lineas(f2, [C_ROJO, C_NEGRO, C_TURQUESA])),
-            ("Figura 3: Índice de Remuneraciones nominal", "(var. % m/m, serie desestacionalizada)", png3),
-            ("Figura 4: Índice de Remuneraciones real", "(var. % m/m, serie desestacionalizada)", png4),
+             _figura_lineas(f2, [C_ROJO, C_NEGRO, C_TURQUESA], FIGURAS / "Figura_2_variacion_anual.png"), "INE"),
+            ("Figura 3: Índice de Remuneraciones nominal", "(var. % m/m, serie desestacionalizada)", png3, "INE"),
+            ("Figura 4: Índice de Remuneraciones real", "(var. % m/m, serie desestacionalizada)", png4, "INE"),
+            ("Figura 5: Masa salarial real", "(var. % a/a y contribuciones en pp, series desestacionalizadas)",
+             _figura_contribuciones(f5.iloc[:, 0], f5.iloc[:, 1:], [C_ROJO, C_GRIS, C_TURQUESA],
+                                    FIGURAS / "Figura_5_masa_salarial_aa.png"),
+             "Gerencia de Estudios en base a INE. Masa salarial = ocupados × horas habituales × IR real"),
+            ("Figura 6: Masa salarial real", f"(índice {dr.ANIO_BASE}=100, series desestacionalizadas)",
+             _figura_lineas(f6, [C_ROJO, C_NEGRO], FIGURAS / "Figura_6_masa_salarial_nivel.png"),
+             "Gerencia de Estudios en base a INE"),
         ]
         for k, df in (("Doc Fig1 IR real", f1), ("Doc Fig2 var anual", f2), ("Doc Fig3 IR nominal mm", d3),
-                      ("Doc Fig4 IR real mm", d4)):
+                      ("Doc Fig4 IR real mm", d4), ("Doc Fig5 masa salarial a-a", f5),
+                      ("Doc Fig6 masa salarial nivel", f6)):
             self.datos[k] = df
 
-        def bloque(tit, uni, png):
+        def bloque(tit, uni, png, fuente):
             return [Paragraph(tit, st["fig"]), Paragraph(uni, st["unidad"]), Image(png, width=w, height=h),
-                    Paragraph("Fuente: INE.", st["fuente"])]
+                    Paragraph(f"Fuente: {fuente}.", st["fuente"])]
 
         celdas = [bloque(*f) for f in figuras]
-        grilla = Table([[celdas[0], celdas[1]], [celdas[2], celdas[3]]], colWidths=[9.0 * cm, 9.0 * cm])
+        grilla = Table([celdas[i:i + 2] for i in range(0, len(celdas), 2)], colWidths=[9.0 * cm, 9.0 * cm])
         grilla.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("LEFTPADDING", (0, 0), (-1, -1), 0),
-                                    ("BOTTOMPADDING", (0, 0), (-1, -1), 14)]))
+                                    ("BOTTOMPADDING", (0, 0), (-1, -1), 10)]))
 
         # ---- armado
         bullets = ListFlowable([ListItem(Paragraph(b, st["texto"]), value="■", bulletColor=rojo,
@@ -671,14 +714,15 @@ class Minuta:
         pptx = OUT / f"{nombre}.pptx"
         try:
             self.prs.save(pptx)
-            with pd.ExcelWriter(OUT / f"{nombre}_datos.xlsx") as xl:
+            with pd.ExcelWriter(IRL_BASE) as xl:
                 for hoja, df in self.datos.items():
                     df.rename_axis("Fecha").to_excel(xl, sheet_name=hoja[:31])
         except PermissionError as e:
             sys.exit(f"No pude guardar {e.filename}: está abierto. Ciérralo y vuelve a correr.")
         print(f"  ✅ PPTX: {pptx} ({self.n} láminas; IR a {self.mes})")
-        print(f"  ✅ Datos de los gráficos: {OUT / f'{nombre}_datos.xlsx'}")
-        print(f"  ✅ Gráfico masa salarial: {grafico_png(self.ms)}")
+        print(f"  ✅ Datos de los gráficos: {IRL_BASE}")
+        FIGURAS.mkdir(parents=True, exist_ok=True)
+        print(f"  ✅ Imágenes (documento y masa salarial): {FIGURAS} ({grafico_png(self.ms).name})")
         try:
             pdf = self.fg.exportar_pdf(pptx)
             if pdf:

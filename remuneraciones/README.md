@@ -11,12 +11,12 @@ masa salarial real = ocupados (desest. INE) × horas habituales semanales (deses
 | Carpeta | Contenido |
 |---|---|
 | `Code/` | `datos_remuneraciones.py` (descarga del INE, cálculos y Excel de bases) y `minuta_remuneraciones.py` (minuta PPTX/PDF y Excel de los gráficos). |
-| `Inputs/` | Archivos descargados del INE (`ajuste_estacional.xlsx`, `horas.xlsx`, `tabulado_ir_real_empalmado.xlsx`, etc.). |
-| `Outputs/` | Bases: `Masa_salarial_Base.xlsx` y `Cifras_empleo.xlsx`. Minuta: documento `Minuta_Remuneraciones_<mes>_<año>.pdf`, láminas `AAAAMMDD_Minuta_Remuneraciones.pptx` y `.pdf`, `_datos.xlsx` y `Masa_salarial.png`. |
+| `Inputs/` | Archivos descargados del INE (`ajuste_estacional.xlsx`, `horas.xlsx`, `tabulado_ir_real_empalmado.xlsx`, etc.), bases intermedias (`Masa_salarial_Base.xlsx`, `Cifras_empleo.xlsx`) y `Figuras/` (imágenes del documento y `Masa_salarial.png`). |
+| `Outputs/` | `IRL_Base.xlsx` (datos de todos los gráficos), documento `Minuta_Remuneraciones_<mes>_<año>.pdf` y láminas `AAAAMMDD_Minuta_Remuneraciones.pptx` y `.pdf`. |
 
 ```bash
 cd remuneraciones/Code
-python datos_remuneraciones.py      # descarga del INE y actualiza los Excel de bases
+python datos_remuneraciones.py      # descarga del INE y actualiza las bases en Inputs
 python minuta_remuneraciones.py     # arma la minuta en Outputs
 ```
 
@@ -35,9 +35,11 @@ Minuta escrita (como la de Coordinación Macroeconómica) con colores Santander,
   m/m (sa) y a/a, inflación implícita en el IR real y meses consecutivos de alzas (o caídas) anuales;
   masa salarial real con sus contribuciones.
 - **Cuadro 1**: variaciones m/m (sa) y a/a de IR nominal, ICL nominal e IR real (mes anterior y actual).
-- **Figuras**: IR real desestacionalizado; variación anual de IR, ICL e IR real; y variación m/m (sa)
-  del IR nominal y real por mes calendario, con la banda mín-máx y el promedio de 2010 a tres años
-  antes, los dos años anteriores en líneas y el año en curso en rombos.
+- **Figuras** (se guardan también como PNG en `Inputs/Figuras`): IR real desestacionalizado; variación
+  anual de IR, ICL e IR real; variación m/m (sa) del IR nominal y real por mes calendario, con la banda
+  mín-máx y el promedio de 2010 a tres años antes, los dos años anteriores en líneas y el año en curso
+  en rombos; y masa salarial real (variación anual con contribuciones de ocupados, horas y salario real,
+  y nivel con y sin horas).
 - "sa" usa la serie desestacionalizada del INE si el cuadro del INE la trae; si no, la de STL (la nota
   del cuadro dice cuál se usó).
 
@@ -50,12 +52,13 @@ Minuta escrita (como la de Coordinación Macroeconómica) con colores Santander,
 | Remuneraciones y costo laboral | IR e ICL nominales (a/a) e IR real en nivel (original y desestacionalizado). |
 | Masa salarial real | Variación anual con contribuciones apiladas de ocupados, horas y salario real, y nivel con y sin horas. |
 
-- `_datos.xlsx` tiene una hoja con los datos de cada gráfico de las láminas y del documento (`Doc ...`).
+- `Outputs/IRL_Base.xlsx` tiene una hoja con los datos de cada gráfico de las láminas y del documento
+  (`Doc ...`); siempre con ese nombre, se reescribe en cada corrida.
 - `formato_graficos.py` se busca como en la minuta IMCE: subiendo desde `Code`, en OneDrive/SharePoint
   y en la carpeta Santander de iCloud Drive (o en `FORMATO_GRAFICOS_DIR`).
 - El autor (portada, pie de las láminas y documento) se cambia en `AUTOR`, al inicio del script.
 
-## Bases (`datos_remuneraciones.py`)
+## Bases (`datos_remuneraciones.py`, en `Inputs`)
 
 - **`Masa_salarial_Base.xlsx`**:
   - *Masa salarial*: por mes, ocupados SA (miles), horas habituales SA, IR real SA (2023 = 100), masa
