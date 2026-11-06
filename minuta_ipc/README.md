@@ -9,7 +9,7 @@ de 172 subclases).
 | `Code/` | `minuta_ipc.py` (arma la minuta), `ipc.py` (datos y cálculos), `graficos_ipc.py` (gráficos) y `anexo_subclases.py` (anexo). |
 | `Inputs/` | Insumos fijos: `matriz_productos.csv`, `historico_bcch_indices.csv`, `pesos_canasta_2018.csv`, `difusion_historica.csv`, `ipc_base2018_alimentos.csv` y `subclases_bcch_1989_2023.csv`. |
 | `Inputs/INE/` | Excel descargados del INE (`ipc-base-2023.xlsx`, `ipc-referencial-2023.xlsx`); se reemplazan en cada corrida. |
-| `Outputs/` | `Minuta IPC <mes> <año>.pdf` y `figuras/` (PNG que se regeneran en cada corrida). |
+| `Outputs/` | `Minuta IPC <mes> <año>.pdf`, `IPC_Base.xlsx` (datos de cada gráfico y cuadro) y `figuras/` (PNG que se regeneran en cada corrida). |
 
 ```bash
 cd minuta_ipc/Code
@@ -24,3 +24,6 @@ python minuta_ipc.py --sin-anexo     # sin el anexo de subclases (más rápido)
 - Antes de cada minuta, completar `EXPECTATIVAS` (y `COMENTARIO` si corresponde) al inicio de
   `minuta_ipc.py`.
 - Si falta algún insumo en `Inputs/`, el script lo avisa con la lista de archivos.
+- `IPC_Base.xlsx` se reescribe en cada corrida: hoja `Índice`, `Cuadro 1` y `Cuadro 2` (tal como
+  salen en la minuta) y una hoja por gráfico (`G1 Inflación total`, `G2 Agregados mes`, ...), con
+  el mismo número que el gráfico en el PDF. Si el archivo está abierto en Excel, avisa y no lo sobrescribe.

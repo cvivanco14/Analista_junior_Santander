@@ -11,7 +11,7 @@ Carpetas (relativas a este archivo, funcionan en cualquier computador):
     Code/          minuta_ipc.py, ipc.py, graficos_ipc.py, anexo_subclases.py
     Inputs/        insumos fijos (matriz_productos.csv, historico_bcch_indices.csv, ...)
     Inputs/INE/    Excel descargados del INE (se reemplazan en cada corrida)
-    Outputs/       "Minuta IPC <mes> <año>.pdf"
+    Outputs/       "Minuta IPC <mes> <año>.pdf" e IPC_Base.xlsx (datos de cada gráfico y cuadro)
     Outputs/figuras/  gráficos PNG de la minuta y del anexo (se regeneran)
 
 Antes de cada minuta, completar EXPECTATIVAS (y COMENTARIO si corresponde).
@@ -42,6 +42,7 @@ INSUMOS = INPUTS                 # insumos fijos (CSV)
 DATOS = INPUTS / "INE"           # Excel descargados del INE
 FIGURAS = OUTPUTS / "figuras"    # PNG intermedios
 SALIDA = OUTPUTS                 # PDF de la minuta
+BASE_XLSX = OUTPUTS / "IPC_Base.xlsx"  # datos de los gráficos y cuadros (se reescribe en cada corrida)
 sys.path.insert(0, str(CODE))    # para importar los módulos hermanos aunque se corra desde otra carpeta
 
 import anexo_subclases  # noqa: E402
@@ -324,7 +325,12 @@ def generar_figuras(m: Mes):
     t = lambda x: f"Gráfico {len(figs) + 1}: {x}"  # noqa: E731
     nota_bc = "Fuente: INE y Banco Central de Chile."
     cc = ipc.CAMBIO_CANASTA
+    m.datos = {}  # hoja de IPC_Base.xlsx -> DataFrame con los datos de cada gráfico
 
+    def guardar(nombre, columnas: dict):
+        m.datos[f"G{len(figs) + 1} {nombre}"] = pd.DataFrame(columnas)
+
+    guardar("Inflación total", {"Var. % a/a": rng(m.aa["IPC"]), "Var. % m/m": rng(m.mm["IPC"])})
     figs.append(g.lineas_barras(nueva(), t("Inflación total"), "(var. % a/a y m/m)",
                                 {"Var. % a/a": rng(m.aa["IPC"])}, rng(m.mm["IPC"]), nota_bc, cc))
 
@@ -333,25 +339,35 @@ def generar_figuras(m: Mes):
             "Servicios SV": "Servicios sin volátiles"}
     var = pd.Series({k: m.mm[a][p] for k, a in cats.items()})
     inc = pd.Series({k: (var["IPC total"] if a == "IPC" else m.inc[a][p]) for k, a in cats.items()})
+    guardar("Agregados mes", {"Var. % m/m": var, "Incidencia (pp.)": inc})
     figs.append(g.barras_mes(nueva(), t("IPC y agregados con y sin volátiles"),
                              f"(var. % m/m e incidencias en pp., {mes_largo(p)} {p.year})", var, inc))
 
     comp = {"Bienes SV": "Bienes sin volátiles", "Servicios SV": "Servicios sin volátiles",
             "Energía volátil": "Energía Volátiles", "Alim. volátiles": "Alim. Volát.",
             "Resto volátiles": "Resto volátiles"}
+    guardar("Incidencias a-a", {"IPC total": rng(m.aa["IPC"]),
+                                **{k: rng(ipc.incidencia(m.d, a, 12)) for k, a in comp.items()}})
     figs.append(g.incidencias_apiladas(nueva(), t("Incidencias en la inflación anual"), "(var. % a/a e incidencias en pp.)",
                                        rng(m.aa["IPC"]), {k: rng(ipc.incidencia(m.d, a, 12)) for k, a in comp.items()},
                                        linea_canasta=cc))
+    guardar("IPC total y SV", {"IPC total": rng(m.aa["IPC"]), "IPC sin volátiles": rng(m.aa["IPC sin volátiles"])})
     figs.append(g.lineas_barras(nueva(), t("IPC total e IPC sin volátiles"), "(var. % a/a)",
                                 {"IPC total": rng(m.aa["IPC"]), "IPC sin volátiles": rng(m.aa["IPC sin volátiles"])},
                                 nota=nota_bc, linea_canasta=cc))
+    guardar("Servicios SV", {"Servicios SV": rng(m.aa["Servicios sin volátiles"]),
+                             "Administrados e indexados": rng(m.aa["Servicios_A&I_sv"]),
+                             "Resto (exc. A&I)": rng(m.aa["Servicios_ Resto_sv"])})
     figs.append(g.lineas_barras(nueva(), t("IPC servicios sin volátiles"), "(var. % a/a)",
                                 {"Servicios SV": rng(m.aa["Servicios sin volátiles"]),
                                  "Administrados e indexados": rng(m.aa["Servicios_A&I_sv"]),
                                  "Resto (exc. A&I)": rng(m.aa["Servicios_ Resto_sv"])}, nota=nota_bc, linea_canasta=cc))
     c = m.cba
+    guardar("CBA nivel", {"CBA ($ por persona)": rng(c)})
     figs.append(g.lineas_barras(nueva(), t("Canasta Básica de Alimentos"), "(costo en $)",
                                 {"CBA": rng(c)}, nota="Fuente: elaboración propia con datos del INE y MDSF.", dec=0))
+    guardar("CBA variación", {"Var. % a/a": rng((c / c.shift(12) - 1) * 100),
+                              "Var. % m/m": rng((c / c.shift(1) - 1) * 100)})
     figs.append(g.lineas_barras(nueva(), t("Canasta Básica de Alimentos"), "(var. % a/a y m/m)",
                                 {"Var. % a/a": rng((c / c.shift(12) - 1) * 100)}, rng((c / c.shift(1) - 1) * 100),
                                 nota="Fuente: elaboración propia con datos del INE y MDSF."))
@@ -367,8 +383,67 @@ def generar_figuras(m: Mes):
         h = hist[hist.agregado == a].pivot(index="mes", columns="estadistico", values="valor")
         dif = ipc.difusion(m.d, a).loc[:p]
         por_anio = lambda y: dif[dif.index.year == y].set_axis(dif[dif.index.year == y].index.month)  # noqa: E731
+        guardar(f"Dif {nombre.removeprefix('IPC ')}", {
+            "Mín 2019-22": h["min"], "Máx 2019-22": h["max"], "Prom. 2019-22": h["prom"],
+            str(p.year - 1): por_anio(p.year - 1), str(p.year): por_anio(p.year)})
         figs.append(g.difusion(nueva(), t(nombre), h, por_anio(p.year - 1), por_anio(p.year), p.year))
     return figs
+
+
+# ------------------------------------------------------------------ Excel con los datos
+def _sin_html(x):
+    return re.sub(r"<[^>]+>", "", str(x)).replace("&nbsp;", " ") if isinstance(x, str) else x
+
+
+def guardar_base(m: Mes, ruta=BASE_XLSX):
+    """IPC_Base.xlsx: una hoja por gráfico (G1, G2, ...) y por cuadro, más una hoja Índice."""
+    from openpyxl.styles import Alignment, Font, PatternFill
+
+    hojas = {}
+    for nombre, (tit, filas, nota) in {"Cuadro 1": cuadro_agregados(m), "Cuadro 2": cuadro_productos(m)}.items():
+        enc = [_sin_html(c).replace("\n", " ") for c in filas[0]]
+        enc[0] = enc[0] or "Agregado"
+        hojas[nombre] = (pd.DataFrame([[_sin_html(c) for c in f] for f in filas[1:]], columns=enc), tit, False)
+    for nombre, df in m.datos.items():
+        df = df.copy()
+        if isinstance(df.index, pd.PeriodIndex):
+            df.index = df.index.to_timestamp()
+            df.index.name = "Fecha"
+        elif nombre.split(" ", 1)[1].startswith("Dif"):
+            df.index = [MESES_LARGOS[i - 1][:3] for i in df.index]
+            df.index.name = "Mes"
+        else:
+            df.index.name = "Agregado"
+        hojas[nombre[:31]] = (df.reset_index(), nombre, True)
+
+    indice = pd.DataFrame({"Hoja": list(hojas), "Contenido": [t for _, t, _ in hojas.values()]})
+    ruta.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with pd.ExcelWriter(ruta, engine="openpyxl") as xl:
+            indice.to_excel(xl, sheet_name="Índice", index=False)
+            xl.sheets["Índice"].column_dimensions["A"].width = 30
+            xl.sheets["Índice"].column_dimensions["B"].width = 90
+            for hoja, (df, _, es_grafico) in hojas.items():
+                df.to_excel(xl, sheet_name=hoja, index=False)
+                ws = xl.sheets[hoja]
+                for celda in ws[1]:
+                    celda.font = Font(bold=True)
+                    celda.fill = PatternFill("solid", start_color="CCEAFF")
+                    celda.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+                ws.freeze_panes = "B2"
+                ws.column_dimensions["A"].width = 14 if es_grafico else 32
+                for col in ws.iter_cols(min_col=2, max_col=ws.max_column):
+                    ws.column_dimensions[col[0].column_letter].width = 14
+                if es_grafico:
+                    for fila in ws.iter_rows(min_row=2):
+                        if hasattr(fila[0].value, "year"):
+                            fila[0].number_format = "mmm-yyyy"
+                        for celda in fila[1:]:
+                            celda.number_format = "0.00"
+    except PermissionError:
+        print(f"Aviso: no pude guardar {ruta} porque está abierto. Ciérralo y vuelve a correr.")
+        return None
+    return ruta
 
 
 # ------------------------------------------------------------------ PDF
@@ -510,6 +585,8 @@ def main():
     ruta = SALIDA / f"Minuta IPC {mes_largo(p)} {p.year}.pdf"
     armar_pdf(m, figs, ruta, figs_sub)
     print(f"Listo: {ruta}")
+    if guardar_base(m):
+        print(f"Datos de los gráficos: {BASE_XLSX}")
 
 
 if __name__ == "__main__":
