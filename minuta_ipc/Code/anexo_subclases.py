@@ -166,10 +166,89 @@ def _eje_fechas(ax, periodos, cada=1):
     ax.set_xlim(-1, len(periodos))
 
 
-def generar(carpeta: Path, datos: Path, insumos: Path, ipc_total: pd.Series, p: pd.Period) -> list:
-    """Genera las 172 figuras en carpeta/ y devuelve sus rutas, en el orden de la estructura del IPC."""
+def datos_excel(sub: dict, ipc_total: pd.Series, p: pd.Period) -> dict:
+    """Datos de los cuatro gráficos del anexo para todas las subclases (una columna por subclase)."""
+    meta = sub["meta"]
+    N = sub["niveles"].loc[:p]
+    mm = (N / N.shift(1, freq="M") - 1).loc[:p] * 100
+    aa = (N / N.shift(12, freq="M") - 1).loc[:p] * 100
+    nombres = {c: f"{c:03d} {_titulo(meta.loc[c, 'glosa'])}" for c in meta.index}
+    fechas = lambda df: df.set_axis(df.index.to_timestamp()).rename_axis("Fecha")  # noqa: E731
+
+    resumen = pd.DataFrame({
+        "Código": meta.index,
+        "Subclase": [_titulo(x) for x in meta["glosa"]],
+        "Peso": meta["pond"].values,
+        "Var. % m/m": [mm[c].get(p) for c in meta.index],
+        "Incidencia m/m (pp.)": [meta.loc[c, "pond"] * (N[c][p] - N[c][p - 1]) / ipc_total[p - 1]
+                                 if p - 1 in N.index else float("nan") for c in meta.index],
+        "Var. % a/a": [aa[c].get(p) for c in meta.index],
+        "Clasificación analítica": meta["ruta"].values,
+    })
+
+    # perfil por mes calendario: promedio y d.e. 2013-2019 (solo con >= 4 años de datos) y últimos años
+    ini, fin = PERIODO_PERFIL
+    base = mm[(mm.index.year >= ini) & (mm.index.year <= fin)]
+    anios_ok = base.notna().groupby(base.index.year).any().sum() >= 4
+    por_mes = base.loc[:, anios_ok].groupby(base.index.month)
+    meses = [x[:1].upper() + x[1:] for x in g.MESES]
+    perfil = lambda df: df.reindex(range(1, 13)).set_axis(meses).rename_axis("Mes").rename(columns=nombres)  # noqa: E731
+    hojas = {
+        "Resumen": resumen,
+        f"Perfil prom {ini}-{str(fin)[2:]}": perfil(por_mes.mean().reindex(columns=meta.index)),
+        f"Perfil de {ini}-{str(fin)[2:]}": perfil(por_mes.std().reindex(columns=meta.index)),
+    }
+    for anio in range(p.year - ANIOS_PERFIL, p.year + 1):
+        s = mm[(mm.index.year == anio) & (mm.index <= p)]
+        hojas[f"Perfil {anio}"] = perfil(s.set_axis(s.index.month))
+    desde = pd.Period(f"{p.year - ANIOS_RECIENTES}-{p.month:02d}", "M")
+    hojas[f"Var m-m ult {ANIOS_RECIENTES} años"] = fechas(mm.loc[desde:p].rename(columns=nombres))
+    hojas[f"Var a-a ult {ANIOS_RECIENTES} años"] = fechas(aa.loc[desde:p].rename(columns=nombres))
+    hojas["Índice 2023=100"] = fechas(N.loc[pd.Period(INICIO_NIVELES, "M"):p].rename(columns=nombres))
+    return hojas
+
+
+def guardar_excel(hojas: dict, ruta: Path):
+    """Escribe el Excel del anexo; 'Resumen' sin índice, el resto con Fecha/Mes en la columna A."""
+    from openpyxl.styles import Alignment, Font, PatternFill
+
+    ruta.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with pd.ExcelWriter(ruta, engine="openpyxl") as xl:
+            for hoja, df in hojas.items():
+                df.to_excel(xl, sheet_name=hoja[:31], index=hoja != "Resumen")
+                ws = xl.sheets[hoja[:31]]
+                for celda in ws[1]:
+                    celda.font = Font(bold=True)
+                    celda.fill = PatternFill("solid", start_color="CCEAFF")
+                    celda.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+                ws.row_dimensions[1].height = 45
+                ws.freeze_panes = "C2" if hoja == "Resumen" else "B2"
+                for col in ws.iter_cols(max_col=ws.max_column):
+                    ws.column_dimensions[col[0].column_letter].width = 14
+                if hoja == "Resumen":
+                    ws.column_dimensions["B"].width = 45
+                    ws.column_dimensions["G"].width = 70
+                for fila in ws.iter_rows(min_row=2):
+                    for celda in fila:
+                        if hasattr(celda.value, "year"):
+                            celda.number_format = "mmm-yyyy"
+                        elif isinstance(celda.value, float):
+                            celda.number_format = "0.000" if "Incidencia" in str(ws.cell(1, celda.column).value) else "0.00"
+    except PermissionError:
+        print(f"Aviso: no pude guardar {ruta} porque está abierto. Ciérralo y vuelve a correr.")
+        return None
+    return ruta
+
+
+def generar(carpeta: Path, datos: Path, insumos: Path, ipc_total: pd.Series, p: pd.Period,
+            ruta_excel: Path = None) -> list:
+    """Genera las 172 figuras en carpeta/ y devuelve sus rutas, en el orden de la estructura del IPC.
+    Si se da ruta_excel, guarda ahí los datos de los gráficos del anexo."""
     carpeta.mkdir(parents=True, exist_ok=True)
     for f in carpeta.glob("sub*.png"):
         f.unlink()
     sub = cargar_subclases(datos, insumos)
+    if ruta_excel and guardar_excel(datos_excel(sub, ipc_total, p), ruta_excel):
+        print(f"Datos del anexo: {ruta_excel}")
     return [figura_subclase(carpeta / f"sub{c:03d}.png", c, sub, ipc_total, p) for c in sub["meta"].index]

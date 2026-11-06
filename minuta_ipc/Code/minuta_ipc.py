@@ -11,7 +11,8 @@ Carpetas (relativas a este archivo, funcionan en cualquier computador):
     Code/          minuta_ipc.py, ipc.py, graficos_ipc.py, anexo_subclases.py
     Inputs/        insumos fijos (matriz_productos.csv, historico_bcch_indices.csv, ...)
     Inputs/INE/    Excel descargados del INE (se reemplazan en cada corrida)
-    Outputs/       "Minuta IPC <mes> <año>.pdf" e IPC_Base.xlsx (datos de cada gráfico y cuadro)
+    Outputs/       "Minuta IPC <mes> <año>.pdf", IPC_Base.xlsx (datos de cada gráfico y cuadro) e
+                   IPC_Base_Subclases.xlsx (datos de los gráficos del anexo de subclases)
     Outputs/figuras/  gráficos PNG de la minuta y del anexo (se regeneran)
 
 Antes de cada minuta, completar EXPECTATIVAS (y COMENTARIO si corresponde).
@@ -43,6 +44,7 @@ DATOS = INPUTS / "INE"           # Excel descargados del INE
 FIGURAS = OUTPUTS / "figuras"    # PNG intermedios
 SALIDA = OUTPUTS                 # PDF de la minuta
 BASE_XLSX = OUTPUTS / "IPC_Base.xlsx"  # datos de los gráficos y cuadros (se reescribe en cada corrida)
+SUBCLASES_XLSX = OUTPUTS / "IPC_Base_Subclases.xlsx"  # datos de los gráficos del anexo de subclases
 sys.path.insert(0, str(CODE))    # para importar los módulos hermanos aunque se corra desde otra carpeta
 
 import anexo_subclases  # noqa: E402
@@ -580,7 +582,8 @@ def main():
     figs_sub = []
     if not args.sin_anexo:
         print("Generando anexo de subclases...")
-        figs_sub = anexo_subclases.generar(FIGURAS / "subclases", DATOS, INSUMOS, d["general_ine"]["indice"], p)
+        figs_sub = anexo_subclases.generar(FIGURAS / "subclases", DATOS, INSUMOS, d["general_ine"]["indice"], p,
+                                           ruta_excel=SUBCLASES_XLSX)
     SALIDA.mkdir(parents=True, exist_ok=True)
     ruta = SALIDA / f"Minuta IPC {mes_largo(p)} {p.year}.pdf"
     armar_pdf(m, figs, ruta, figs_sub)
