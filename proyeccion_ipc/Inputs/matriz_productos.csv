@@ -1,0 +1,284 @@
+codigo,glosa,ponderacion,IPC,IPC sin volátiles,Bienes sin volátiles,Alimentos no volátiles,Bienes sv. ex. alim.,Servicios sin volátiles,Servicios_A&I_sv,Servicios_ Resto_sv,IPC volátiles,Energía Volátiles,Electricidad_v,Combustible_v,Alim. Volát.,Alim. Resto_v,FyV (proxy)_v,Resto volátiles,Bienes volát.,Servicios volát.,Servicios_A&I_v,Servicios_Resto_v,categoria,subcategoria,subsubcategoria
+11111,ARROZ,0.22304,1,0,0,0,0,0,0,0,1,0,0,0,1,1,0,0,0,0,0,0,IPC volátiles,Alimentos volátiles,Alim. Resto_v
+11141,CEREALES PARA EL DESAYUNO,0.1617,1,0,0,0,0,0,0,0,1,0,0,0,1,1,0,0,0,0,0,0,IPC volátiles,Alimentos volátiles,Alim. Resto_v
+11121,HARINA DE TRIGO,0.10110999999999998,1,0,0,0,0,0,0,0,1,0,0,0,1,1,0,0,0,0,0,0,IPC volátiles,Alimentos volátiles,Alim. Resto_v
+11122,HARINA DE OTROS CEREALES,0.0369,1,0,0,0,0,0,0,0,1,0,0,0,1,1,0,0,0,0,0,0,IPC volátiles,Alimentos volátiles,Alim. Resto_v
+11131,PAN,2.2158300000000004,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Alimentos no volátiles
+11133,GALLETAS,0.44886,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Alimentos no volátiles
+11132,PRODUCTOS DE REPOSTERÍA,0.62508,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Alimentos no volátiles
+11134,MASAS SALADAS PREPARADAS,0.07196,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Alimentos no volátiles
+11151,PASTAS,0.25987,1,0,0,0,0,0,0,0,1,0,0,0,1,1,0,0,0,0,0,0,IPC volátiles,Alimentos volátiles,Alim. Resto_v
+11161,SNACKS,0.14982,1,0,0,0,0,0,0,0,1,0,0,0,1,1,0,0,0,0,0,0,IPC volátiles,Alimentos volátiles,Alim. Resto_v
+11211,CARNE DE VACUNO,2.13465,1,0,0,0,0,0,0,0,1,0,0,0,1,1,0,0,0,0,0,0,IPC volátiles,Alimentos volátiles,Alim. Resto_v
+11213,CARNE DE CERDO,0.50492,1,0,0,0,0,0,0,0,1,0,0,0,1,1,0,0,0,0,0,0,IPC volátiles,Alimentos volátiles,Alim. Resto_v
+11214,CARNE DE PAVO,0.06113,1,0,0,0,0,0,0,0,1,0,0,0,1,1,0,0,0,0,0,0,IPC volátiles,Alimentos volátiles,Alim. Resto_v
+11212,CARNE DE POLLO,1.0303,1,0,0,0,0,0,0,0,1,0,0,0,1,1,0,0,0,0,0,0,IPC volátiles,Alimentos volátiles,Alim. Resto_v
+11221,CECINAS,1.07909,1,0,0,0,0,0,0,0,1,0,0,0,1,1,0,0,0,0,0,0,IPC volátiles,Alimentos volátiles,Alim. Resto_v
+11222,HAMBURGUESAS,0.10511,1,0,0,0,0,0,0,0,1,0,0,0,1,1,0,0,0,0,0,0,IPC volátiles,Alimentos volátiles,Alim. Resto_v
+11223,CARNES APANADAS,0.03914,1,0,0,0,0,0,0,0,1,0,0,0,1,1,0,0,0,0,0,0,IPC volátiles,Alimentos volátiles,Alim. Resto_v
+11311,PESCADOS FRESCOS O REFRIGERADOS,0.36036999999999997,1,0,0,0,0,0,0,0,1,0,0,0,1,1,0,0,0,0,0,0,IPC volátiles,Alimentos volátiles,Alim. Resto_v
+11321,PESCADOS EN CONSERVA,0.25749,1,0,0,0,0,0,0,0,1,0,0,0,1,1,0,0,0,0,0,0,IPC volátiles,Alimentos volátiles,Alim. Resto_v
+11331,MARISCOS FRESCOS O REFRIGERADOS,0.10311,1,0,0,0,0,0,0,0,1,0,0,0,1,1,0,0,0,0,0,0,IPC volátiles,Alimentos volátiles,Alim. Resto_v
+11341,MARISCOS EN CONSERVA,0.02904,1,0,0,0,0,0,0,0,1,0,0,0,1,1,0,0,0,0,0,0,IPC volátiles,Alimentos volátiles,Alim. Resto_v
+11411,LECHE LÍQUIDA,0.36921,1,0,0,0,0,0,0,0,1,0,0,0,1,1,0,0,0,0,0,0,IPC volátiles,Alimentos volátiles,Alim. Resto_v
+11421,LECHE EN POLVO,0.13892,1,0,0,0,0,0,0,0,1,0,0,0,1,1,0,0,0,0,0,0,IPC volátiles,Alimentos volátiles,Alim. Resto_v
+11422,CREMAS Y LECHES CONSERVADAS,0.1023,1,0,0,0,0,0,0,0,1,0,0,0,1,1,0,0,0,0,0,0,IPC volátiles,Alimentos volátiles,Alim. Resto_v
+11431,BEBIDAS VEGETALES,0.02403,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Alimentos no volátiles
+11441,QUESOS,0.9912500000000001,1,0,0,0,0,0,0,0,1,0,0,0,1,1,0,0,0,0,0,0,IPC volátiles,Alimentos volátiles,Alim. Resto_v
+11451,YOGURES Y PRODUCTOS SIMILARES,0.33643,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Alimentos no volátiles
+11461,POSTRES LÁCTEOS,0.22855,1,0,0,0,0,0,0,0,1,0,0,0,1,1,0,0,0,0,0,0,IPC volátiles,Alimentos volátiles,Alim. Resto_v
+11471,HUEVOS,0.47199,1,0,0,0,0,0,0,0,1,0,0,0,1,1,0,0,0,0,0,0,IPC volátiles,Alimentos volátiles,Alim. Resto_v
+11511,ACEITE VEGETAL Y DE MARAVILLA,0.31637,1,0,0,0,0,0,0,0,1,0,0,0,1,1,0,0,0,0,0,0,IPC volátiles,Alimentos volátiles,Alim. Resto_v
+11512,ACEITE DE OLIVA,0.06744,1,0,0,0,0,0,0,0,1,0,0,0,1,1,0,0,0,0,0,0,IPC volátiles,Alimentos volátiles,Alim. Resto_v
+11521,MANTEQUILLA,0.20964,1,0,0,0,0,0,0,0,1,0,0,0,1,1,0,0,0,0,0,0,IPC volátiles,Alimentos volátiles,Alim. Resto_v
+11531,MARGARINA,0.07009,1,0,0,0,0,0,0,0,1,0,0,0,1,1,0,0,0,0,0,0,IPC volátiles,Alimentos volátiles,Alim. Resto_v
+11613,PLÁTANOS,0.20535,1,0,0,0,0,0,0,0,1,0,0,0,1,0,1,0,0,0,0,0,IPC volátiles,Alimentos volátiles,FyV (proxy)_v
+11612,FRUTAS DE ESTACIÓN,0.39019,1,0,0,0,0,0,0,0,1,0,0,0,1,0,1,0,0,0,0,0,IPC volátiles,Alimentos volátiles,FyV (proxy)_v
+11611,PALTAS,0.44206,1,0,0,0,0,0,0,0,1,0,0,0,1,0,1,0,0,0,0,0,IPC volátiles,Alimentos volátiles,FyV (proxy)_v
+11615,NARANJAS,0.12263,1,0,0,0,0,0,0,0,1,0,0,0,1,0,1,0,0,0,0,0,IPC volátiles,Alimentos volátiles,FyV (proxy)_v
+11614,LIMONES,0.15015,1,0,0,0,0,0,0,0,1,0,0,0,1,0,1,0,0,0,0,0,IPC volátiles,Alimentos volátiles,FyV (proxy)_v
+11616,MANZANAS,0.11352,1,0,0,0,0,0,0,0,1,0,0,0,1,0,1,0,0,0,0,0,IPC volátiles,Alimentos volátiles,FyV (proxy)_v
+11617,PERAS,0.02868,1,0,0,0,0,0,0,0,1,0,0,0,1,0,1,0,0,0,0,0,IPC volátiles,Alimentos volátiles,FyV (proxy)_v
+11621,FRUTOS SECOS,0.14506,1,0,0,0,0,0,0,0,1,0,0,0,1,1,0,0,0,0,0,0,IPC volátiles,Alimentos volátiles,Alim. Resto_v
+11631,FRUTAS PRESERVADAS,0.02926,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Alimentos no volátiles
+11713,LECHUGAS,0.18525,1,0,0,0,0,0,0,0,1,0,0,0,1,0,1,0,0,0,0,0,IPC volátiles,Alimentos volátiles,FyV (proxy)_v
+11711,VERDURAS DE ESTACIÓN,0.41119,1,0,0,0,0,0,0,0,1,0,0,0,1,0,1,0,0,0,0,0,IPC volátiles,Alimentos volátiles,FyV (proxy)_v
+11715,ZAPALLOS,0.09399,1,0,0,0,0,0,0,0,1,0,0,0,1,0,1,0,0,0,0,0,IPC volátiles,Alimentos volátiles,FyV (proxy)_v
+11717,PIMIENTOS MORRONES,0.07618,1,0,0,0,0,0,0,0,1,0,0,0,1,0,1,0,0,0,0,0,IPC volátiles,Alimentos volátiles,FyV (proxy)_v
+11718,ZAPALLOS ITALIANOS,0.03757,1,0,0,0,0,0,0,0,1,0,0,0,1,0,1,0,0,0,0,0,IPC volátiles,Alimentos volátiles,FyV (proxy)_v
+11712,TOMATES,0.33514,1,0,0,0,0,0,0,0,1,0,0,0,1,0,1,0,0,0,0,0,IPC volátiles,Alimentos volátiles,FyV (proxy)_v
+11716,ZANAHORIAS,0.08344,1,0,0,0,0,0,0,0,1,0,0,0,1,0,1,0,0,0,0,0,IPC volátiles,Alimentos volátiles,FyV (proxy)_v
+11714,CEBOLLAS Y CEBOLLINES,0.14496,1,0,0,0,0,0,0,0,1,0,0,0,1,0,1,0,0,0,0,0,IPC volátiles,Alimentos volátiles,FyV (proxy)_v
+11721,PAPAS,0.38981,1,0,0,0,0,0,0,0,1,0,0,0,1,0,1,0,0,0,0,0,IPC volátiles,Alimentos volátiles,FyV (proxy)_v
+11731,LEGUMBRES SECAS,0.12616,1,0,0,0,0,0,0,0,1,0,0,0,1,1,0,0,0,0,0,0,IPC volátiles,Alimentos volátiles,Alim. Resto_v
+11741,VERDURAS CONGELADAS,0.12297,1,0,0,0,0,0,0,0,1,0,0,0,1,0,1,0,0,0,0,0,IPC volátiles,Alimentos volátiles,FyV (proxy)_v
+11754,HORTALIZAS EN CONSERVA,0.05416,1,0,0,0,0,0,0,0,1,0,0,0,1,0,1,0,0,0,0,0,IPC volátiles,Alimentos volátiles,FyV (proxy)_v
+11753,PAPAS CONGELADAS Y DESHIDRATADAS,0.07302,1,0,0,0,0,0,0,0,1,0,0,0,1,0,1,0,0,0,0,0,IPC volátiles,Alimentos volátiles,FyV (proxy)_v
+11751,PAPAS FRITAS,0.15577,1,0,0,0,0,0,0,0,1,0,0,0,1,0,1,0,0,0,0,0,IPC volátiles,Alimentos volátiles,FyV (proxy)_v
+11755,SUSTITUTOS VEGETALES DE CARNE,0.03214,1,0,0,0,0,0,0,0,1,0,0,0,1,1,0,0,0,0,0,0,IPC volátiles,Alimentos volátiles,Alim. Resto_v
+11752,VERDURAS ENCURTIDAS,0.07432,1,0,0,0,0,0,0,0,1,0,0,0,1,0,1,0,0,0,0,0,IPC volátiles,Alimentos volátiles,FyV (proxy)_v
+11811,AZÚCAR,0.12692,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Alimentos no volátiles
+11821,ENDULZANTES,0.05791,1,0,0,0,0,0,0,0,1,0,0,0,1,1,0,0,0,0,0,0,IPC volátiles,Alimentos volátiles,Alim. Resto_v
+11831,MERMELADAS,0.09165000000000001,1,0,0,0,0,0,0,0,1,0,0,0,1,1,0,0,0,0,0,0,IPC volátiles,Alimentos volátiles,Alim. Resto_v
+11832,POSTRES NO LÁCTEOS,0.0611,1,0,0,0,0,0,0,0,1,0,0,0,1,1,0,0,0,0,0,0,IPC volátiles,Alimentos volátiles,Alim. Resto_v
+11841,CHOCOLATES,0.35149000000000014,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Alimentos no volátiles
+11851,HELADOS,0.25666,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Alimentos no volátiles
+11861,CARAMELOS Y GOMAS DE MASCAR,0.14437,1,0,0,0,0,0,0,0,1,0,0,0,1,1,0,0,0,0,0,0,IPC volátiles,Alimentos volátiles,Alim. Resto_v
+11911,PLATOS PREPARADOS ADQUIRIDOS EN TIENDAS Y SUPERMERCADOS,0.66987,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Alimentos no volátiles
+11921,ALIMENTOS PARA BEBÉ,0.07593,1,0,0,0,0,0,0,0,1,0,0,0,1,1,0,0,0,0,0,0,IPC volátiles,Alimentos volátiles,Alim. Resto_v
+11933,SAL,0.02449,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Alimentos no volátiles
+11932,SALSAS DE TOMATE,0.1046,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Alimentos no volátiles
+11931,ADEREZOS,0.24924,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Alimentos no volátiles
+11941,ALIÑOS,0.10145,1,0,0,0,0,0,0,0,1,0,0,0,1,1,0,0,0,0,0,0,IPC volátiles,Alimentos volátiles,Alim. Resto_v
+11952,SOPAS Y CREMAS,0.07266,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Alimentos no volátiles
+11953,MANJAR Y DULCES UNTABLES,0.04763,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Alimentos no volátiles
+11951,SUPLEMENTOS ALIMENTICIOS Y NUTRICIONALES,0.12902,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Alimentos no volátiles
+12111,JUGOS LÍQUIDOS,0.31511,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Alimentos no volátiles
+12112,JUGOS EN POLVO,0.06448,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Alimentos no volátiles
+12211,CAFÉ Y SUCEDÁNEOS,0.21962,1,0,0,0,0,0,0,0,1,0,0,0,1,1,0,0,0,0,0,0,IPC volátiles,Alimentos volátiles,Alim. Resto_v
+12311,TÉ,0.18816,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Alimentos no volátiles
+12411,AGUA EMBOTELLADA,0.29368,1,0,0,0,0,0,0,0,1,0,0,0,1,1,0,0,0,0,0,0,IPC volátiles,Alimentos volátiles,Alim. Resto_v
+12511,BEBIDAS GASEOSAS,0.96972,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Alimentos no volátiles
+12612,OTRAS BEBIDAS NO ALCOHÓLICAS,0.19001,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Alimentos no volátiles
+21112,PISCOS,0.15771,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+21411,CÓCTELES Y LICORES,0.09777,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+21111,OTROS DESTILADOS,0.28439,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+21211,VINOS,0.87882,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+21311,CERVEZAS,1.1685899999999996,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+22111,CIGARRILLOS,1.09397,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+31113,ROPA DE ABRIGO PARA HOMBRE,0.1666,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+31111,PANTALONES PARA HOMBRE,0.23361999999999955,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+31112,CAMISAS Y POLERAS PARA HOMBRE,0.20592,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+31114,ROPA INTERIOR Y DE DORMIR PARA HOMBRE,0.04681,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+31122,ROPA DE ABRIGO PARA MUJER,0.16703,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+31121,"PANTALONES, FALDAS Y VESTIDOS PARA MUJER",0.25793999999999995,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+31123,BLUSAS Y POLERAS PARA MUJER,0.12927,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+31124,"ROPA INTERIOR, DE BAÑO Y DE DORMIR PARA MUJER",0.08259,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+31133,ROPA DE ABRIGO INFANTIL,0.06459,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+31132,POLERAS INFANTILES,0.06844,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+31131,"PANTALONES, FALDAS Y VESTIDOS INFANTILES",0.09686,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+31134,"ROPA INTERIOR, DE BAÑO Y DE DORMIR INFANTIL",0.03401,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+31141,VESTUARIO PARA LACTANTES,0.02419,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+31151,VESTUARIO ESCOLAR,0.17934,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+31211,ACCESORIOS DE VESTIR,0.10312,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+31311,SERVICIOS DE LIMPIEZA Y REPARACIÓN DE VESTUARIO,0.02911,1,1,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Servicios sin volátiles,Servicios_ Resto_sv
+32112,ZAPATOS PARA HOMBRE,0.11038,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+32111,ZAPATILLAS PARA HOMBRE,0.2764300000000001,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+32123,ZAPATOS PARA MUJER,0.08496,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+32121,ZAPATILLAS PARA MUJER,0.19985000000000006,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+32122,CALZADO DE ESTACIÓN PARA MUJER,0.09881,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+32132,CALZADO DE ESTACIÓN INFANTIL,0.05037,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+32131,ZAPATILLAS INFANTILES,0.19016,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+41111,ARRIENDO,7.20402,1,1,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Servicios sin volátiles,Servicios_A&I_sv
+42112,PINTURAS Y BARNICES,0.15045,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+42113,GRIFERIA Y ACCESORIOS,0.09858,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+42111,MATERIALES PARA LA REPARACIÓN DE LA VIVIENDA,0.4433800000000001,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+42114,SELLANTES Y PEGAMENTOS,0.09208,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+42211,SERVICIOS PARA EL MANTENIMIENTO DE LA VIVIENDA,1.03569,1,1,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Servicios sin volátiles,Servicios_ Resto_sv
+42212,SERVICIOS DE ALARMA PARA LA VIVIENDA,0.06918,1,1,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Servicios sin volátiles,Servicios_ Resto_sv
+43111,SUMINISTRO DE AGUA,1.4934,1,1,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Servicios sin volátiles,Servicios_A&I_sv
+43211,SERVICIO DE RETIRO DE BASURA,0.11045,1,1,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Servicios sin volátiles,Servicios_A&I_sv
+43311,GASTOS COMUNES,1.35627,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,1,0,1,IPC volátiles,Resto volátiles,Servicios_Resto_v
+44111,SUMINISTRO DE ELECTRICIDAD,2.209589999999999,1,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,IPC volátiles,Energía volátiles,Electricidad_v
+44211,GAS POR RED,0.61726,1,0,0,0,0,0,0,0,1,1,0,1,0,0,0,0,0,0,0,0,IPC volátiles,Energía volátiles,Combustible_v
+44221,GAS LICUADO,1.37603,1,0,0,0,0,0,0,0,1,1,0,1,0,0,0,0,0,0,0,0,IPC volátiles,Energía volátiles,Combustible_v
+44311,PARAFINA,0.19404,1,0,0,0,0,0,0,0,1,1,0,1,0,0,0,0,0,0,0,0,IPC volátiles,Energía volátiles,Combustible_v
+44411,OTROS COMBUSTIBLES DE USO DOMÉSTICO,0.3129,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+51111,CAMAS,0.29902000000000006,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+51115,COLCHONES,0.07208,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+51114,MUEBLES PARA COMEDOR,0.11506,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+51113,MUEBLES PARA COCINA,0.13524,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+51112,MUEBLES PARA LIVING,0.29349,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+51116,MUEBLES PARA ESCRITORIO,0.03738,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+51121,MUEBLES PARA JARDÍN Y EXTERIORES,0.02552,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+51131,ARTÍCULOS ORNAMENTALES,0.09439,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+51211,REPARACIÓN DE MUEBLES,0.02133,1,1,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Servicios sin volátiles,Servicios_ Resto_sv
+52111,TEXTILES PARA LIVING Y COMEDOR,0.05311,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+52121,TEXTILES PARA CAMA,0.14606000000000002,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+52131,TEXTILES PARA BAÑO Y COCINA,0.08085,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+53111,REFRIGERADORES,0.30881,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+53112,COCINAS,0.09,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+53113,HORNOS ELÉCTRICOS Y MICROONDAS,0.08124,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+53121,LAVADORAS,0.22099,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+53131,ARTÍCULOS PARA CALEFACCIÓN DEL HOGAR,0.08928,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+53132,CALEFÓN,0.04098,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+53141,ASPIRADORAS,0.03154,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+53151,OTROS ARTEFACTOS GRANDES PARA EL HOGAR,0.03655,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+53211,ELECTRODOMÉSTICOS PEQUEÑOS DE COCINA,0.29236,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+53311,REPARACIÓN DE ARTEFACTOS PARA EL HOGAR,0.05849,1,1,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Servicios sin volátiles,Servicios_ Resto_sv
+54111,VAJILLA,0.09582,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+54121,UTENSILIOS DE COCINA,0.18595,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+55111,HERRAMIENTAS ELÉCTRICAS Y ACCESORIOS,0.0755,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+55211,HERRAMIENTAS MANUALES Y ACCESORIOS,0.03201,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+55221,PEQUEÑOS ACCESORIOS ELÉCTRICOS,0.07559000000000003,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+56112,DESINFECTANTES,0.14487,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+56123,AROMATIZADORES,0.09572,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+56111,DETERGENTES Y SUAVIZANTES PARA ROPA,0.40363,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+56115,LAVALOZAS,0.07099,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+56114,LIMPIADORES MULTIUSO,0.10071,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+56113,ARTÍCULOS DE LIMPIEZA,0.10267,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+56122,BOLSAS PLÁSTICAS,0.12097,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+56125,INSECTICIDAS,0.04275,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+56121,SERVILLETAS Y TOALLAS DE PAPEL,0.22898,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+56124,CLAVOS Y TORNILLOS,0.04802,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+56211,SERVICIO DOMÉSTICO,1.7378800000000003,1,1,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Servicios sin volátiles,Servicios_A&I_sv
+61118,"MEDICAMENTOS ANTIINFECCIOSOS, ANTIVIRALES Y ANTIFUNGICOS",0.08144,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+61115,MEDICAMENTOS PARA EL APARATO CARDIOVASCULAR,0.21695,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+61113,MEDICAMENTOS PARA EL SISTEMA GENITO-URINARIO Y HORMONAS,0.30867,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+61116,"MEDICAMENTOS ANTIINFLAMATORIOS NO CORTICOIDES, ANTIMIGRAÑOSOS Y SISTEMA OSTEO-MUSCULAR",0.18186,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+61114,MEDICAMENTOS PARA EL SISTEMA RESPIRATORIO,0.25577,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+61117,"MEDICAMENTOS DERMATOLÓGICOS, DESINFECTANTES Y ANTISÉPTICOS",0.13556,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+61112,MEDICAMENTOS PARA EL SISTEMA NERVIOSO CENTRAL,0.48344,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+61111,MEDICAMENTOS PARA EL APARATO DIGESTIVO Y METABÓLICO,0.58323,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+611110,"MEDICAMENTOS PARA EL TRATAMIENTO DEL CÁNCER, MODIFICADORES DEL SISTEMA INMUNE Y FÁRMACOS UTILIZADOS EN LOS CUIDADOS PALIATIVOS DEL DOLOR",0.06927,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+61119,PREPARADOS OFTALMOLÓGICOS,0.07753,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+61121,PRODUCTOS HOMEOPÁTICOS,0.05683,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+61212,PRODUCTOS DE DIAGNÓSTICO MÉDICO,0.07601,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+61213,PRESERVATIVOS,0.01179,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+61211,PRODUCTOS PARA LA CURACIÓN DE HERIDAS,0.08445,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+61311,LENTES ÓPTICOS,0.42954,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+61321,PRODUCTOS DE ASISTENCIA PARA LA AUDICIÓN Y LA COMUNICACIÓN,0.04504,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+61331,ARTÍCULOS ORTOPÉDICOS,0.07665,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+62111,SERVICIOS DENTALES,1.55736,1,1,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Servicios sin volátiles,Servicios_A&I_sv
+62211,CONSULTAS MÉDICAS,1.1094699999999984,1,1,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Servicios sin volátiles,Servicios_A&I_sv
+62212,PROCEDIMIENTOS E INTERVENCIONES AMBULATORIAS,0.86407,1,1,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Servicios sin volátiles,Servicios_A&I_sv
+63111,SERVICIOS DE HOSPITALIZACIÓN,0.8414,1,1,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Servicios sin volátiles,Servicios_A&I_sv
+64111,EXÁMENES DE IMAGENOLOGÍA Y RADIOLOGÍA,0.3631700000000001,1,1,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Servicios sin volátiles,Servicios_A&I_sv
+64121,EXÁMENES DE LABORATORIO CLÍNICO,0.30256,1,1,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Servicios sin volátiles,Servicios_A&I_sv
+71111,AUTOMÓVILES NUEVOS,3.6356100000000002,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+71121,AUTOMÓVILES USADOS,0.22352,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+71211,MOTOCICLETAS,0.08329,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+71311,BICICLETAS,0.03448,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+72111,NEUMÁTICOS,0.10851,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+72122,REPUESTOS ELÉCTRICOS PARA EL AUTOMÓVIL,0.06565,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+72121,REPUESTOS MECÁNICOS PARA EL AUTOMÓVIL,0.20463,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+72131,ACCESORIOS PARA VEHÍCULOS PERSONALES,0.07671,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+72211,PETRÓLEO DIÉSEL,0.49502,1,0,0,0,0,0,0,0,1,1,0,1,0,0,0,0,0,0,0,0,IPC volátiles,Energía volátiles,Combustible_v
+72221,GASOLINA,3.3900200000000007,1,0,0,0,0,0,0,0,1,1,0,1,0,0,0,0,0,0,0,0,IPC volátiles,Energía volátiles,Combustible_v
+72311,MANTENCIÓN Y REPARACIÓN DE VEHÍCULOS PERSONALES,1.0386199999999999,1,1,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Servicios sin volátiles,Servicios_ Resto_sv
+72312,SERVICIOS DE LAVADO DEL AUTOMÓVIL,0.03837,1,1,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Servicios sin volátiles,Servicios_ Resto_sv
+72411,SERVICIOS DE ESTACIONAMIENTO,0.2118,1,1,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Servicios sin volátiles,Servicios_ Resto_sv
+72421,SERVICIOS DE PEAJE,0.74954,1,1,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Servicios sin volátiles,Servicios_A&I_sv
+72432,LICENCIAS DE CONDUCIR,0.01902,1,1,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Servicios sin volátiles,Servicios_A&I_sv
+72431,REVISIÓN TÉCNICA DEL AUTOMÓVIL,0.05231,1,1,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Servicios sin volátiles,Servicios_A&I_sv
+73111,TRANSPORTE EN MICROBUS,0.2876699999999998,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,1,1,0,IPC volátiles,Resto volátiles,Servicios_A&I_v
+73112,TRANSPORTE EN BUS INTERURBANO,0.27451,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,1,0,1,IPC volátiles,Resto volátiles,Servicios_Resto_v
+73113,TRANSPORTE EN TAXI COLECTIVO,0.25529,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,1,1,0,IPC volátiles,Resto volátiles,Servicios_A&I_v
+73121,TRANSPORTE PRIVADO DE PASAJEROS,0.43574,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,1,1,0,IPC volátiles,Resto volátiles,Servicios_A&I_v
+73131,TRANSPORTE ESCOLAR,0.18334,1,1,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Servicios sin volátiles,Servicios_A&I_sv
+73211,TRANSPORTE AÉREO NACIONAL,0.19934,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,1,0,1,IPC volátiles,Resto volátiles,Servicios_Resto_v
+73221,TRANSPORTE AÉREO INTERNACIONAL,0.64647,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,1,0,1,IPC volátiles,Resto volátiles,Servicios_Resto_v
+73311,TRANSPORTE COMBINADO DE PASAJEROS,0.7145,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,1,1,0,IPC volátiles,Resto volátiles,Servicios_A&I_v
+74111,ENVÍO DE BIENES Y PAQUETERÍA,0.02712,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,1,0,1,IPC volátiles,Resto volátiles,Servicios_Resto_v
+81111,EQUIPOS DE TELEFONÍA MÓVIL,1.012,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+81211,COMPUTADORES,0.62115,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+81312,AUDÍFONOS Y PARLANTES,0.04878,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+81311,TELEVISORES,0.36974,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+81411,DISPOSITIVOS Y ACCESORIOS TECNOLÓGICOS,0.07836,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+82111,SERVICIOS DE TELEFONÍA MÓVIL,1.89638,1,1,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Servicios sin volátiles,Servicios_A&I_sv
+82211,CONEXIÓN A INTERNET,0.53294,1,1,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Servicios sin volátiles,Servicios_A&I_sv
+82311,PACK DE TELECOMUNICACIONES,1.35714,1,1,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Servicios sin volátiles,Servicios_A&I_sv
+82411,SUSCRIPCIÓN A CONTENIDOS AUDIOVISUALES,0.72985,1,1,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Servicios sin volátiles,Servicios_ Resto_sv
+91111,EQUIPOS DE JUEGOS PARA RECREACIÓN,0.06251,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+92111,CONSOLAS DE VIDEOJUEGOS,0.0493,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+92112,VIDEOJUEGOS,0.04831,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+92121,JUGUETES,0.28281000000000006,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+92131,ARTÍCULOS PARA CELEBRACIONES,0.08705,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+92211,EQUIPOS E IMPLEMENTOS DEPORTIVOS,0.1858,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+92221,ARTÍCULOS DE CAMPING Y RECREACIÓN,0.04422,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+93111,PLANTAS Y PRODUCTOS DE JARDINERÍA,0.08194000000000001,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+93112,ARREGLOS FLORALES,0.07936,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+93211,ALIMENTOS PARA MASCOTAS,1.0214799999999995,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+93212,ACCESORIOS PARA MASCOTAS,0.16058,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+93213,MEDICAMENTOS Y PRODUCTOS VETERINARIOS,0.11209,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+94111,SERVICIOS PARA MASCOTAS,0.50543,1,1,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Servicios sin volátiles,Servicios_ Resto_sv
+94211,SERVICIOS PRESTADOS POR CENTROS RECREATIVOS,0.17783,1,1,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Servicios sin volátiles,Servicios_ Resto_sv
+94221,SERVICIOS ASOCIADOS A LA PRÁCTICA DEPORTIVA,0.2521,1,1,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Servicios sin volátiles,Servicios_ Resto_sv
+94231,ENTRADAS A ESPECTÁCULOS DEPORTIVOS,0.07653,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,1,0,1,IPC volátiles,Resto volátiles,Servicios_Resto_v
+94311,JUEGOS DE AZAR,0.03591,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,1,0,1,IPC volátiles,Resto volátiles,Servicios_Resto_v
+95111,INSTRUMENTOS MUSICALES,0.12146,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+96111,ENTRADAS A ESPECTÁCULOS CULTURALES,0.33898,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,1,0,1,IPC volátiles,Resto volátiles,Servicios_Resto_v
+97111,TEXTOS EDUCATIVOS,0.12168,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+97121,LIBROS,0.24429,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+97211,DIARIOS,0.03039,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+97311,ARTÍCULOS DE ESCRITORIO Y ARTES MANUALES,0.32072,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+98112,PAQUETES TURÍSTICOS NACIONALES,0.05637,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+98111,PAQUETES TURÍSTICOS INTERNACIONALES,0.2564,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+101113,EDUCACIÓN PARVULARIA,0.47102,1,1,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Servicios sin volátiles,Servicios_A&I_sv
+101112,EDUCACIÓN DE 1er CICLO DE ENSEÑANZA BÁSICA,0.4744,1,1,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Servicios sin volátiles,Servicios_A&I_sv
+101111,EDUCACIÓN DE 2do CICLO DE ENSEÑANZA BÁSICA,0.50429,1,1,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Servicios sin volátiles,Servicios_A&I_sv
+102111,ENSEÑANZA MEDIA,0.58802,1,1,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Servicios sin volátiles,Servicios_A&I_sv
+103114,ENSEÑANZA EN CENTROS DE FORMACIÓN TÉCNICA,0.03582,1,1,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Servicios sin volátiles,Servicios_A&I_sv
+103113,ENSEÑANZA EN INSTITUTO PROFESIONAL,0.24884,1,1,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Servicios sin volátiles,Servicios_A&I_sv
+103111,ENSEÑANZA UNIVERSITARIA,1.32753,1,1,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Servicios sin volátiles,Servicios_A&I_sv
+103112,ENSEÑANZA DE POST GRADO Y POSTÍTULO,0.30416,1,1,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Servicios sin volátiles,Servicios_A&I_sv
+104111,PRE UNIVERSITARIOS,0.09222,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,1,1,0,IPC volátiles,Resto volátiles,Servicios_A&I_v
+104121,CURSOS DE CAPACITACIÓN,0.15201,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,1,0,1,IPC volátiles,Resto volátiles,Servicios_Resto_v
+111111,"ALIMENTOS ADQUIRIDOS EN RESTAURANTES, CAFÉS Y SIMILARES",5.05372,1,1,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Servicios sin volátiles,Servicios_ Resto_sv
+111112,"BEBIDAS NO ALCOHÓLICAS ADQUIRIDAS EN RESTAURANTES, CAFÉS Y SIMILARES",0.31495,1,1,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Servicios sin volátiles,Servicios_ Resto_sv
+111113,"BEBIDAS ALCOHÓLICAS ADQUIRIDAS EN RESTAURANTES, CAFÉS Y SIMILARES",0.20406,1,1,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Servicios sin volátiles,Servicios_ Resto_sv
+112111,SERVICIOS DE ALOJAMIENTO,0.64774,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,1,0,1,IPC volátiles,Resto volátiles,Servicios_Resto_v
+121111,SEGUROS,0.8525600000000001,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,1,1,0,IPC volátiles,Resto volátiles,Servicios_A&I_v
+122111,GASTOS FINANCIEROS,0.25231,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,1,1,0,IPC volátiles,Resto volátiles,Servicios_A&I_v
+131111,APARATOS NO ELÉCTRICOS PARA EL CUIDADO PERSONAL,0.13122,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+131125,ARTÍCULOS DE HIGIENE BUCAL,0.15189,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+131122,ARTÍCULOS PARA EL CUIDADO E HIGIENE CAPILAR,0.28629,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+131126,JABONES,0.13415,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+131123,"CREMAS, LOCIONES Y BLOQUEADORES",0.28454,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+131127,DESODORANTES Y ANTITRANSPIRANTES,0.1336,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+131121,PAPEL HIGIÉNICO,0.4294099999999998,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+131124,PAÑALES DESECHABLES PARA BEBÉ,0.22784,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+131128,ARTÍCULOS PARA LA CONTENCIÓN MENSTRUAL,0.07621,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+131132,PRODUCTOS DE MAQUILLAJE,0.15534,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+131133,TINTURAS Y FIJADORES,0.11327,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+131131,COLONIAS Y PERFUMES,0.16433,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+131211,SERVICIOS DE PELUQUERÍA,0.20112,1,1,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Servicios sin volátiles,Servicios_ Resto_sv
+131221,SERVICIOS EN CENTROS DE ESTÉTICA,0.14336,1,1,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Servicios sin volátiles,Servicios_ Resto_sv
+132111,JOYAS,0.14621,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+132112,RELOJES DE PULSERA,0.0507,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Bienes sin volátiles,Bienes sv. ex. alim.
+132211,"MOCHILAS, CARTERAS Y MALETAS",0.2032,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+132212,ARTÍCULOS PARA BEBÉS,0.02229,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,IPC volátiles,Resto volátiles,Bienes volát.
+133111,RESIDENCIAS PARA ADULTOS MAYORES,0.15651,1,1,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Servicios sin volátiles,Servicios_ Resto_sv
+134112,EMISIÓN DE CERTIFICADOS,0.07767,1,1,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Servicios sin volátiles,Servicios_ Resto_sv
+134113,CUOTAS EN CENTROS DE PADRES Y APODERADOS ,0.03867,1,1,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Servicios sin volátiles,Servicios_ Resto_sv
+134111,SERVICIOS FUNERARIOS,0.40123,1,1,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,IPC sin volátiles,Servicios sin volátiles,Servicios_ Resto_sv

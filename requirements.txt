@@ -11,3 +11,4 @@ pywin32; sys_platform == "win32"
 keyring
 statsmodels
 xlwings; sys_platform == "win32" or sys_platform == "darwin"
+scipy

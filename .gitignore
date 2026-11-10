@@ -229,3 +229,7 @@ chartpack_expectativas/Inputs/*/raw/*
 # Minuta IPC: descargas del INE y PNG intermedios (se regeneran con minuta_ipc/Code/minuta_ipc.py)
 minuta_ipc/Inputs/INE/
 minuta_ipc/Outputs/figuras/
+
+# Proyección IPC: descargas del INE y de la BDE (se regeneran con proyeccion_ipc/Code/proyeccion_ipc.py)
+proyeccion_ipc/Inputs/INE/
+proyeccion_ipc/Inputs/BDE/
