@@ -1,0 +1,25 @@
+variable,codigo_bde,descripcion,frecuencia,desde,hasta
+ipc,G073.IPC.IND.2023.M,"IPC general, empalme BCCh",mensual,1998-12-01,2026-10-01
+ipc_sv,G073.IPCSV.IND.2023.M,IPC sin volátiles,mensual,1998-12-01,2026-10-01
+ipc_vol,G073.IPCV.IND.2023.M,IPC volátiles,mensual,1998-12-01,2026-10-01
+imacec_sa,F032.IMC.IND.Z.Z.EP18.Z.Z.1.M,Imacec desestacionalizado (2018=100),mensual,1998-12-01,2026-09-01
+desempleo_sa,F049.DES.TAS.INE.10.M,Tasa de desocupación desestacionalizada (%),mensual,2010-03-01,2026-09-01
+rem_nom,G049.RMM.IND.INE23.NE.M,Índice nominal de remuneraciones (2023=100),mensual,2009-12-01,2026-09-01
+tcn,F073.TCO.PRE.HIST.M,"Dólar observado, promedio mensual",mensual,1998-12-01,2026-10-01
+tcr,F073.TCR.IND.199101.M,Tipo de cambio real (1986=100),mensual,1998-12-01,2026-09-01
+brent,F019.PPB.PRE.41AB.M,Petróleo Brent (US$/bbl),mensual,1998-12-01,2026-09-01
+wti,F019.PPB.PRE.41B.M,Petróleo WTI (US$/bbl),mensual,1998-12-01,2026-09-01
+cobre,F019.PPB.PRE.40.M,Cobre BML (US$/lb),mensual,1998-12-01,2026-10-01
+fao,F019.PPBA.INP.46T.M,Índice FAO de alimentos (2014-16=100),mensual,1998-12-01,2026-09-01
+eee_mm_mes,F089.IPC.VAR.11.M,EEE: inflación del mes (% m/m),mensual,2000-02-01,2026-11-01
+eee_mm_sig,F089.IPC.VAR.24.M,EEE: inflación del mes siguiente (% m/m),mensual,2010-02-01,2026-11-01
+eee_11m,F089.IPC.V12.14.M,EEE: inflación en 11 meses (% a/a),mensual,2001-01-01,2026-11-01
+eee_23m,F089.IPC.V12.15.M,EEE: inflación en 23 meses (% a/a),mensual,2001-01-01,2026-11-01
+eee_dic26,F089.IPC.V12.2026.M,EEE: inflación diciembre 2026 (% a/a),mensual,2024-11-01,2026-10-01
+eee_dic27,F089.IPC.V12.2027.M,EEE: inflación diciembre 2027 (% a/a),mensual,2025-11-01,2026-11-01
+eee_sv_dic26,F089.IPCSV.V12.2026.M,EEE: IPC SV diciembre 2026 (% a/a),mensual,2024-11-01,2026-10-01
+eee_sv_dic27,F089.IPCSV.V12.2027.M,EEE: IPC SV diciembre 2027 (% a/a),mensual,2025-11-01,2026-11-01
+tcn_d,F073.TCO.PRE.Z.D,Dólar observado diario,diario,2025-01-02,2026-11-10
+wti_d,F019.PPB.PRE.41B.D,Petróleo WTI diario,diario,2025-01-02,2026-11-03
+bei_swap_1a,F022.SWSP.TAS.AN01.Z.Z.D,Compensación inflacionaria swaps 1 año (%),diario,2025-01-02,2026-11-09
+bei_swap_2a,F022.SWSP.TAS.AN02.Z.Z.D,Compensación inflacionaria swaps 2 años (%),diario,2025-01-02,2026-11-09
