@@ -10,9 +10,10 @@ Carpetas (relativas a este script; sirven para cualquier usuario):
     <IMCE>\Inputs\    imce.csv (lo deja datos_imce.py)
     <IMCE>\Outputs\   Base_IMCE.xlsx (bases) y AAAAMMDD_Minuta_IMCE.pptx / .pdf / _datos.xlsx
 
-Uso (no hay que editar nada):
-    python datos_imce.py      # descarga y actualiza Inputs\imce.csv y Outputs\Base_IMCE.xlsx
-    python minuta_imce.py     # arma la minuta en Outputs
+Uso (no hay que editar nada): basta con correr este script, que primero ejecuta datos_imce.py
+    python minuta_imce.py                 # descarga, actualiza Base_IMCE.xlsx y arma la minuta
+    python minuta_imce.py --sin-descarga  # lo mismo con el Inputs\imce.csv que ya existe
+(datos_imce.py se puede seguir corriendo solo, para actualizar únicamente los datos y el Excel.)
 """
 import datetime as dt
 import math
@@ -442,6 +443,18 @@ def _apilar(chart):
     barra.find(qn("c:gapWidth")).addnext(barra.makeelement(qn("c:overlap"), {"val": "100"}))
 
 
+def main(argv=None):
+    """Proceso completo: datos (descarga, Inputs/imce.csv y Outputs/Base_IMCE.xlsx) y minuta."""
+    import argparse
+    ap = argparse.ArgumentParser(description="Minuta IMCE: descarga los datos, actualiza Base_IMCE.xlsx y "
+                                             "arma la minuta (PPTX y PDF) en Outputs.")
+    ap.add_argument("--sin-descarga", action="store_true",
+                    help="no descarga: usa el Inputs/imce.csv existente (igual actualiza Base_IMCE.xlsx)")
+    a = ap.parse_args(argv)
+    di.main(["--sin-descarga"] if a.sin_descarga else [])   # 1) datos
+    print("\n" + "=" * 60 + "\n  Minuta IMCE\n" + "=" * 60)       # 2) minuta
+    return Minuta().construir()
+
+
 if __name__ == "__main__":
-    print("=" * 60 + "\n  Minuta IMCE\n" + "=" * 60)
-    Minuta().construir()
+    main()

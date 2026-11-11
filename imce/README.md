@@ -15,8 +15,7 @@ Minuta mensual de 14 láminas (resumen con textos automáticos, resultados, grá
 
 ```bash
 cd imce/Code
-python datos_imce.py      # descarga, actualiza Inputs/imce.csv y Outputs/Base_IMCE.xlsx
-python minuta_imce.py     # genera la minuta en Outputs
+python minuta_imce.py     # todo: descarga, actualiza Base_IMCE.xlsx y genera la minuta en Outputs
 ```
 
 - `Base_IMCE.xlsx` se actualiza en cada corrida. Si no existe, se crea copiando
@@ -33,6 +32,9 @@ python minuta_imce.py     # genera la minuta en Outputs
 - Si el archivo se guardó con Excel y tiene gráficos, se actualiza con Excel mediante `xlwings`; si
   `xlwings` no está, se actualiza con openpyxl (conserva los gráficos, pero puede simplificar parte de
   su formato) y deja un respaldo en `Outputs/respaldo/`.
+- `minuta_imce.py` corre primero `datos_imce.py`. Con `--sin-descarga` usa el `Inputs/imce.csv` existente
+  (en Spyder: `runfile('minuta_imce.py', args='--sin-descarga')`). `datos_imce.py` se puede correr
+  solo para actualizar únicamente los datos y el Excel.
 - `datos_imce.py --sin-descarga` rehace `Base_IMCE.xlsx` con el `Inputs/imce.csv` existente.
 - `formato_graficos.py` se busca como en el chartpack: subiendo desde `Code`, en OneDrive/SharePoint y en la carpeta Santander de iCloud Drive (o `FORMATO_GRAFICOS_DIR`). Usa la versión con portada roja y pie de lámina.
 - Las credenciales del BCCh las maneja `formato_graficos.py` (variable de entorno o Llavero; ver README
