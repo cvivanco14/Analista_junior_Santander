@@ -35,6 +35,11 @@ NOTA_50 = "Sobre (bajo) 50 indica optimismo (pesimismo)."
 MESES = fg.MESES_LARGOS
 SECTORES = {"Comercio": "comercio", "Industria": "industria", "Construcción": "construccion", "Minería": "mineria"}
 
+# índices promedio de comercio, construcción e industria: (nombre, [series], desestacionalizado)
+PROMEDIOS = {"precios": ("Precios", ["com_precios", "con_precios", "ind_precios"], False),
+             "demanda": ("Demanda", ["com_demanda", "con_demanda", "ind_demanda"], True),
+             "costos": ("Costos", ["com_costos", "con_costos", "ind_costos"], False)}
+
 # posiciones de gráficos (cm), como en el chartpack de Expectativas
 Y0, ALTO = Cm(fg.Y_CONTENIDO_CM), Cm(fg.ALTO_CM)
 DOS, ANCHO_DOS = [Cm(1.3), Cm(17.5)], Cm(fg.ANCHO_CM)
@@ -82,6 +87,12 @@ class Minuta:
         self.m = di.cargar()
         self.sa = di.desestacionalizar(self.m)
         self.comp = di.compuestos(self.sa)
+        self.prom = {}   # clave -> (serie promedio, nota de formato_graficos)
+        for k, (nombre, cols, sa) in PROMEDIOS.items():
+            base = (self.sa if sa else self.m)[cols]
+            base.columns = ["comercio", "construcción", "industria"]
+            df, nota = fg.promedio(base, f"Índice promedio de {nombre.lower()}")
+            self.prom[k] = (df.iloc[:, 0], nota)
         self.t = self.m["total"].dropna().index.max()
         self.mes = MESES[self.t.month - 1]
         self.hoy = pd.Timestamp(hoy or dt.date.today())
@@ -300,6 +311,8 @@ class Minuta:
         self.lineas(lam, [("com_precios", "Comercio"), ("con_precios", "Construcción"), ("ind_precios", "Industria")],
                     TRES[2], ANCHO_TRES, "Expectativas de precios", "Precios", **comun)
 
+        self.promedios()
+
         lam = self.lamina("Expectativas de empleo")
         self.lineas(lam, [("com_empleo", "Comercio"), ("con_empleo", "Construcción"), ("ind_empleo", "Industria")],
                     X_UNO, ANCHO_UNO, "Expectativas de empleo por sector", "Empleo", desde="2011-01-01", meses=12,
@@ -318,6 +331,28 @@ class Minuta:
         self.lineas(lam, [("com_ventas", "Comercio: ventas"), ("ind_prod_esp", "Industria: producción")],
                     DOS[1], ANCHO_DOS, "Expectativas de ventas y producción", "Ventas y produccion SA", sa=True,
                     unidad="(Índice, desestacionalizado)", nota=di.NOTA_SA)
+
+    def promedios(self):
+        """Índices promedio (simple) de comercio, construcción e industria: precios, demanda y costos."""
+        lam = self.lamina("Índices promedio: precios, demanda y costos")
+        textos = []
+        for k, (nombre, _, sa) in PROMEDIOS.items():
+            s = self.prom[k][0]
+            textos.append(f"{nombre.lower()}{' (desest.)' if sa else ''} {num(s[self.t])} "
+                          f"({signo(self._dmc(s))} p. m/m; {signo(s[self.t] - s[self.t - pd.DateOffset(months=12)])} p. a/a)")
+        fg._caja_texto(lam, f"En {self.mes}, el promedio de comercio, construcción e industria fue: "
+                       + ", ".join(textos[:-1]) + " y " + textos[-1] + ".", Cm(1.3), Cm(2.6), Cm(31), Cm(1.3),
+                       fg.tipografia("fuente"), 14, color=fg.GRIS_TEXTO)
+        for x, (k, (nombre, _, sa)) in zip(TRES, PROMEDIOS.items()):
+            s, nota = self.prom[k]
+            df = s[s.index >= "2012-01-01"].to_frame()
+            y_min, y_max = _limites(df)
+            self.grafico(lam, df, x, ANCHO_TRES, f"Promedio {nombre.lower()}", y=Cm(5.3), alto=Cm(9.7),
+                         titulo=f"{nombre}: índice promedio", tam=TAM_TRES,
+                         unidad="(Índice, desestacionalizado)" if sa else "(Índice)", posicion_unidad="arriba",
+                         y_min=y_min, y_max=y_max, y_paso=10, linea_ref=50, meses_entre_etiquetas=24,
+                         formato_fecha="yyyy",
+                         nota=(f"{nota} {di.NOTA_SA}" if sa else nota) + " " + NOTA_50)
 
     def compuestos(self):
         nombres = di.NOMBRES_COMPUESTOS

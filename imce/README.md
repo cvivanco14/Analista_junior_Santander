@@ -2,7 +2,8 @@
 
 ## Minuta IMCE (`Code/`, `Inputs/`, `Outputs/`)
 
-Minuta mensual de 13 láminas (resumen con textos automáticos, resultados, gráficos por sector e
+Minuta mensual de 14 láminas (resumen con textos automáticos, resultados, gráficos por sector,
+índices promedio de comercio, construcción e industria para precios, demanda y costos, e
 índices compuestos OCSI/PCSI/CFEI/OFEI), en PPTX con gráficos nativos editables y en PDF, con
 `formato_graficos.py`. Misma estructura que el chartpack de Expectativas:
 
