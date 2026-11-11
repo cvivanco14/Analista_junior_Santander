@@ -5,7 +5,8 @@ Un solo script que hace todo el flujo:
   1. Descargas  : BDE del Banco Central (macro y expectativas) e INE (IPC por producto y subclase).
   2. Base       : 283 productos y 172 subclases (2018 en adelante), 11 bloques sin volátiles / volátiles
                   (desde 1998), agregados analíticos y difusión. Se valida contra lo publicado por el INE.
-  3. Nowcast    : combustibles con los informes semanales de ENAP (tabla incluida en este archivo).
+  3. Nowcast    : combustibles con los informes semanales de ENAP (tabla incluida en este archivo) y alimentos con
+                  fotos diarias de precios de supermercados (índice Jevons por producto, como el INE).
   4. Modelo A   : agregados por bloques (Carlomagno-Fornero-Sansone y Carlomagno-Espasa).
   5. Modelo B   : 172 subclases ancladas a expectativas, con corrección de error de tendencia común.
   6. Evaluación : recursiva fuera de muestra de ambos modelos, su combinación, benchmarks y la EEE.
@@ -18,12 +19,14 @@ Carpetas (relativas a este script, sirven en cualquier computador):
                                  Apuntes_IPC_Chile.html (plantilla del reporte)
     <proyeccion_ipc>\Inputs\INE\ Excel descargados del INE (se reemplazan en cada corrida)
     <proyeccion_ipc>\Inputs\BDE\ series descargadas de la BDE (se reemplazan en cada corrida)
+    <proyeccion_ipc>\Inputs\Supermercados\ fotos diarias de precios de Jumbo, Santa Isabel y Tottus (se acumulan)
     <proyeccion_ipc>\Outputs\    IPC_Chile_Proyecciones.xlsx, Proyeccion_IPC_Chile_modelos.html y tablas\
 
 Uso (no hay que editar nada; en Spyder basta F5):
     python proyeccion_ipc.py                 # descarga BDE e INE, modela y genera las salidas
     python proyeccion_ipc.py --sin-descarga  # usa lo ya descargado en Inputs\INE y Inputs\BDE
     python proyeccion_ipc.py --sin-reporte   # sin el HTML (no requiere pandoc)
+    python proyeccion_ipc.py --solo-scraping # solo la foto diaria de precios de supermercados (correr todos los días)
 
 Credenciales del BCCh (una vez por computador; nunca se escriben en este archivo). API Key Token:
   macOS (consola de Spyder; queda en el Llavero):
@@ -578,19 +581,174 @@ def enap_backtest(base):
 
 
 def nowcast_fijos_productos(base, escenario):
-    """Variaciones m/m impuestas por el nowcast para los meses posteriores al último IPC, por producto."""
+    """Variaciones m/m impuestas por el nowcast para los meses posteriores al último IPC, por producto:
+    combustibles (ENAP), parafina (regla del INE) y alimentos (supermercados, cuando hay dos meses de fotos)."""
     _, v = enap_mensual(escenario)
     fijos = {}
     for per in pd.period_range(base.T + 1, "2026-12", freq="M"):
         fijos[per] = {PROD_ENAP[p]: v.loc[per, p] for p in PROD_ENAP}
         if per.month not in range(4, 9):
             fijos[per][PARAFINA] = 0.0
+    sup = supermercados_indices()["mm"]
+    for per in sup.columns:
+        if per > base.T:
+            fijos.setdefault(per, {}).update({int(c): float(x) for c, x in sup[per].dropna().items()})
     return fijos
 
 
-def nowcast_bloque_comb(base, fijos, mm_modelo_resto):
-    """m/m del bloque combustibles con pesos efectivos: ENAP + parafina por regla + resto con el modelo."""
-    cods = base.prod_info.index[base.prod_info.bloque == "comb"]
+# ----------------------------------------------------------------------------------------------------
+# Supermercados: foto diaria de precios online (Jumbo, Santa Isabel, Tottus) e índice Jevons por producto IPC
+# ----------------------------------------------------------------------------------------------------
+D_SUPER = INPUTS / "Supermercados"          # una foto por día: AAAA-MM-DD.csv (se acumulan; no se borran)
+SUPER_TIENDAS = {
+    "jumbo": "https://www.jumbo.cl/busqueda?ft={q}",
+    "santa_isabel": "https://www.santaisabel.cl/busqueda?ft={q}",
+    "tottus": "https://www.tottus.cl/tottus-cl/buscar?Ntt={q}",
+}
+# Lider (cola de espera queue-it) y Unimarc (bloqueo anti-bots) no responden a descargas automáticas.
+# (código producto IPC, búsqueda, palabras que debe contener el nombre, palabras que lo excluyen).
+# En frutas y verduras frescas (SUPER_FRESCOS) el nombre además debe empezar con la palabra clave, para no tomar
+# compotas, jugos o snacks.
+CANASTA_SUPER = [
+    (11131, "pan marraqueta", ["marraqueta"], ["precocida", "gluten", "integral", "wholegrain"]),
+    (11132, "queque", ["queque"], []),
+    (11133, "galletas", ["galleta"], []),
+    (11111, "arroz grado 1", ["arroz"], ["bebida", "galleta", "snack", "leche", "harina"]),
+    (11121, "harina", ["harina"], ["maiz", "arroz", "almendra", "avena"]),
+    (11151, "spaghetti", ["spaghetti"], ["salsa"]),
+    (11211, "posta negra", ["posta negra"], ["charqui"]),
+    (11212, "pechuga de pollo", ["pechuga", "pollo"], ["apanad", "nugget"]),
+    (11213, "chuleta de cerdo", ["chuleta", "cerdo"], []),
+    (11221, "jamon", ["jamon"], ["serrano", "crudo", "pavo"]),
+    (11311, "salmon", ["salmon"], ["ahumado", "conserva", "lata"]),
+    (11321, "atun", ["atun"], []),
+    (11411, "leche entera", ["leche", "entera"], ["polvo", "condensada", "chocolate", "frutilla", "vainilla"]),
+    (11441, "queso gauda", ["queso", "gauda"], []),
+    (11451, "yoghurt", ["yog"], []),
+    (11471, "huevos", ["huevo"], ["pascua", "chocolate", "codorniz"]),
+    (11511, "aceite maravilla", ["aceite"], ["oliva", "spray"]),
+    (11521, "mantequilla", ["mantequilla"], ["mani", "galleta"]),
+    (11611, "palta hass", ["palta"], ["salsa", "guacamole"]),
+    (11613, "platano", ["platano"], ["chips", "deshidratado", "frito"]),
+    (11614, "limon", ["limon"], ["jugo", "bebida", "te ", "sucedaneo", "galleta"]),
+    (11615, "naranja", ["naranja"], ["jugo", "nectar", "bebida", "mermelada"]),
+    (11616, "manzana", ["manzana"], ["jugo", "compota", "nectar", "chips", "deshidratada", "vinagre"]),
+    (11712, "tomate", ["tomate"], ["salsa", "pasta", "conserva", "pure", "ketchup", "deshidratado", "jugo"]),
+    (11713, "lechuga", ["lechuga"], []),
+    (11714, "cebolla", ["cebolla"], ["frita", "sopa", "polvo", "deshidratada", "encurtida", "aros"]),
+    (11716, "zanahoria", ["zanahoria"], ["jugo"]),
+    (11721, "papa", ["papa"], ["frita", "chips", "pure", "prefrita", "congelad", "papaya"]),
+    (11811, "azucar", ["azucar"], ["sin azucar", "galleta"]),
+    (11841, "chocolate", ["chocolate"], ["leche chocolate", "galleta", "helado", "cereal", "bebida"]),
+    (12111, "nectar", ["nectar"], []),
+    (12211, "cafe instantaneo", ["cafe"], ["capsula", "grano"]),
+    (12411, "agua mineral", ["agua"], ["tonica", "colonia", "saborizada", "agua mas", "frutos", "sabor"]),
+    (12511, "bebida coca cola", ["coca"], []),
+]
+SUPER_FRESCOS = {11611: "palta", 11613: "platano", 11614: "limon", 11615: "naranja", 11616: "manzana", 11712: "tomate",
+                 11713: "lechuga", 11714: "cebolla", 11716: "zanahoria", 11721: "papa"}
+_UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
+                     "Chrome/124 Safari/537.36", "Accept-Language": "es-CL"}
+
+
+def _normalizar(t):
+    import unicodedata
+    t = unicodedata.normalize("NFKD", str(t).lower())
+    return "".join(c for c in t if not unicodedata.combining(c))
+
+
+def _productos_ldjson(html):
+    """Jumbo y Santa Isabel: lista schema.org (ItemList) embebida en la página de búsqueda."""
+    import re
+    out = []
+    for m in re.finditer(r'<script type="application/ld\+json">(.*?)</script>', html, re.S):
+        try:
+            d = json.loads(m.group(1))
+        except ValueError:
+            continue
+        if d.get("@type") == "ItemList":
+            for it in d.get("itemListElement", []):
+                p = it.get("item", {})
+                precio = (p.get("offers") or {}).get("price")
+                if p.get("name") and precio:
+                    out.append({"sku": p.get("url"), "nombre": p["name"], "precio": float(precio)})
+    return out
+
+
+def _productos_tottus(html):
+    """Tottus: __NEXT_DATA__; se usa el precio internet (oferta para todo público), no el de tarjeta CMR."""
+    import re
+    m = re.search(r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>', html, re.S)
+    if not m:
+        return []
+    out = []
+    for r in json.loads(m.group(1)).get("props", {}).get("pageProps", {}).get("results", []):
+        pr = {x.get("type"): x.get("price", [None])[0] for x in r.get("prices", [])}
+        precio = pr.get("internetPrice") or pr.get("normalPrice")
+        if precio:
+            out.append({"sku": r.get("productId"), "nombre": r.get("displayName"),
+                        "precio": float(str(precio).replace(".", "").replace(",", "."))})
+    return out
+
+
+def scraping_supermercados():
+    """Foto de precios del día en Inputs\\Supermercados\\AAAA-MM-DD.csv (una búsqueda por producto y tienda)."""
+    D_SUPER.mkdir(parents=True, exist_ok=True)
+    hoy = pd.Timestamp.today().strftime("%Y-%m-%d")
+    filas, errores = [], 0
+    for tienda, url in SUPER_TIENDAS.items():
+        for cod, termino, req, excl in CANASTA_SUPER:
+            try:
+                q = urllib.parse.quote(termino)
+                with urllib.request.urlopen(urllib.request.Request(url.format(q=q), headers=_UA), timeout=60) as r:
+                    html = r.read().decode("utf-8", "ignore")
+            except Exception as e:  # noqa: BLE001
+                errores += 1
+                if errores <= 5:
+                    log(f"  ❌ {tienda} / {termino}: {e}")
+                continue
+            items = _productos_tottus(html) if tienda == "tottus" else _productos_ldjson(html)
+            for it in items:
+                n = _normalizar(it["nombre"])
+                if cod in SUPER_FRESCOS and not n.startswith(SUPER_FRESCOS[cod]):
+                    continue
+                if all(w in n for w in req) and not any(w in n for w in excl):
+                    filas.append({"fecha": hoy, "tienda": tienda, "codigo_ipc": cod, **it})
+            time.sleep(0.3)
+    df = pd.DataFrame(filas).drop_duplicates(["tienda", "codigo_ipc", "sku"])
+    if not df.empty:
+        df.to_csv(D_SUPER / f"{hoy}.csv", index=False)
+    log(f"  ✅ Supermercados: {len(df)} precios de {df.codigo_ipc.nunique() if len(df) else 0} productos IPC "
+        f"({errores} búsquedas con error) en {D_SUPER / (hoy + '.csv')}")
+    return df
+
+
+def supermercados_indices():
+    """Índice Jevons por producto IPC: promedio mensual de cada SKU, relativo entre meses consecutivos con datos
+    del mismo SKU y tienda, y media geométrica por producto (como el INE bajo el nivel de producto)."""
+    archivos = sorted(D_SUPER.glob("*.csv")) if D_SUPER.exists() else []
+    vacio = {"fotos": pd.DataFrame(), "mm": pd.DataFrame(), "n_sku": pd.DataFrame(), "dias": 0}
+    if not archivos:
+        return vacio
+    p = pd.concat([pd.read_csv(a, dtype={"sku": str}) for a in archivos], ignore_index=True)
+    p["periodo"] = pd.PeriodIndex(pd.to_datetime(p.fecha), freq="M")
+    prom = p.groupby(["tienda", "codigo_ipc", "sku", "periodo"]).precio.mean().unstack("periodo")
+    meses = list(prom.columns)
+    mm, n = {}, {}
+    for a, b in zip(meses[:-1], meses[1:]):
+        if (b - a).n != 1:
+            continue
+        rel = (prom[b] / prom[a]).dropna()
+        rel = rel[(rel > 0.5) & (rel < 2)]                       # descarta cambios de formato o errores
+        g = np.log(rel).groupby(level="codigo_ipc")
+        mm[b] = (np.exp(g.mean()) - 1) * 100
+        n[b] = g.size()
+    return {"fotos": p, "mm": pd.DataFrame(mm), "n_sku": pd.DataFrame(n), "dias": p.fecha.nunique()}
+
+
+def nowcast_bloque_comb(base, fijos, mm_modelo_resto, bloque="comb"):
+    """m/m de un bloque con pesos efectivos: productos con nowcast (ENAP, supermercados, reglas) + resto con el modelo."""
+    cods = base.prod_info.index[base.prod_info.bloque == bloque]
     wef = base.prod_info.peso[cods] * base.prod_idx.loc[base.T, cods]
     wef = wef / wef.sum()
     out = {}
@@ -831,8 +989,10 @@ class ModeloBloques:
             fijos = {}
             for per, f in fijos_productos.items():
                 t = self.per.get_loc(per)
-                fijos[t] = {"comb": (lambda p, f=f: 100 * np.log1p(
-                    nowcast_bloque_comb(self.base, {per: f}, 100 * np.expm1(p / 100))[0][per] / 100))}
+                bloques = set(self.base.prod_info.bloque.reindex(list(f)).dropna())
+                fijos[t] = {b: (lambda p, f=f, per=per, b=b: 100 * np.log1p(
+                    nowcast_bloque_comb(self.base, {per: f}, 100 * np.expm1(p / 100), b)[0][per] / 100))
+                    for b in bloques}
             tray_nc, _, _ = self.proyectar(self.T0, self.T0 + 1, self.pesos, fijos=fijos)
             self.tray_nc = tray_nc
         return self
@@ -1165,6 +1325,7 @@ def resultados(base, A, B):
     Lb = B.proyectar(B.per.get_loc(base.T - 1), h=1)
     R["oct_modelo_B"] = 100 * np.expm1((B.ipc(Lb)[B.per.get_loc(base.T)] - B.ipc(Lb)[B.per.get_loc(base.T - 1)]) / 100)
     R["oct_efectivo"] = base.agr_idx["IPC"].pct_change().loc[base.T] * 100
+    R["super"] = supermercados_indices()
     eb = A.eval_bloques
     x = eb[(eb.bloque == "comb") & (eb.h == 1) & (eb.modelo == "Combinado")].err_acum
     R["rmse_comb_h1"] = float(np.sqrt(np.mean(x ** 2)))
@@ -1622,6 +1783,22 @@ def construir_excel(R, destino=None):
     ev = R["rmse"][R["rmse"].h.isin([1, 3, 6, 12])].set_index("agregado")
     valores("Evaluacion", ev, ancho=14)
     valores("Test_DM", R["dm"], index=False)
+    sup = R["super"]
+    if not sup["fotos"].empty:
+        f = sup["fotos"]
+        ult = f[f.fecha == f.fecha.max()]
+        res = ult.groupby(["codigo_ipc", "tienda"]).precio.median().unstack("tienda")
+        res.insert(0, "n_sku", ult.groupby("codigo_ipc").sku.nunique())
+        res.insert(0, "glosa", base.prod_info.glosa.reindex(res.index))
+        res.insert(1, "bloque", base.prod_info.bloque.reindex(res.index).map(lambda b: BLOQUES[b][0] if b in BLOQUES else b))
+        for per in sup["mm"].columns:
+            res[f"var_mm_{per}"] = sup["mm"][per]
+        res.index.name = "codigo_ipc"
+        ws_s = valores("Supermercados", res, ancho=14)
+        ws_s.column_dimensions["B"].width = 34
+        nota = (f"Fotos diarias: {sup['dias']} día(s), de {f.fecha.min()} a {f.fecha.max()}. Mediana del precio por tienda "
+                "en la última foto. Las columnas var_mm_* (índice Jevons por producto) aparecen cuando hay dos meses de fotos.")
+        ws_s.cell(len(res) + 3, 1, nota)
     valores("Nowcast_backtest", R["enap_bt"], index=False)
     mac = base.macro.copy()
     mac.index.name = "periodo"
@@ -1639,7 +1816,8 @@ def construir_excel(R, destino=None):
     orden = ["LEEME", "Resumen", "Resumen_Proyecciones", "Perfiles_Analiticos", "Proy_mm", "Nowcast_ENAP", "Agregados",
              "Var_mm", "Var_12m", "Incidencias", "Difusion", "Indices", "Productos", "Var_mm_subclases", "Subclases",
              "Matriz", "Modelo_agregados", "Incidencias_bloques_A", "Evaluacion", "Test_DM", "Nowcast_backtest",
-             "Macro_BDE", "Fuentes"]
+             "Supermercados", "Macro_BDE", "Fuentes"]
+    orden = [n for n in orden if n in wb.sheetnames]
     wb._sheets = [wb[n] for n in orden]
     wb.save(destino)
     _recalcular(destino)
@@ -1813,6 +1991,32 @@ def _graficos(R):
 def construir_reporte(R, destino=None):
     base, A, B, T = R["base"], R["A"], R["B"], R["T"]
     figs = _graficos(R)
+    sup = R["super"]
+    if sup["fotos"].empty:
+        texto_super = "Todavía no hay fotos de precios de supermercados en `Inputs/Supermercados`."
+    else:
+        f = sup["fotos"]
+        n_prod = f.codigo_ipc.nunique()
+        peso_cub = base.prod_info.peso.reindex(f.codigo_ipc.unique()).sum()
+        peso_alim = base.prod_info.peso[base.prod_info.division == "1"].sum()
+        texto_super = (
+            f"Cada día el script baja los precios online de Jumbo, Santa Isabel y Tottus para {len(CANASTA_SUPER)} "
+            f"productos de alimentos del IPC (una búsqueda por producto y tienda, filtrada por nombre) y guarda la foto "
+            f"en `Inputs/Supermercados/AAAA-MM-DD.csv`. Lider (cola de espera) y Unimarc (bloqueo anti-bots) no permiten "
+            f"descargas automáticas. ODEPA no es accesible: su certificado TLS no es de una autoridad reconocida.\n\n"
+            f"Hay **{sup['dias']} foto(s)** ({f.fecha.min()} a {f.fecha.max()}), con {len(f)} precios de {n_prod} "
+            f"productos. Esos productos pesan {_f(peso_cub, 1)}% del IPC, de {_f(peso_alim, 1)}% de la división de alimentos.\n\n"
+            "El método replica al INE:\n\n"
+            "1. Promedio mensual del precio de cada SKU en cada tienda.\n"
+            "2. Relativo entre meses consecutivos del mismo SKU (se descartan cambios mayores a ±50%).\n"
+            "3. Media geométrica (Jevons) por producto IPC.\n"
+            "4. Agregación a los bloques de alimentos con pesos efectivos; los productos sin cobertura usan el modelo.\n\n"
+            + ("La variación del nowcast de alimentos ya entra en la proyección de "
+               + ", ".join(mes_txt(p) for p in sup["mm"].columns if p > T) + "."
+               if any(p > T for p in sup["mm"].columns) else
+               "El nowcast necesita fotos en dos meses seguidos: con la toma diaria desde noviembre, la primera variación "
+               "(diciembre contra noviembre) estará disponible en diciembre. Hasta entonces, los alimentos se proyectan "
+               "con los modelos."))
     destino = destino or OUTPUTS / "Proyeccion_IPC_Chile_modelos.html"
     m = base.macro
     ultimo = lambda c: (m[c].dropna().iloc[-1], m[c].dropna().index[-1])
@@ -2260,8 +2464,7 @@ iguales el 3-dic y el 24-dic (ciclo de tres semanas del MEPCO); el alternativo, 
 
 {t_imp}
 
-**Supermercados.** El scraper (VTEX de Jumbo, Santa Isabel y Unimarc, 35 productos de alimentos) sigue sin poder correr:
-el entorno solo permite los dominios del INE y del BCCh. Al habilitarlos se incorpora igual que ENAP.
+**Nowcast de alimentos (supermercados).** {texto_super}
 
 ![]({figs['difusion']})
 
@@ -2373,11 +2576,17 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0], formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--sin-descarga", action="store_true", help="usa los datos ya descargados")
     ap.add_argument("--sin-reporte", action="store_true", help="no genera el HTML")
+    ap.add_argument("--solo-scraping", action="store_true",
+                    help="solo toma la foto diaria de precios de supermercados (para correr todos los días)")
     args = ap.parse_args()
     OUTPUTS.mkdir(parents=True, exist_ok=True)
+    if args.solo_scraping:
+        scraping_supermercados()
+        return
     if not args.sin_descarga:
         descargar_bde()
         descargar_ine()
+        scraping_supermercados()
     log("Construyendo la base…")
     base = Base()
     log(f"Último IPC: {base.T}; {base.prod_idx.shape[1]} productos, {base.sc_idx.shape[1]} subclases")

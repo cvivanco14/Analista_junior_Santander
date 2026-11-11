@@ -10,6 +10,7 @@ muestra y genera un Excel autocontenido con fórmulas y un reporte HTML (formato
 | `Inputs/` | Insumos fijos: `IPC_2023_Automatizado_v2.xlsx` (historia 2018-2022 de productos y 1998-2017 de bloques), `matriz_productos.csv` (clasificación sin volátiles / volátiles), `difusion_historica.csv` y `Apuntes_IPC_Chile.html` (plantilla del reporte). |
 | `Inputs/INE/` | Excel del INE (`ipc_base2023.xlsx`, `ipc_referencial_2023.xlsx`, `analiticos_base2023.xlsx`); se reemplazan en cada corrida. |
 | `Inputs/BDE/` | Series de la BDE (`bde_mensual.csv`, `bde_diario.csv`, `catalogo_bde.csv`); se reemplazan en cada corrida. |
+| `Inputs/Supermercados/` | Fotos diarias de precios online (Jumbo, Santa Isabel, Tottus) de 34 productos de alimentos del IPC; se acumulan y se versionan en git. |
 | `Outputs/` | `IPC_Chile_Proyecciones.xlsx`, `Proyeccion_IPC_Chile_modelos.html` y `tablas/` (CSV). |
 
 ```bash
@@ -17,6 +18,7 @@ cd proyeccion_ipc/Code
 python proyeccion_ipc.py                 # descarga BDE e INE, modela y genera las salidas (~2 min)
 python proyeccion_ipc.py --sin-descarga  # usa lo ya descargado en Inputs/INE e Inputs/BDE (~30 s)
 python proyeccion_ipc.py --sin-reporte   # sin el HTML (no requiere pandoc)
+python proyeccion_ipc.py --solo-scraping # solo la foto diaria de precios de supermercados
 ```
 
 En Spyder: abrir `proyeccion_ipc.py` y correr con F5. Las rutas se arman desde la ubicación del script
@@ -64,3 +66,13 @@ Libro autocontenido con fórmulas: `Matriz` (283 productos) → `Subclases` (pes
 `Difusion` y `Resumen`. Las celdas amarillas de `Proy_mm` y `Nowcast_ENAP` son supuestos editables; gasolina y diésel
 de nov-dic están enlazados al nowcast. Si hay LibreOffice instalado, el script deja el libro recalculado; Excel lo
 recalcula al abrirlo.
+
+## Nowcast de alimentos (supermercados)
+
+Cada corrida (o `--solo-scraping`) guarda en `Inputs/Supermercados/AAAA-MM-DD.csv` los precios online de Jumbo,
+Santa Isabel y Tottus para 34 productos de alimentos del IPC (~16% del IPC). La lista de búsquedas y filtros está en
+`CANASTA_SUPER`, al inicio de la sección de supermercados del script. Con fotos en dos meses seguidos se calcula,
+como el INE, un índice Jevons por producto (promedio mensual por SKU, relativo entre meses y media geométrica), que
+reemplaza a los modelos en esos productos para el mes en curso. Para que funcione hay que correr el scraping todos
+los días. Lider (cola queue-it) y Unimarc (bloqueo anti-bots) no permiten descargas automáticas, y ODEPA tiene un
+certificado TLS de una autoridad no reconocida.
