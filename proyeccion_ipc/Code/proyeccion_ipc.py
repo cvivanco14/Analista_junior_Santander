@@ -73,6 +73,8 @@ BDE_MENSUAL = [
     ("ipc", "G073.IPC.IND.2023.M", "IPC general, empalme BCCh"),
     ("ipc_sv", "G073.IPCSV.IND.2023.M", "IPC sin volátiles"),
     ("ipc_vol", "G073.IPCV.IND.2023.M", "IPC volátiles"),
+    ("ipc_sae_ine", "F074.IPCSAE.IND.Z.EP23.Z.M", "IPC SAE (INE), empalmado base 2023"),
+    ("ipc_ene_ine", "F074.IPCE.IND.Z.EP23.Z.M", "IPC Energía (INE), empalmado base 2023"),
     ("imacec_sa", "F032.IMC.IND.Z.Z.EP18.Z.Z.1.M", "Imacec desestacionalizado (2018=100)"),
     ("desempleo_sa", "F049.DES.TAS.INE.10.M", "Tasa de desocupación desestacionalizada (%)"),
     ("rem_nom", "G049.RMM.IND.INE23.NE.M", "Índice nominal de remuneraciones (2023=100)"),
@@ -177,7 +179,39 @@ AGREGADOS = {
     "Alimentos": ["Alim_SV", "alim_rest_vol", "fyv"],
     "Energía (INE)": "energia_ine",
     "IPC SAE (INE)": "sae_ine",
+    # bloques hoja y servicios volátiles (clases del cuadro "Resumen Proyecciones" del Excel automatizado)
+    "Alimentos no volátiles": ["Alim_SV"],
+    "Bienes SV excl. alimentos": ["Bs_sv_ex_alim"],
+    "Servicios SV adm. e indexados": ["ss_sv_ai"],
+    "Servicios SV resto": ["ss_sv_ex_ai"],
+    "Electricidad": ["elec"],
+    "Combustibles": ["comb"],
+    "Alimentos volátiles resto": ["alim_rest_vol"],
+    "Frutas y verduras": ["fyv"],
+    "Bienes volátiles": ["bs_vol"],
+    "Servicios volátiles": ["ss_v_ai", "ss_v_ex_ai"],
+    "Servicios volátiles adm. e indexados": ["ss_v_ai"],
+    "Servicios volátiles resto": ["ss_v_ex_ai"],
 }
+# Columna de la hoja Historia del Excel automatizado con la serie empalmada oficial de cada clase (perfiles hasta 2023)
+HISTORIA_COL = {
+    "IPC": "IPC_ref", "IPC sin volátiles": "IPC_SV", "Bienes SV": "BS_SV", "Alimentos no volátiles": "Alim_SV",
+    "Bienes SV excl. alimentos": "Bs_sv_ex_alim", "Servicios SV": "SS_SV", "Servicios SV adm. e indexados": "ss_sv_ai",
+    "Servicios SV resto": "ss_sv_ex_ai", "IPC volátiles": "IPC_Vol", "Energía volátil": "Ene_Vol", "Electricidad": "elec",
+    "Combustibles": "comb", "Alimentos volátiles": "Alim_Vol", "Alimentos volátiles resto": "alim_rest_vol",
+    "Frutas y verduras": "fyv", "Resto volátiles": "Resto_Vol", "Bienes volátiles": "bs_vol", "Servicios volátiles": "ss_vol",
+    "Servicios volátiles adm. e indexados": "ss_v_ai", "Servicios volátiles resto": "ss_v_ex_ai",
+}
+# Clases del resumen y de los perfiles, en el orden jerárquico del Excel automatizado (nombre, nivel de sangría)
+CLASES_RESUMEN = [
+    ("IPC", 0), ("IPC sin volátiles", 1), ("Bienes SV", 2), ("Alimentos no volátiles", 3),
+    ("Bienes SV excl. alimentos", 3), ("Servicios SV", 2), ("Servicios SV adm. e indexados", 3),
+    ("Servicios SV resto", 3), ("IPC volátiles", 1), ("Energía volátil", 2), ("Electricidad", 3), ("Combustibles", 3),
+    ("Alimentos volátiles", 2), ("Alimentos volátiles resto", 3), ("Frutas y verduras", 3), ("Resto volátiles", 2),
+    ("Bienes volátiles", 3), ("Servicios volátiles", 3), ("Servicios volátiles adm. e indexados", 4),
+    ("Servicios volátiles resto", 4), ("Volátiles excl. energía", 1), ("Alimentos", 1), ("Energía (INE)", 1),
+    ("IPC SAE (INE)", 1),
+]
 AGREG_PRINCIPALES = ["IPC", "IPC sin volátiles", "Bienes SV", "Servicios SV", "IPC volátiles", "Alimentos volátiles",
                      "Energía volátil", "Resto volátiles", "Volátiles excl. energía", "Alimentos", "Energía (INE)",
                      "IPC SAE (INE)"]
@@ -378,6 +412,7 @@ class Base:
         idx_ine.columns = idx_ine.columns.astype(int)
         self.T = idx_ine.index.max()                                   # último IPC publicado
         hist_p, hist_b = _leer_excel_automatizado()
+        self.historia = hist_b.loc[:"2023-12"]           # agregados empalmados del Excel automatizado (oficiales)
         # productos: historia 2018-2022 del Excel (empalmada a base 2023) + INE oficial desde 2023
         self.prod_idx = pd.concat([hist_p[idx_ine.columns], idx_ine]).sort_index()
         m = pd.read_csv(INPUTS / "matriz_productos.csv").set_index("codigo")
@@ -406,6 +441,7 @@ class Base:
         self.validar()
         self.macro = self._macro()
         self.difusion = self._difusion()
+        self.agr_largo = self._agregados_largos()
 
     def _miembros(self, d):
         info = self.prod_info
@@ -466,6 +502,25 @@ class Base:
         m["fao_clp"] = m["fao"] * m["tcn"]
         self.diario = d
         return m
+
+    def _agregados_largos(self):
+        """Agregados desde 1998: por bloques (exacto, los bloques salen de los productos desde 2018) y, para los del
+        INE (energía y SAE), la serie empalmada de la BDE antes de 2018."""
+        w = self.prod_info.groupby("bloque").peso.sum()
+        out = {}
+        for a, d in AGREGADOS.items():
+            if isinstance(d, list):
+                out[a] = (self.bloques[d] * w[d]).sum(axis=1) / w[d].sum()
+            else:
+                col = {"energia_ine": "ipc_ene_ine", "sae_ine": "ipc_sae_ine"}[d]
+                corto = self.agr_idx[a]
+                largo = self.macro[col] if col in self.macro else pd.Series(dtype=float)
+                if largo.dropna().empty:
+                    out[a] = corto
+                    continue
+                largo = largo.loc[:"2017-12"] * corto.loc["2018-01"] / largo.loc["2018-01"]
+                out[a] = pd.concat([largo, corto]).sort_index()
+        return pd.DataFrame(out)
 
     def _difusion(self):
         mm = self.sc_idx.pct_change()
@@ -1184,7 +1239,13 @@ def construir_excel(R, destino=None):
         ("6. Var_mm y Var_12m: variaciones de los agregados. Incidencias: aporte de cada componente al IPC.", False),
         ("7. Var_mm_subclases y Difusion: % de subclases con alza en cada mes, contra el rango histórico 2001-2023.", False),
         ("8. Resumen: dic/dic y promedio anual 2026-2027 de este libro (Modelo B editable) y del Modelo A (bloques).", False),
-        ("9. Modelo_agregados, Evaluacion, Macro_BDE, Idx_productos, Fuentes: resultados y datos de respaldo (valores).", False),
+        ("9. Resumen_Proyecciones: var. mensual y en 12 meses 2025-2027 de las clases del BCCh (como en el Excel automatizado),", False),
+        ("   con el Modelo A y la EEE como memo, y dic/dic y promedios anuales.", False),
+        ("10. Perfiles_Analiticos: m/m por mes calendario 2010-2027 de cada clase, con promedio 2010-2019 y 2013-2019,", False),
+        ("    máximo, mínimo y rango; desde 2018 enlazado a Var_mm (la proyección se actualiza sola).", False),
+        ("11. Productos: 283 productos; historia del INE y proyección = índice del último mes × variación de su subclase", False),
+        ("    (hoja Indices). La última fila recalcula el IPC desde los productos como control.", False),
+        ("12. Modelo_agregados, Evaluacion, Macro_BDE, Fuentes: resultados y datos de respaldo (valores).", False),
         ("", False),
         ("Colores: amarillo = supuesto editable; gris = mes proyectado; azul = encabezado.", False),
         ("Para actualizar con un nuevo IPC: correr `python proyeccion_ipc.py` (carpeta Code), que descarga BDE e INE y regenera este libro.", False),
@@ -1389,6 +1450,147 @@ def construir_excel(R, destino=None):
             ws.cell(i, k).number_format = "0.00"
     ws.cell(len(agr) + 3, 1, f"Último IPC efectivo: {mes_txt(base.T)}. Las columnas B-E se recalculan si se editan Proy_mm o Nowcast_ENAP.")
 
+    # ---------------------------------------------------------------------- Productos (índices desde subclases)
+    PC0 = 5                                                  # primera columna de meses en Productos
+    pcol_mes = {p: PC0 + i for i, p in enumerate(meses)}
+    ws = hoja("Productos", ["Código producto", "Glosa", "Subclase", "Peso 2023"], {2: 40})
+    for p in meses:
+        c = ws.cell(1, pcol_mes[p], p.strftime("%Y-%m"))
+        c.font, c.fill = B_, F_PROY if p > base.T else F_HEAD
+    jT_ind, jT_prod = L_(col_mes[base.T]), L_(pcol_mes[base.T])
+    for i, (cod, r_) in enumerate(info.iterrows(), start=2):
+        ws.cell(i, 1, int(cod)); ws.cell(i, 2, r_.glosa); ws.cell(i, 3, str(r_.subclase)); ws.cell(i, 4, float(r_.peso))
+        rs = r_sc[str(r_.subclase)]
+        for p in meses:
+            j = pcol_mes[p]
+            if p <= base.T:
+                v = base.prod_idx.loc[p, cod]
+                ws.cell(i, j, None if pd.isna(v) else round(float(v), 4))
+            else:
+                ws.cell(i, j, f"=${jT_prod}{i}*Indices!{L_(col_mes[p])}${rs}/Indices!${jT_ind}${rs}").fill = F_PROY
+    n_prod = len(info) + 1
+    fila_ctrl = n_prod + 2
+    ws.cell(fila_ctrl, 2, "IPC desde productos (control = Agregados!IPC)").font = B_
+    for p in meses:
+        j = L_(pcol_mes[p])
+        ws.cell(fila_ctrl, pcol_mes[p], f"=SUMPRODUCT($D$2:$D${n_prod},{j}2:{j}{n_prod})/SUM($D$2:$D${n_prod})")
+    ws.freeze_panes = "E2"
+
+    # ---------------------------------------------------------------------- Resumen_Proyecciones
+    ws = wb.create_sheet("Resumen_Proyecciones")
+    ws.column_dimensions["A"].width = 40
+    ws.column_dimensions["B"].width = 9
+    meses_res = [p for p in meses if p >= pd.Period("2025-01", "M")]
+    rc0 = 3
+    rcol = {p: rc0 + i for i, p in enumerate(meses_res)}
+    ws.cell(1, 1, f"Resumen de proyecciones: variación mensual y en 12 meses por clase (%). Efectivo hasta "
+                  f"{mes_txt(base.T)}; desde {mes_txt(base.T + 1)}, proyección del libro (Proy_mm y Nowcast_ENAP).").font = B_
+    fila = 3
+    eee_mes = base.macro["eee_mm_mes"]
+    for titulo, hoja_var, memo in [("Var. mensual", "Var_mm", "mm_A"), ("Var. 12 meses", "Var_12m", "a12_A")]:
+        ws.cell(fila, 1, titulo).font = Font(bold=True, size=12)
+        fila += 1
+        for j, h in [(1, "Clase"), (2, "Peso")]:
+            c = ws.cell(fila, j, h); c.font, c.fill = B_, F_HEAD
+        for p in meses_res:
+            c = ws.cell(fila, rcol[p], p.strftime("%Y-%m")); c.font, c.fill = B_, F_PROY if p > base.T else F_HEAD
+            ws.column_dimensions[L_(rcol[p])].width = 8
+        fila += 1
+        for nombre, nivel in CLASES_RESUMEN:
+            ra = r_ag[nombre]
+            c = ws.cell(fila, 1, nombre)
+            c.alignment = Alignment(indent=nivel)
+            c.font = B_ if nivel <= 1 else Font()
+            ws.cell(fila, 2, f"=Agregados!$B{ra}").number_format = "0.00"
+            for p in meses_res:
+                c = ws.cell(fila, rcol[p], f"={hoja_var}!{L_(col_mes[p])}{ra}")
+                c.number_format = "0.00"
+                if p > base.T:
+                    c.fill = F_PROY
+            fila += 1
+        ws.cell(fila, 1, "Memo: IPC Modelo A (bloques)").font = Font(italic=True)
+        for p in meses_res:
+            v = R[memo]["IPC"].get(p)
+            if v is not None and np.isfinite(v):
+                ws.cell(fila, rcol[p], round(float(v), 3)).number_format = "0.00"
+        fila += 1
+        if hoja_var == "Var_mm":
+            ws.cell(fila, 1, "Memo: EEE, inflación esperada del mes (mediana)").font = Font(italic=True)
+            for p in meses_res:
+                v = eee_mes.get(p)
+                if v is not None and np.isfinite(v):
+                    ws.cell(fila, rcol[p], float(v)).number_format = "0.00"
+            fila += 1
+        fila += 2
+    # dic/dic y promedios anuales
+    ws.cell(fila, 1, "Dic/dic y promedio anual").font = Font(bold=True, size=12)
+    fila += 1
+    cab = ["Clase", "Peso", "Dic-25", "Prom. 2025", "Dic-26", "Prom. 2026", "Dic-27", "Prom. 2027"]
+    for j, h in enumerate(cab, start=1):
+        c = ws.cell(fila, j, h); c.font, c.fill = B_, F_HEAD
+    fila += 1
+    rango = lambda y, r: (f"Agregados!{L_(col_mes[pd.Period(f'{y}-01', 'M')])}{r}:"
+                          f"{L_(col_mes[pd.Period(f'{y}-12', 'M')])}{r}")
+    for nombre, nivel in CLASES_RESUMEN:
+        ra = r_ag[nombre]
+        c = ws.cell(fila, 1, nombre); c.alignment = Alignment(indent=nivel); c.font = B_ if nivel <= 1 else Font()
+        ws.cell(fila, 2, f"=Agregados!$B{ra}")
+        for k, y in enumerate((2025, 2026, 2027)):
+            ws.cell(fila, 3 + 2 * k, f"=Var_12m!{L_(col_mes[pd.Period(f'{y}-12', 'M')])}{ra}")
+            ws.cell(fila, 4 + 2 * k, f"=(AVERAGE({rango(y, ra)})/AVERAGE({rango(y - 1, ra)})-1)*100")
+        for j in range(2, 9):
+            ws.cell(fila, j).number_format = "0.00"
+        fila += 1
+    ws.freeze_panes = "C5"
+
+    # ---------------------------------------------------------------------- Perfiles_Analiticos
+    ws = wb.create_sheet("Perfiles_Analiticos")
+    anios = list(range(2010, H_FIN.year + 1))
+    Y0 = 7                                                   # columna del primer año
+    ws.column_dimensions["A"].width = 10
+    for j in range(2, 7):
+        ws.column_dimensions[L_(j)].width = 11
+    ws.cell(1, 1, "Perfiles analíticos: variación mensual (%) por mes calendario. Hasta dic-2023, series empalmadas "
+                  "oficiales (hoja Historia del Excel automatizado; energía y SAE: INE empalmado; alimentos y volátiles "
+                  "excl. energía: agregación de bloques). Desde ene-2024, enlazada a Var_mm, que incluye la proyección (gris).").font = B_
+    mm_largo = base.agr_largo.pct_change() * 100
+    mm_hist = base.historia.pct_change() * 100
+    fila = 3
+    for nombre, _ in CLASES_RESUMEN:
+        ra = r_ag[nombre]
+        ws.cell(fila, 1, nombre).font = Font(bold=True, size=12)
+        fila += 1
+        cab = ["Mes", "Prom. 2010-2019", "Prom. 2013-2019", "Máx. 2010-2019", "Mín. 2010-2019", "Máx-Mín"] + anios
+        for j, h in enumerate(cab, start=1):
+            c = ws.cell(fila, j, h); c.font = B_
+            c.fill = F_PROY if isinstance(h, int) and h > base.T.year else F_HEAD
+        fila += 1
+        g, p_, j_ = L_(Y0), L_(Y0 + 9), L_(Y0 + 3)
+        for mth in range(1, 13):
+            r = fila
+            ws.cell(r, 1, MESES[mth - 1].capitalize())
+            ws.cell(r, 2, f"=AVERAGE({g}{r}:{p_}{r})"); ws.cell(r, 3, f"=AVERAGE({j_}{r}:{p_}{r})")
+            ws.cell(r, 4, f"=MAX({g}{r}:{p_}{r})"); ws.cell(r, 5, f"=MIN({g}{r}:{p_}{r})"); ws.cell(r, 6, f"=D{r}-E{r}")
+            for k, y in enumerate(anios):
+                per = pd.Period(f"{y}-{mth:02d}", "M")
+                cell = ws.cell(r, Y0 + k)
+                if per > H_FIN:
+                    continue
+                if per < pd.Period("2024-01", "M"):
+                    serie = mm_hist[HISTORIA_COL[nombre]] if nombre in HISTORIA_COL else mm_largo[nombre]
+                    v = serie.get(per)
+                    cell.value = None if v is None or not np.isfinite(v) else round(float(v), 3)
+                else:
+                    cell.value = f"=Var_mm!{L_(col_mes[per])}{ra}"
+                    if per > base.T:
+                        cell.fill = F_PROY
+                cell.number_format = "0.00"
+            for j in range(2, 7):
+                ws.cell(r, j).number_format = "0.00"
+            fila += 1
+        fila += 2
+    ws.freeze_panes = "B3"
+
     # ---------------------------------------------------------------------- hojas de valores
     def valores(nombre, df, index=True, ancho=14):
         df = df.copy()
@@ -1424,11 +1626,6 @@ def construir_excel(R, destino=None):
     mac = base.macro.copy()
     mac.index.name = "periodo"
     valores("Macro_BDE", mac.loc["2015-01":])
-    ip = base.prod_idx.T.copy()
-    ip.columns = [str(c) for c in ip.columns]
-    ip.insert(0, "glosa", base.prod_info.glosa)
-    ip.index.name = "codigo"
-    valores("Idx_productos", ip, ancho=10)
     fuentes = pd.DataFrame({"Fuente": [
         "INE, IPC base anual 2023=100 (productos, subclases, analíticos): www.ine.gob.cl, cuadros estadísticos.",
         "INE, serie referencial 2023 (ene-dic 2023).",
@@ -1439,9 +1636,10 @@ def construir_excel(R, destino=None):
         "Clasificación sin volátiles / volátiles: matriz_productos.csv (BCCh, canasta 2023).",
     ]})
     valores("Fuentes", fuentes, index=False, ancho=120)
-    orden = ["LEEME", "Resumen", "Proy_mm", "Nowcast_ENAP", "Agregados", "Var_mm", "Var_12m", "Incidencias", "Difusion",
-             "Indices", "Var_mm_subclases", "Subclases", "Matriz", "Modelo_agregados", "Incidencias_bloques_A",
-             "Evaluacion", "Test_DM", "Nowcast_backtest", "Macro_BDE", "Idx_productos", "Fuentes"]
+    orden = ["LEEME", "Resumen", "Resumen_Proyecciones", "Perfiles_Analiticos", "Proy_mm", "Nowcast_ENAP", "Agregados",
+             "Var_mm", "Var_12m", "Incidencias", "Difusion", "Indices", "Productos", "Var_mm_subclases", "Subclases",
+             "Matriz", "Modelo_agregados", "Incidencias_bloques_A", "Evaluacion", "Test_DM", "Nowcast_backtest",
+             "Macro_BDE", "Fuentes"]
     wb._sheets = [wb[n] for n in orden]
     wb.save(destino)
     _recalcular(destino)
@@ -1754,6 +1952,8 @@ def construir_reporte(R, destino=None):
     hoja_excel = [
         ("LEEME", "Instrucciones, flujo y convenciones de color.", "Texto"),
         ("Resumen", "Dic/dic y promedio anual 2026-2027 de cada agregado (libro editable) y del Modelo A.", "Fórmulas"),
+        ("Resumen_Proyecciones", "Var. mensual y en 12 meses 2025-2027 de las 20 clases del BCCh (formato del Excel automatizado), memo con Modelo A y EEE, y dic/dic y promedios anuales.", "Fórmulas"),
+        ("Perfiles_Analiticos", "Perfil m/m por mes calendario 2010-2027 de cada clase, con promedios 2010-19 y 2013-19, máx., mín. y rango.", "Valores + fórmulas"),
         ("Proy_mm", "**Supuestos**: variación mensual proyectada por subclase (Modelo B). Gasolina y diésel enlazados al nowcast.", "Entradas (amarillo)"),
         ("Nowcast_ENAP", "Informes de ENAP, escenario de próximos ajustes, ancla CNE, precio diario (SUMIFS) y promedio mensual (AVERAGEIFS).", "Entradas + fórmulas"),
         ("Agregados", "Índices de 12 agregados (IPC, SV, volátiles, alimentos, energía, SAE…) con SUMPRODUCT sobre subclases.", "Fórmulas"),
@@ -1769,7 +1969,7 @@ def construir_reporte(R, destino=None):
         ("Evaluacion / Test_DM", "RMSE fuera de muestra por horizonte y tests de Diebold-Mariano.", "Valores"),
         ("Nowcast_backtest", "Nowcast ENAP vs INE, jul-oct 2026.", "Valores"),
         ("Macro_BDE", "Variables macro y expectativas de la BDE (2015 en adelante).", "Valores"),
-        ("Idx_productos", "283 productos, 2018-01 al último dato.", "Valores"),
+        ("Productos", "283 productos: historia (valores) y proyección = índice del último mes × variación de su subclase (Indices); fila de control con el IPC.", "Valores + fórmulas"),
         ("Fuentes", "Origen de cada dato.", "Texto"),
     ]
     t_excel = _tabla_md(pd.DataFrame(hoja_excel, columns=["Hoja", "Contenido", "Tipo"]))

@@ -48,6 +48,17 @@ rechaza la credencial, el script dice de dónde la tomó y cómo corregirla, sin
 
 ## `Outputs/IPC_Chile_Proyecciones.xlsx`
 
+Hojas agregadas al estilo del Excel automatizado:
+
+- `Resumen_Proyecciones`: var. mensual y en 12 meses 2025-2027 de las 20 clases del BCCh (IPC, sin volátiles,
+  bienes y servicios SV con sus subclases, volátiles con energía, electricidad, combustibles, alimentos, FyV y resto),
+  más alimentos, energía y SAE del INE; memo con el Modelo A y la EEE, y dic/dic y promedios anuales.
+- `Perfiles_Analiticos`: m/m por mes calendario 2010-2027 de cada clase, con promedio 2010-2019 y 2013-2019,
+  máximo, mínimo y rango. Hasta 2023 usa las series empalmadas de la hoja `Historia` del Excel automatizado; desde
+  2024 se enlaza a `Var_mm`, así que la proyección se actualiza sola.
+- `Productos`: los 283 productos con su historia y la proyección = índice del último mes × variación de su
+  subclase (hoja `Indices`); la última fila recalcula el IPC desde los productos como control.
+
 Libro autocontenido con fórmulas: `Matriz` (283 productos) → `Subclases` (pesos con SUMIF) → `Indices`
 (historia + proyección = índice anterior × (1 + `Proy_mm`)) → `Agregados`, `Var_mm`, `Var_12m`, `Incidencias`,
 `Difusion` y `Resumen`. Las celdas amarillas de `Proy_mm` y `Nowcast_ENAP` son supuestos editables; gasolina y diésel
