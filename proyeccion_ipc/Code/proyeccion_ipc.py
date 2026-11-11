@@ -2111,6 +2111,60 @@ Recomendaciones prácticas:
 
 ## 2. Proyecciones de inflación 2026-2027
 
+### 2.0 ¿Qué tipo de modelo son el A y el B?
+
+**Ambos son modelos de corrección de error de ecuación única (ECM) con base autorregresiva y sin componente de media
+móvil.** En la familia ARIMA, la ecuación más completa equivale a un ARIMAX(2,1,0): autorregresivo de orden 2, sobre la
+variación mensual (una diferencia del log del índice) y con variables explicativas externas, más un término de corrección
+de error.
+
+**Modelo A (11 bloques).** Para cada bloque se modela su variación mensual $\\pi_t$ como desvío de un ancla $a_t$: la
+expectativa de inflación a 2 años de la EEE, en términos mensuales, más la deriva histórica del bloque frente al IPC.
+
+$$\\pi_t - a_t = \\underbrace{{\\sum_m s_m D_m}}_{{\\text{{estacionalidad}}}} + \\underbrace{{\\phi_1 y_{{t-1}} + \\phi_2 y_{{t-2}}}}_{{\\text{{AR(2)}}}} + \\underbrace{{\\beta' x_t}}_{{\\text{{rezagos de dólar, petróleo, FAO, salarios…}}}} + \\underbrace{{\\gamma\\,(\\ln I_i - \\ln T_{{-i}})_{{t-1}}}}_{{\\text{{corrección de error}}}} + \\varepsilon_t$$
+
+donde $y_t = \\pi_t - a_t$. Se estiman cuatro versiones, de menos a más completas, y se combinan por su error fuera de
+muestra:
+
+| Versión | Qué incluye | Tipo de modelo |
+|:---|:---|:---|
+| M0 | Ancla más estacionalidad determinística | Sin dinámica (benchmark "meta + estacionalidad") |
+| M1 | M0 más dos rezagos propios | AR(2) estacional, equivalente a un ARIMA(2,1,0) sobre el log del índice |
+| M2 | M1 más rezagos de variables macro | ARDL (un ARX) |
+| M3 | M2 más el término de corrección de error | ECM de ecuación única (Carlomagno-Espasa) |
+
+**El aporte de Carlomagno-Espasa es el término de corrección de error, no la parte AR.**
+
+1. Para cada par de bloques se testea (ADF) si su precio relativo es estacionario, es decir, si comparten tendencia.
+2. Si un bloque la comparte, su ecuación incluye el desvío de su índice frente a esa tendencia común, $T_{{-i}}$, en el
+   mes anterior.
+3. Con $\\hat\\gamma<0$ el término corrige: si el precio relativo se aleja, lo empuja de vuelta. Si la estimación da
+   $\\hat\\gamma \\geq 0$, el término no se usa.
+
+En sus trabajos, cada desagregado se modela con una ecuación univariada en diferencias (tipo ARIMA) más esa restricción.
+Las variables macro de M2/M3 y el anclaje a expectativas son agregados de este ejercicio. La electricidad no se estima: sigue
+una regla de indexación semestral de las tarifas reguladas.
+
+**Modelo B (172 subclases).** Es la versión más simple de la misma ecuación, sin variables macro:
+
+$$\\pi_{{s,t}} - a_{{s,t}} = \\sum_m s_m D_m + \\phi\\,(\\pi_{{s,t-1}} - a_{{s,t-1}}) + \\gamma\\, z_{{s,t-1}} + \\varepsilon_{{s,t}}$$
+
+- **Ancla:** la deriva de cada subclase se reduce a la mitad para no extrapolar movimientos puntuales.
+- **Parte AR:** es un AR(1), con $\\phi$ acotado a ±0,8 para que la proyección no explote.
+- **Corrección de error:** $z_s$ es el desvío de la subclase frente a su bloque. Se incluye solo cuando el ADF acepta que
+  comparten tendencia y $\\hat\\gamma<0$, lo que ocurre en **{ecm_b}** de las 172 subclases.
+
+**¿Por qué no hay parte MA?**
+
+- Todo se estima por mínimos cuadrados ecuación por ecuación, lo que es rápido y estable para cientos de series. Un término
+  MA obligaría a estimar por máxima verosimilitud.
+- Con uno o dos rezagos AR la dinámica de corto plazo queda bien capturada.
+- La mejora de precisión no vino de la dinámica ARMA sino de la corrección de error. En la evaluación fuera de muestra de
+  2021-2026, M3 tuvo un error a 3 meses de {_f(val(rr, 'A: M3 ECM tc', 3, 'rmse_12m'), 2)} pp en la inflación a 12 meses,
+  contra {_f(val(rr, 'A: M1 AR est', 3, 'rmse_12m'), 2)} pp del AR puro (M1). Ver §1.3.
+
+### 2.1-2.4 Resultados
+
 Ambos modelos incorporan el IPC de {mes_txt(T)} y el nowcast de combustibles para nov-dic (escenario base de ENAP, §2.4).
 
 ![]({figs['ipc']})
