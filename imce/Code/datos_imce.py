@@ -9,8 +9,11 @@ r"""Datos de la Minuta IMCE (ICARE/UAI, publicado en la BDE del Banco Central de
        IMCE\Base\IMCE.xlsx);
      - en la hoja IMCE solo escribe las columnas de las series; los meses nuevos copian el formato de
        la fila de arriba y los gráficos (hoja Grafs) se extienden hasta el último mes;
-     - las hojas Léeme, SA, Pesos y Compuestos son del script y se reescriben en cada corrida
-       (Compuestos queda con fórmulas de Excel). Los cálculos y gráficos propios van en otras hojas.
+     - agrega las hojas SA (desestacionalizadas), Pesos, Compuestos y Promedios (con fórmulas de
+       Excel) y Léeme;
+     - el archivo NUNCA se sobrescribe ni se borra una hoja: en cada hoja solo se escriben las
+       columnas del script (ubicadas por su nombre en la fila 3) y se agregan los meses nuevos al
+       final; columnas, fórmulas, hojas y gráficos propios se conservan.
    Si el archivo lo guardó Excel y tiene gráficos, lo actualiza con Excel (xlwings) cuando está
    disponible; si no, con openpyxl dejando un respaldo en Outputs\respaldo.
 
@@ -288,7 +291,12 @@ def descargar() -> pd.DataFrame:
 # ─────────────────────────────────────────────────────────────────────────────
 
 FILA_CODIGO, FILA_TITULOS, FILA_DATOS = 2, 3, 4     # misma estructura que la planilla IMCE.xlsx
-HOJAS_DEL_SCRIPT = ["Léeme", "SA", "Pesos", "Compuestos"]
+HOJAS_DEL_SCRIPT = ["Léeme", "SA", "Pesos", "Compuestos", "Promedios"]   # hojas que agrega el script
+# índices promedio (simple) de comercio, construcción e industria: (nombre de columna, series, hoja de origen)
+PROMEDIOS = [("Precios", ["com_precios", "con_precios", "ind_precios"], "IMCE"),
+             ("Costos", ["com_costos", "con_costos", "ind_costos"], "IMCE"),
+             ("Demanda", ["com_demanda", "con_demanda", "ind_demanda"], "IMCE"),
+             ("Demanda (desest.)", ["com_demanda", "con_demanda", "ind_demanda"], "SA")]
 
 
 def _norm(s):
@@ -355,11 +363,6 @@ class _LibroOpenpyxl:
                     elif isinstance(v, float) or (formulas and isinstance(v, str) and v.startswith("=")):
                         c.number_format = "0.0"
 
-    def limpiar(self, nombre):
-        ws = self._hoja(nombre)
-        if ws.max_row:
-            ws.delete_rows(1, ws.max_row)
-
     def ancho(self, nombre, col, ancho):
         if nombre in HOJAS_DEL_SCRIPT:   # en las hojas de la planilla se respetan los anchos
             self._hoja(nombre).column_dimensions[_letra(col)].width = ancho
@@ -406,9 +409,6 @@ class _LibroExcel:
             rango.formula = [[("" if v is None else v) for v in f] for f in filas]   # fórmulas en inglés
         else:
             rango.value = filas
-
-    def limpiar(self, nombre):
-        self._hoja(nombre).cells.clear_contents()
 
     def ancho(self, nombre, col, ancho):
         pass
@@ -552,58 +552,125 @@ def _actualizar_hoja_imce(libro, m):
                 previo = v[r - 1][j - 1] if r - 1 < len(v) and j - 1 < len(v[r - 1]) else None
                 bloque.append([_valor(nuevo) if not pd.isna(nuevo) else previo])
             libro.escribir("IMCE", FILA_DATOS, j, bloque)
-    return n_filas, len(nuevas), ultima
+    return n_filas, len(nuevas), ultima, filas, destino
 
 
-def _hojas_calculo(libro, m, sa):
+def _tabla(libro, hoja, titulo, fila2, columnas, fechas, valor, formulas=False):
+    """
+    Actualiza una tabla por fecha (título en la fila 1, fila2 en la 2, nombres en la 3, datos desde la 4)
+    SIN sobrescribir la hoja: solo escribe las columnas 'columnas' (las ubica por su nombre en la fila 3;
+    las que falten se agregan al final), agrega al final los meses nuevos y deja intacto todo lo demás
+    (otras columnas, fórmulas, formatos y gráficos). valor(fecha, fila, nombre, letra) devuelve el valor o
+    la fórmula de la celda; None conserva lo que ya tenía. letra(nombre) es la columna de otra serie.
+    Devuelve {fecha: fila}.
+    """
+    if hoja not in libro.hojas():
+        libro.escribir(hoja, 1, 1, [[titulo], [""] + fila2, ["Periodo"] + columnas])
+        libro.ancho(hoja, 1, 11)
+    v = libro.valores(hoja)
+    v += [[] for _ in range(max(0, FILA_TITULOS - len(v)))]
+    col = {_norm(t): j + 1 for j, t in enumerate(v[FILA_TITULOS - 1]) if t is not None}
+    if "periodo" not in col:
+        sys.exit(f"No encuentro 'Periodo' en la fila {FILA_TITULOS} de la hoja {hoja}.")
+    c_per = col["periodo"]
+    filas = {}
+    for i in range(FILA_DATOS - 1, len(v)):
+        d = _mes(v[i][c_per - 1]) if len(v[i]) >= c_per and v[i][c_per - 1] is not None else None
+        if d is None:
+            break
+        filas[d] = i + 1
+    ultima = max(filas.values(), default=FILA_DATOS - 1)
+    desde = max(filas, default=pd.Timestamp.min)
+    nuevas = sorted(d for d in fechas if d > desde)
+    for d in nuevas:
+        ultima += 1
+        filas[d] = ultima
+    if nuevas:
+        libro.escribir(hoja, filas[nuevas[0]], c_per, [[d.to_pydatetime()] for d in nuevas])
+    sig = max(col.values()) + 1
+    for nombre, f2 in zip(columnas, fila2):
+        if _norm(nombre) not in col:
+            libro.escribir(hoja, FILA_CODIGO, sig, [[f2], [nombre]])
+            col[_norm(nombre)] = sig
+            sig += 1
+    letra = lambda nombre: _letra(col[_norm(nombre)])  # noqa: E731
+    por_fila = {r: d for d, r in filas.items()}
+    for nombre in columnas:
+        j = col[_norm(nombre)]
+        bloque = []
+        for r in range(FILA_DATOS, ultima + 1):
+            d = por_fila.get(r)
+            x = valor(d, r, nombre, letra) if d is not None else None
+            if x is None:   # sin dato nuevo: se conserva lo que había
+                x = v[r - 1][j - 1] if r - 1 < len(v) and j - 1 < len(v[r - 1]) else None
+            bloque.append([x])
+        libro.escribir(hoja, FILA_DATOS, j, bloque, formulas=formulas)
+    return filas
+
+
+def _hojas_calculo(libro, sa, filas_imce, cols_imce):
+    """Hojas SA, Pesos, Compuestos y Promedios: se actualizan sin borrar lo que el usuario agregue."""
     # SA: series desestacionalizadas (valores)
-    libro.limpiar("SA")
-    libro.escribir("SA", 1, 1, [["IMCE desestacionalizado. " + NOTA_SA],
-                                ["Código BDE"] + [CODIGO[k] for k in ITEMS_SA],
-                                ["Periodo"] + [NOMBRE[k] for k in ITEMS_SA]])
     sa = sa.dropna(how="all")
-    libro.escribir("SA", FILA_DATOS, 1, [[d.to_pydatetime()] + [_valor(x) for x in fila]
-                                         for d, fila in zip(sa.index, sa.to_numpy())])
-    fila_sa = {d: FILA_DATOS + i for i, d in enumerate(sa.index)}
-    col_sa = {k: 2 + i for i, k in enumerate(ITEMS_SA)}
-    libro.ancho("SA", 1, 11)
+    nombre_sa = {NOMBRE[k]: k for k in ITEMS_SA}
 
-    # Pesos
-    libro.limpiar("Pesos")
-    libro.escribir("Pesos", 1, 1, [["Sector", "Peso (PIB nominal 2018, normalizado)"]] +
-                   [[s, p] for s, p in PESOS.items()])
+    def v_sa(d, r, nombre, letra):
+        x = sa.at[d, nombre_sa[nombre]] if d in sa.index else float("nan")
+        return None if pd.isna(x) else float(x)
+
+    filas_sa = _tabla(libro, "SA", "IMCE desestacionalizado. " + NOTA_SA, [CODIGO[k] for k in ITEMS_SA],
+                      [NOMBRE[k] for k in ITEMS_SA], list(sa.index), v_sa)
+    v_hoja = libro.valores("SA")
+    col_sa = {k: _letra(j + 1) for j, t in enumerate(v_hoja[FILA_TITULOS - 1]) if t is not None
+              for k in ITEMS_SA if _norm(t) == _norm(NOMBRE[k])}
+
+    # Pesos: solo si no existe (si se editan los pesos en Excel, se respetan)
+    if "Pesos" not in libro.hojas():
+        libro.escribir("Pesos", 1, 1, [["Sector", "Peso (PIB nominal 2018, normalizado)"]] +
+                       [[s, p] for s, p in PESOS.items()])
     celda_peso = {s: f"Pesos!$B${2 + i}" for i, s in enumerate(SECTORES)}
 
     # Compuestos: fórmulas sobre SA y Pesos (se recalculan al abrir en Excel)
-    libro.limpiar("Compuestos")
-    encabezado, cols = ["Periodo"], []
+    completas = set(sa[ITEMS_SA].dropna().index)
+    columnas, fila2 = [], []
     for ind in DEFINICION:
-        encabezado += [f"{ind} {s}" for s in SECTORES] + [ind]
-        cols.append(ind)
-    libro.escribir("Compuestos", 1, 1, [
-        ["Índices compuestos del IMCE (50 = 0): contribución de cada sector = peso × promedio de "
-         "(serie desestacionalizada − 50); el signo − en inventarios. Fórmulas de Coordinación "
-         "Macroeconómica (Hacienda), basadas en Chanut, Marcel y Medel (2018)."],
-        [""] + [NOMBRES_COMPUESTOS[i] for i in DEFINICION for _ in range(len(SECTORES) + 1)],
-        encabezado])
-    completas = sa[ITEMS_SA].dropna().index
-    filas_f = []
-    for r_out, d in enumerate(completas, start=FILA_DATOS):
-        r = fila_sa[d]
-        fila, c = [d.to_pydatetime()], 2
-        for ind, sectores in DEFINICION.items():
-            inicio = c
-            for s in SECTORES:
-                items = sectores[s]
-                suma = "".join(f"{'+' if signo > 0 else '-'}('SA'!{_letra(col_sa[k])}{r}-50)" for k, signo in items)
-                fila.append(f"={celda_peso[s]}*({suma.lstrip('+')})/{len(items)}")
-                c += 1
-            fila.append("=" + "+".join(f"{_letra(j)}{r_out}" for j in range(inicio, c)))
-            c += 1
-        filas_f.append(fila)
-    libro.escribir("Compuestos", FILA_DATOS, 1, [[f[0]] for f in filas_f])
-    libro.escribir("Compuestos", FILA_DATOS, 2, [f[1:] for f in filas_f], formulas=True)
-    libro.ancho("Compuestos", 1, 11)
+        columnas += [f"{ind} {s}" for s in SECTORES] + [ind]
+        fila2 += [NOMBRES_COMPUESTOS[ind]] * (len(SECTORES) + 1)
+
+    def v_comp(d, r, nombre, letra):
+        if d not in completas or d not in filas_sa:
+            return None
+        ind, _, sector = nombre.partition(" ")
+        if not sector:
+            return "=" + "+".join(f"{letra(f'{ind} {s}')}{r}" for s in SECTORES)
+        items = DEFINICION[ind][sector]
+        suma = "".join(f"{'+' if signo > 0 else '-'}(SA!{col_sa[k]}{filas_sa[d]}-50)" for k, signo in items)
+        return f"={celda_peso[sector]}*({suma.lstrip('+')})/{len(items)}"
+
+    _tabla(libro, "Compuestos",
+           "Índices compuestos del IMCE (50 = 0): contribución de cada sector = peso × promedio de "
+           "(serie desestacionalizada − 50); el signo − en inventarios. Fórmulas de Coordinación "
+           "Macroeconómica (Hacienda), basadas en Chanut, Marcel y Medel (2018).",
+           fila2, columnas, sorted(completas), v_comp, formulas=True)
+
+    # Promedios: promedio simple de comercio, construcción e industria (fórmulas sobre IMCE y SA)
+    def v_prom(d, r, nombre, letra):
+        _, series, origen = next(p for p in PROMEDIOS if p[0] == nombre)
+        if origen == "IMCE":
+            if d not in filas_imce or any(k not in cols_imce for k in series):
+                return None
+            celdas = [f"IMCE!{_letra(cols_imce[k][0])}{filas_imce[d]}" for k in series]
+        else:
+            if d not in filas_sa:
+                return None
+            celdas = [f"SA!{col_sa[k]}{filas_sa[d]}" for k in series]
+        return f"=AVERAGE({','.join(celdas)})"
+
+    _tabla(libro, "Promedios",
+           "Índices promedio del IMCE: promedio simple de comercio, construcción e industria "
+           "(Demanda (desest.): sobre las series desestacionalizadas de la hoja SA).",
+           [" + ".join(CODIGO[k] for k in p[1]) for p in PROMEDIOS], [p[0] for p in PROMEDIOS],
+           sorted(filas_imce), v_prom, formulas=True)
 
 
 def _leeme(libro, m):
@@ -614,16 +681,16 @@ def _leeme(libro, m):
         ["Fuente: ICARE/Universidad Adolfo Ibáñez, publicado en la Base de Datos Estadísticos del Banco Central de Chile."],
         [""],
         ["Hoja", "Contenido"],
-        ["IMCE", "Índices de difusión originales (fila 2: código BDE; fila 3: nombre). El script solo escribe "
-                 "las columnas de las series; columnas y fórmulas propias en esta hoja se conservan."],
-        ["SA", "Series desestacionalizadas con STL (las que usan los índices compuestos). Se reescribe en cada corrida."],
-        ["Pesos", "Pesos sectoriales (PIB 2018) de los índices compuestos. Se reescribe en cada corrida."],
-        ["Compuestos", "CFEI, OCSI, OFEI y PCSI con fórmulas de Excel sobre SA y Pesos. Se reescribe en cada corrida."],
+        ["IMCE", "Índices de difusión originales (fila 2: código BDE; fila 3: nombre)."],
+        ["SA", "Series desestacionalizadas con STL (las que usan los índices compuestos)."],
+        ["Pesos", "Pesos sectoriales (PIB 2018) de los índices compuestos. Se crea una vez; si los cambias, se respetan."],
+        ["Compuestos", "CFEI, OCSI, OFEI y PCSI con fórmulas de Excel sobre SA y Pesos."],
+        ["Promedios", "Promedio simple de comercio, construcción e industria de precios, costos y demanda (fórmulas)."],
         [""],
-        ["Cálculos y gráficos propios: en hojas nuevas (no se tocan) o en columnas nuevas de la hoja IMCE."],
+        ["El archivo nunca se sobrescribe: en cada hoja el script solo escribe sus columnas (por nombre, en la fila 3) "
+         "y agrega los meses nuevos al final. Columnas, fórmulas, hojas y gráficos propios se conservan."],
         ["Se actualiza con: python datos_imce.py (carpeta Code)."],
     ]
-    libro.limpiar("Léeme")
     libro.escribir("Léeme", 1, 1, lineas)
     libro.ancho("Léeme", 1, 14)
     libro.ancho("Léeme", 2, 110)
@@ -641,8 +708,8 @@ def actualizar_excel(m, sa):
     except PermissionError:
         sys.exit(f"{ruta.name} está abierto en Excel o bloqueado por OneDrive. Ciérralo y vuelve a correr.")
     try:
-        n, nuevas, ultima = _actualizar_hoja_imce(libro, m)
-        _hojas_calculo(libro, m, sa)
+        n, nuevas, ultima, filas_imce, cols_imce = _actualizar_hoja_imce(libro, m)
+        _hojas_calculo(libro, sa, filas_imce, cols_imce)
         _leeme(libro, m)
         try:
             libro.guardar()
@@ -651,7 +718,7 @@ def actualizar_excel(m, sa):
     finally:
         libro.cerrar()
     g = _extender_graficos(ruta, ultima)
-    print(f"  💾 {ruta.name}: {n} meses en la hoja IMCE ({nuevas} nuevos); hojas SA, Pesos y Compuestos al día"
+    print(f"  💾 {ruta.name}: {n} meses en la hoja IMCE ({nuevas} nuevos); hojas SA, Compuestos y Promedios al día"
           + (f"; {g} gráficos extendidos hasta la fila {ultima}" if g else ""))
     return ruta
 

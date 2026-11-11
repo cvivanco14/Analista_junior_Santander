@@ -217,7 +217,7 @@ class Minuta:
             txt += f"{lista(opt).capitalize()} {'se ubica' if len(opt) == 1 else 'se ubican'} en terreno optimista"
             txt += f" y {lista(pes)} en terreno pesimista." if pes else "."
         elif pes:
-            txt += f"Todos los sectores se ubican en terreno pesimista."
+            txt += "Todos los sectores se ubican en terreno pesimista."
         if minimo:
             txt += f" {lista(minimo).capitalize()} {'marca' if len(minimo) == 1 else 'marcan'} su menor valor del año."
         items.append(txt.strip())

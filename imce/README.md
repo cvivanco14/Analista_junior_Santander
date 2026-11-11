@@ -21,12 +21,15 @@ python minuta_imce.py     # genera la minuta en Outputs
 
 - `Base_IMCE.xlsx` se actualiza en cada corrida. Si no existe, se crea copiando
   `Inputs/Base_IMCE_plantilla.xlsx` (o, si falta, la ubicación anterior `IMCE\Base\IMCE.xlsx`).
-- Mantiene el formato de la planilla: en la hoja `IMCE` solo escribe los valores de las series
-  (fila 3 = nombres); los meses nuevos copian el formato de la fila de arriba, y los gráficos (hoja
-  `Grafs` y el de la hoja `IMCE`) se extienden hasta el último mes. Columnas, hojas y fórmulas propias
-  se conservan.
-- Agrega al final las hojas `SA` (desestacionalizadas con STL), `Pesos`, `Compuestos` (con fórmulas
-  de Excel) y `Léeme`, que se reescriben en cada corrida.
+- **No se sobrescribe nunca:** no se borra el archivo ni se limpia ninguna hoja. En cada hoja el
+  script solo escribe sus columnas (las ubica por su nombre en la fila 3; si faltan, las agrega al
+  final) y agrega los meses nuevos al final, con el formato de la fila de arriba. Columnas, fórmulas,
+  hojas y gráficos propios se conservan; los gráficos (hoja `Grafs` y el de la hoja `IMCE`) se
+  extienden hasta el último mes.
+- Hojas que agrega: `SA` (desestacionalizadas con STL), `Pesos` (se crea una vez; si cambias los
+  pesos, se respetan), `Compuestos` (OCSI/PCSI/CFEI/OFEI con fórmulas sobre `SA` y `Pesos`),
+  `Promedios` (promedio simple de comercio, construcción e industria de precios, costos, demanda y
+  demanda desestacionalizada, con fórmulas `=AVERAGE(...)` sobre `IMCE` y `SA`) y `Léeme`.
 - Si el archivo se guardó con Excel y tiene gráficos, se actualiza con Excel mediante `xlwings`; si
   `xlwings` no está, se actualiza con openpyxl (conserva los gráficos, pero puede simplificar parte de
   su formato) y deja un respaldo en `Outputs/respaldo/`.
