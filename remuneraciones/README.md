@@ -2,7 +2,7 @@
 
 Descarga las cifras de remuneraciones y empleo del INE, calcula la masa salarial real y arma la minuta:
 documento PDF, presentación PPTX/PDF (con `formato_graficos.py`) e `IRL_Base.xlsx`. Misma estructura
-que la minuta IMCE: un script de datos y uno de minuta.
+que la minuta IMCE, todo en un solo script: `minuta_remuneraciones.py`.
 
 ```
 masa salarial real = ocupados (sa INE) × horas habituales semanales (sa STL) × IR real (sa INE)
@@ -10,18 +10,17 @@ masa salarial real = ocupados (sa INE) × horas habituales semanales (sa STL) ×
 
 | Carpeta | Contenido |
 |---|---|
-| `Code/` | `datos_remuneraciones.py` (descarga del INE, cálculos y bases) y `minuta_remuneraciones.py` (documento, presentación e `IRL_Base.xlsx`). |
+| `Code/` | `minuta_remuneraciones.py`: descarga del INE, cálculos, bases, documento, presentación e `IRL_Base.xlsx`. |
 | `Inputs/` | Archivos del INE, bases intermedias (`Masa_salarial_Base.xlsx`, `Cifras_empleo.xlsx`) y `Figuras/` (imágenes de las figuras). |
 | `Outputs/` | `IRL_Base.xlsx`, documento `Minuta_Remuneraciones_<mes>_<año>.pdf` y presentación `AAAAMMDD_Minuta_Remuneraciones.pptx` / `.pdf`. |
 
 ```bash
 cd remuneraciones/Code
-python datos_remuneraciones.py      # descarga del INE y actualiza las bases en Inputs
-python minuta_remuneraciones.py     # arma la minuta en Outputs
+python minuta_remuneraciones.py                 # descarga del INE y arma todo
+python minuta_remuneraciones.py --sin-descarga  # usa los archivos que ya están en Inputs
 ```
 
-En Spyder: corre (F5) primero `datos_remuneraciones.py` y después `minuta_remuneraciones.py`.
-`datos_remuneraciones.py --sin-descarga` rehace las bases con los archivos que ya están en `Inputs`.
+En Spyder: abre `minuta_remuneraciones.py` y córrelo con F5.
 
 ## Datos que se descargan del INE
 
@@ -38,7 +37,7 @@ Solo lo que usa la minuta (7 archivos, a `Inputs`):
 Los archivos desestacionalizados del INE traen una hoja por publicación (`DDMMAAAA`); se usa la más
 reciente. Si alguno no se puede leer, el script usa STL y lo avisa en la consola, en la nota del
 Cuadro 1 y en la hoja `Léeme` de `IRL_Base.xlsx`. Las URLs están en `URLS`, al inicio de
-`datos_remuneraciones.py`.
+`minuta_remuneraciones.py`.
 
 ## Documento `Minuta_Remuneraciones_<mes>_<año>.pdf`
 
@@ -55,10 +54,10 @@ Cuadro 1 y en la hoja `Léeme` de `IRL_Base.xlsx`. Las URLs están en `URLS`, al
 |---|---|
 | 1 | IR real desestacionalizado (nivel) |
 | 2 | Variación anual de IR, ICL e IR real, con su promedio histórico (líneas punteadas) |
-| 3 y 4 | IR nominal m/m por mes calendario, sa y nsa: banda mín-máx y promedio 2010 a tres años antes, dos años anteriores y año en curso |
-| 5 y 6 | Lo mismo para el IR real, sa y nsa |
-| 7 | Masa salarial real a/a con contribuciones de ocupados, horas y salario real, y su promedio histórico |
-| 8 | Masa salarial real (ocupados × horas × salario real) y horas × salario real, en nivel |
+| 3 | Masa salarial real a/a con contribuciones de ocupados, horas y salario real, y su promedio histórico |
+| 4 | Masa salarial real (ocupados × horas × salario real) y horas × salario real, en nivel |
+| 5 y 6 | IR nominal m/m por mes calendario, sa y nsa: banda mín-máx y promedio 2010 a tres años antes, dos años anteriores y año en curso |
+| 7 y 8 | Lo mismo para el IR real, sa y nsa |
 
 ## Presentación `AAAAMMDD_Minuta_Remuneraciones.pptx`
 
@@ -78,7 +77,7 @@ y gráficos que agregues se conservan. Si el archivo lo guardó Excel y tiene gr
 actualiza con Excel (`xlwings`); si no hay Excel disponible, con openpyxl y un respaldo en
 `Inputs/respaldo`.
 
-## Bases (`datos_remuneraciones.py`, en `Inputs`)
+## Bases intermedias (en `Inputs`)
 
 - **`Masa_salarial_Base.xlsx`**: masa salarial real (componentes, índice 2023 = 100, a/a,
   contribuciones y horas × salario real), con gráficos de Excel y hoja Léeme.
