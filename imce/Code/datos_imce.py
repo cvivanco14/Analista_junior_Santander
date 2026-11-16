@@ -53,7 +53,8 @@ EXCEL = OUT / "Base_IMCE.xlsx"                 # salida: siempre Base_<proyecto>
 PLANTILLA = INPUTS / "Base_IMCE_plantilla.xlsx"  # formato de la planilla (hojas IMCE y Grafs)
 FECHA_INICIO = "2003-01-01"
 
-MANUAL_ESTILO = Path("Administrativos") / "Manual de Estilo"
+MANUAL_ESTILO = Path("00_Administrativos") / "Manual de Estilo"
+MANUAL_ESTILO_ANTERIOR = Path("Administrativos") / "Manual de Estilo"   # nombre anterior de la carpeta
 BIBLIOTECA = Path("Estudios - Documentos") / "General"
 # ubicación anterior de IMCE.xlsx en la carpeta compartida (la usaba imce_principal.py)
 RUTA_ANTERIOR = Path("Bases - Chartpack") / "Bases" / "Local" / "IMCE" / "Base" / "IMCE.xlsx"
@@ -82,9 +83,11 @@ def _raices_sincronizadas():
 def _formato_en(raiz, profundidad=6):
     """Busca formato_graficos.py bajo 'raiz': primero en las rutas habituales y, en iCloud, en toda la
     carpeta (hasta 'profundidad' niveles). Avisa si iCloud lo tiene solo en la nube."""
-    rutas = [raiz / BIBLIOTECA / MANUAL_ESTILO, raiz / "General" / MANUAL_ESTILO, raiz / MANUAL_ESTILO]
-    for sub in sorted(p for p in raiz.iterdir() if p.is_dir() and not p.name.startswith(".")):
-        rutas += [sub / BIBLIOTECA / MANUAL_ESTILO, sub / "General" / MANUAL_ESTILO, sub / MANUAL_ESTILO]
+    rutas = []
+    for me in (MANUAL_ESTILO, MANUAL_ESTILO_ANTERIOR):
+        rutas += [raiz / BIBLIOTECA / me, raiz / "General" / me, raiz / me]
+        for sub in sorted(p for p in raiz.iterdir() if p.is_dir() and not p.name.startswith(".")):
+            rutas += [sub / BIBLIOTECA / me, sub / "General" / me, sub / me]
     for r in rutas:
         if (r / "formato_graficos.py").is_file():
             return r
@@ -102,13 +105,13 @@ def _formato_en(raiz, profundidad=6):
 
 
 def _carpeta_formato() -> Path:
-    """Carpeta de formato_graficos.py: Administrativos/Manual de Estilo de la biblioteca de Estudios."""
+    """Carpeta de formato_graficos.py: 00_Administrativos/Manual de Estilo de la biblioteca de Estudios."""
     candidatos = []
     if os.environ.get("FORMATO_GRAFICOS_DIR"):
         candidatos.append(Path(os.environ["FORMATO_GRAFICOS_DIR"]))
     # 1) subiendo desde la carpeta de este script (...\General\...\IMCE\Code)
     for p in [CODE, *CODE.parents]:
-        candidatos += [p / MANUAL_ESTILO, p / "formato"]   # "formato": estructura del repositorio
+        candidatos += [p / MANUAL_ESTILO, p / MANUAL_ESTILO_ANTERIOR, p / "formato"]   # "formato": repositorio
     for carpeta in candidatos:
         if (carpeta / "formato_graficos.py").is_file():
             return carpeta
@@ -184,10 +187,20 @@ ALIAS_EXCEL = {"IND_Indice de difusión sectorial": "industria", "COM_Indice de 
 # ─────────────────────────────────────────────────────────────────────────────
 # Índices compuestos: fórmulas de la planilla de Coordinación Macroeconómica (Hacienda, IMCE.xlsx,
 # hoja «Indicadores (SA)»), sobre índices de difusión desestacionalizados y centrados en 50.
-# Cada sector: [(serie, signo)] -> promedio de signo * (serie - 50). Pesos: PIB 2018 normalizado.
+# Cada sector: [(serie, signo)] -> promedio de signo * (serie - 50).
+# Pesos: participación de cada actividad en el PIB 2018 (BCCh, cuentas nacionales referencia 2018,
+# % del PIB nominal), normalizada a 100 entre los tres sectores. Comercio es solo «Comercio»: el IMCE
+# comercio no encuesta restaurantes ni hoteles. La planilla de Hacienda usaba «Comercio, restaurantes y
+# hoteles» (11,4%), lo que sobreponderaba comercio (41,4% en vez de 36,4%).
 # ─────────────────────────────────────────────────────────────────────────────
 
-PESOS = {"Comercio": 0.4142243648672061, "Construcción": 0.2357331330488559, "Industria": 0.3500425020839379}
+PIB_2018 = {"Comercio": 9.2, "Construcción": 6.5, "Industria": 9.6}   # % del PIB 2018
+PESOS = {s: v / sum(PIB_2018.values()) for s, v in PIB_2018.items()}
+PESOS_HACIENDA = {"Comercio": 0.4142243648672061, "Construcción": 0.2357331330488559,
+                  "Industria": 0.3500425020839379}   # pesos anteriores (para actualizar la hoja Pesos)
+FUENTE_PESOS = ("Participación en el PIB 2018 (BCCh, cuentas nacionales referencia 2018): comercio 9,2%, "
+                "construcción 6,5% e industria 9,6%, normalizada entre los tres sectores. Comercio sin "
+                "restaurantes y hoteles (el IMCE comercio no los encuesta).")
 SECTORES = list(PESOS)
 DEFINICION = {
     # Expectativas futuras del país: situación económica global del país
@@ -296,7 +309,10 @@ HOJAS_DEL_SCRIPT = ["Léeme", "SA", "Pesos", "Compuestos", "Promedios"]   # hoja
 PROMEDIOS = [("Precios", ["com_precios", "con_precios", "ind_precios"], "IMCE"),
              ("Costos", ["com_costos", "con_costos", "ind_costos"], "IMCE"),
              ("Demanda", ["com_demanda", "con_demanda", "ind_demanda"], "IMCE"),
-             ("Demanda (desest.)", ["com_demanda", "con_demanda", "ind_demanda"], "SA")]
+             ("Demanda (desest.)", ["com_demanda", "con_demanda", "ind_demanda"], "SA"),
+             ("Salarios", ["con_salarios", "ind_salarios"], "IMCE"),   # comercio no informa salarios
+             ("Empleo", ["com_empleo", "con_empleo", "ind_empleo"], "IMCE"),
+             ("Inventarios", ["com_inventarios", "ind_inventarios"], "IMCE")]   # construcción no informa
 
 
 def _norm(s):
@@ -625,9 +641,18 @@ def _hojas_calculo(libro, sa, filas_imce, cols_imce):
               for k in ITEMS_SA if _norm(t) == _norm(NOMBRE[k])}
 
     # Pesos: solo si no existe (si se editan los pesos en Excel, se respetan)
-    if "Pesos" not in libro.hojas():
-        libro.escribir("Pesos", 1, 1, [["Sector", "Peso (PIB nominal 2018, normalizado)"]] +
-                       [[s, p] for s, p in PESOS.items()])
+    # Pesos: se crean una vez y se respetan si se editan; solo se reemplazan los pesos anteriores de
+    # Hacienda (comercio con restaurantes y hoteles) si siguen tal cual
+    actuales = None
+    if "Pesos" in libro.hojas():
+        vp = libro.valores("Pesos")
+        actuales = [vp[i][1] if len(vp) > i and len(vp[i]) > 1 else None for i in range(1, 1 + len(SECTORES))]
+    anteriores = [PESOS_HACIENDA[s] for s in SECTORES]
+    if actuales is None or all(isinstance(a, (int, float)) and abs(a - b) < 1e-9 for a, b in zip(actuales, anteriores)):
+        libro.escribir("Pesos", 1, 1, [["Sector", "Peso (PIB nominal 2018, normalizado)", "Fuente"]] +
+                       [[s, p, FUENTE_PESOS if i == 0 else None] for i, (s, p) in enumerate(PESOS.items())])
+        if actuales is not None:
+            print("  ⚖️ Hoja Pesos: reemplacé los pesos de Hacienda por los del PIB 2018 sin restaurantes y hoteles")
     celda_peso = {s: f"Pesos!$B${2 + i}" for i, s in enumerate(SECTORES)}
 
     # Compuestos: fórmulas sobre SA y Pesos (se recalculan al abrir en Excel)
@@ -683,9 +708,9 @@ def _leeme(libro, m):
         ["Hoja", "Contenido"],
         ["IMCE", "Índices de difusión originales (fila 2: código BDE; fila 3: nombre)."],
         ["SA", "Series desestacionalizadas con STL (las que usan los índices compuestos)."],
-        ["Pesos", "Pesos sectoriales (PIB 2018) de los índices compuestos. Se crea una vez; si los cambias, se respetan."],
+        ["Pesos", "Pesos sectoriales (PIB 2018, comercio sin restaurantes y hoteles) de los índices compuestos. Se crea una vez; si los cambias, se respetan."],
         ["Compuestos", "CFEI, OCSI, OFEI y PCSI con fórmulas de Excel sobre SA y Pesos."],
-        ["Promedios", "Promedio simple de comercio, construcción e industria de precios, costos y demanda (fórmulas)."],
+        ["Promedios", "Promedio simple de los sectores: precios, costos, demanda, salarios, empleo e inventarios (fórmulas)."],
         [""],
         ["El archivo nunca se sobrescribe: en cada hoja el script solo escribe sus columnas (por nombre, en la fila 3) "
          "y agrega los meses nuevos al final. Columnas, fórmulas, hojas y gráficos propios se conservan."],

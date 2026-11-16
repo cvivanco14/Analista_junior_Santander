@@ -3,14 +3,17 @@ r"""Minuta mensual del IMCE (Índice Mensual de Confianza Empresarial, ICARE/UAI
 
 Réplica de la presentación mensual de Coordinación Macroeconómica, con textos generados
 automáticamente a partir del último dato y gráficos nativos (editables) de PowerPoint con el formato
-de formato_graficos.py (Administrativos\Manual de Estilo).
+de formato_graficos.py (00_Administrativos\Manual de Estilo).
 
 Carpetas (relativas a este script; sirven para cualquier usuario):
     <IMCE>\Code\      datos_imce.py y minuta_imce.py
     <IMCE>\Inputs\    imce.csv (lo deja datos_imce.py)
-    <IMCE>\Outputs\   Base_IMCE.xlsx (bases) y AAAAMMDD_Minuta_IMCE.pptx / .pdf / _datos.xlsx
+    <IMCE>\Outputs\   Base_IMCE.xlsx (bases) y Presentación_IMCE_<mes>_<año>.pptx / .pdf / _datos.xlsx;
+                      las presentaciones anteriores pasan a Outputs\<año>\ con la fecha al inicio
+    <IMCE>\run_minuta_imce.py   lanzador (F5 en Spyder)
 
-Uso (no hay que editar nada): basta con correr este script, que primero ejecuta datos_imce.py
+Uso (no hay que editar nada): abrir run_minuta_imce.py (carpeta IMCE) en Spyder y F5; o correr este
+script, que primero ejecuta datos_imce.py
     python minuta_imce.py                 # descarga, actualiza Base_IMCE.xlsx y arma la minuta
     python minuta_imce.py --sin-descarga  # lo mismo con el Inputs\imce.csv que ya existe
 (datos_imce.py se puede seguir corriendo solo, para actualizar únicamente los datos y el Excel.)
@@ -36,10 +39,9 @@ NOTA_50 = "Sobre (bajo) 50 indica optimismo (pesimismo)."
 MESES = fg.MESES_LARGOS
 SECTORES = {"Comercio": "comercio", "Industria": "industria", "Construcción": "construccion", "Minería": "mineria"}
 
-# índices promedio de comercio, construcción e industria: (nombre, [series], desestacionalizado)
-PROMEDIOS = {"precios": ("Precios", ["com_precios", "con_precios", "ind_precios"], False),
-             "demanda": ("Demanda", ["com_demanda", "con_demanda", "ind_demanda"], True),
-             "costos": ("Costos", ["com_costos", "con_costos", "ind_costos"], False)}
+# índices promedio (simple) de los sectores, definidos en datos_imce.PROMEDIOS: nombre -> (series, hoja)
+PROMEDIOS = {nombre: (series, origen) for nombre, series, origen in di.PROMEDIOS}
+SECTOR = {"com": "comercio", "con": "construcción", "ind": "industria"}
 
 # posiciones de gráficos (cm), como en el chartpack de Expectativas
 Y0, ALTO = Cm(fg.Y_CONTENIDO_CM), Cm(fg.ALTO_CM)
@@ -88,14 +90,15 @@ class Minuta:
         self.m = di.cargar()
         self.sa = di.desestacionalizar(self.m)
         self.comp = di.compuestos(self.sa)
-        self.prom = {}   # clave -> (serie promedio, nota de formato_graficos)
-        for k, (nombre, cols, sa) in PROMEDIOS.items():
-            base = (self.sa if sa else self.m)[cols]
-            base.columns = ["comercio", "construcción", "industria"]
-            df, nota = fg.promedio(base, f"Índice promedio de {nombre.lower()}")
-            self.prom[k] = (df.iloc[:, 0], nota)
+        self.prom = {}   # nombre -> (serie promedio, nota de formato_graficos)
+        for nombre, (cols, origen) in PROMEDIOS.items():
+            base = (self.sa if origen == "SA" else self.m)[cols]
+            base.columns = [SECTOR[c[:3]] for c in cols]
+            df, nota = fg.promedio(base, f"Índice promedio de {nombre.lower().replace(' (desest.)', '')}")
+            self.prom[nombre] = (df.iloc[:, 0], nota)
         self.t = self.m["total"].dropna().index.max()
         self.mes = MESES[self.t.month - 1]
+        self.mes_ant = MESES[(self.t - pd.DateOffset(months=1)).month - 1]
         self.hoy = pd.Timestamp(hoy or dt.date.today())
         self.prs = fg.nueva_presentacion()
         self.n = 1
@@ -151,7 +154,8 @@ class Minuta:
         return caja
 
     def grafico(self, lam, df, x, w, hoja, y=Y0, alto=ALTO, nota=None, apilado=False, **kw):
-        """Gráfico de formato_graficos + pie; guarda los datos para el Excel de respaldo."""
+        """Gráfico de formato_graficos (sin etiqueta del último dato) + pie; guarda los datos para el Excel."""
+        kw.setdefault("etiqueta_ultimo", False)
         chart = fg.agregar_grafico(lam, df, x, y, w, alto, **kw)
         if apilado:
             _apilar(chart)
@@ -159,14 +163,62 @@ class Minuta:
         self.datos[f"{self.n:02d} {hoja}"] = df
         return chart
 
-    def lineas(self, lam, cols, x, w, titulo, hoja, desde="2012-01-01", sa=False, unidad="(Índice)",
-               meses=24, **kw):
+    def serie(self, cols, sa=False, desde="2012-01-01"):
+        """DataFrame de las series [(clave, etiqueta)] desde 'desde'."""
         df = pd.DataFrame({lab: (self.sa[k] if sa else self.m[k]) for k, lab in cols})
-        df = df[df.index >= desde].dropna(how="all")
-        y_min, y_max = _limites(df)
-        return self.grafico(lam, df, x, w, hoja, titulo=titulo, unidad=unidad, posicion_unidad="arriba",
-                            y_min=y_min, y_max=y_max, y_paso=10, linea_ref=50, meses_entre_etiquetas=meses,
-                            formato_fecha="yyyy", **kw)
+        return df[df.index >= desde].dropna(how="all")
+
+    def promedio(self, nombre, desde="2012-01-01"):
+        s, nota = self.prom[nombre]
+        etiqueta = "Promedio " + " y ".join(", ".join(SECTOR[c[:3]] for c in PROMEDIOS[nombre][0]).rsplit(", ", 1))
+        return s[s.index >= desde].rename(etiqueta).to_frame(), nota
+
+    def vineta(self, nombre, df):
+        """'Nombre: comercio 60,4 (+2,0 p.), ...; todos por sobre agosto.' con el dato del mes de cada serie."""
+        datos = [(c, df[c].get(self.t, np.nan), df[c].get(self.t, np.nan) - df[c].get(self.t - pd.DateOffset(months=1), np.nan))
+                 for c in df.columns]
+        datos = [(c, v, d) for c, v, d in datos if not pd.isna(v)]
+        if not datos:
+            return f"{nombre}: sin dato para {self.mes}."
+        pos = lambda d: ("por sobre" if d > 0.05 else "por debajo de" if d < -0.05 else "igual a")  # noqa: E731
+        if len(datos) == 1:
+            _, v, d = datos[0]
+            return f"{nombre}: {num(v)} puntos en {self.mes}, {pos(d)} {self.mes_ant} ({signo(d)} p.)."
+        minus = lambda c: c if c[:2].isupper() else c[0].lower() + c[1:]  # noqa: E731 - "IMCE" no cambia
+        partes = [f"{minus(c)} {num(v)} ({signo(d)} p.)" for c, v, d in datos]
+        texto = f"{nombre} en {self.mes}: " + ", ".join(partes[:-1]) + " y " + partes[-1]
+        grupos = {}
+        for c, v, d in datos:
+            grupos.setdefault(pos(d), []).append(minus(c))
+        if len(grupos) == 1:
+            p = next(iter(grupos))
+            todos = "ambos" if len(datos) == 2 else "todos"
+            return f"{texto}; {todos} {p} {self.mes_ant}."
+        return f"{texto}; " + "; ".join(f"{', '.join(xs[:-1]) + ' y ' + xs[-1] if len(xs) > 1 else xs[0]} "
+                                         f"{p} {self.mes_ant}" for p, xs in grupos.items()) + "."
+
+    def lamina_graficos(self, titulo, graficos, tam_vineta=12):
+        """Lámina con una viñeta por gráfico (el dato del mes) arriba y 1, 2 o 3 gráficos debajo.
+        graficos: lista de dict(df, hoja, vineta, ...argumentos de grafico/agregar_grafico)."""
+        lam = self.lamina(titulo)
+        vinetas = [g.pop("vineta") for g in graficos]
+        alto_v = sum(0.62 * math.ceil(len(t) / 135) + 0.3 for t in vinetas)
+        self.vinetas(lam, vinetas, Cm(1.3), Cm(2.4), Cm(31), Cm(alto_v + 0.3), tam=tam_vineta)
+        y = 2.4 + alto_v + 1.45
+        alto = 15.2 - y
+        n = len(graficos)
+        pos = {1: [(X_UNO, ANCHO_UNO)], 2: list(zip(DOS, [ANCHO_DOS] * 2)), 3: list(zip(TRES, [ANCHO_TRES] * 3))}[n]
+        for (x, w), g in zip(pos, graficos):
+            df = g.pop("df")
+            if not g.pop("apilado", False):
+                y_min, y_max = _limites(df)
+                g = {"unidad": "(Índice)", "posicion_unidad": "arriba", "y_min": y_min, "y_max": y_max,
+                     "y_paso": 10, "linea_ref": 50, "meses_entre_etiquetas": 24, "formato_fecha": "yyyy",
+                     **({"tam": TAM_TRES} if n == 3 else {}), **g}
+            else:
+                g["apilado"] = True
+            self.grafico(lam, df, x, w, g.pop("hoja"), y=Cm(y), alto=Cm(alto), **g)
+        return lam
 
     # ================================================================ láminas
     def portada(self):
@@ -185,7 +237,7 @@ class Minuta:
         self.grafico(lam, df, DOS[1], ANCHO_DOS, f"{nombre} calendario",
                      titulo=f"{nombre}: comparación con años previos", unidad="(Índice por mes calendario)",
                      posicion_unidad="arriba", y_min=y_min, y_max=y_max, y_paso=5, linea_ref=50,
-                     meses_entre_etiquetas=1, formato_fecha="mmm", etiqueta_ultimo=[str(t.year)],
+                     meses_entre_etiquetas=1, formato_fecha="mmm", etiqueta_ultimo=False,
                      nota=NOTA_50)
         self.datos[f"{self.n:02d} {nombre} calendario"] = df.set_index(pd.Index([x[:3] for x in MESES], name="Mes"))
 
@@ -294,121 +346,152 @@ class Minuta:
                "Demanda, ventas, producción e índices compuestos desestacionalizados con STL. " + NOTA_50)
 
     def graficos(self):
-        lam = self.lamina("IMCE total y sin minería")
-        self.lineas(lam, [("total", "IMCE total"), ("sin_mineria", "IMCE sin minería")], X_UNO, ANCHO_UNO,
-                    "IMCE total y sin minería", "IMCE total", desde="2004-01-01", meses=24,
-                    nota=NOTA_50 + " Oct-19: estallido social; mar-20: Covid-19.")
+        def g(nombre, df, **kw):
+            return dict(df=df, vineta=self.vineta(nombre, df), **kw)
 
-        lam = self.lamina("IMCE por sectores")
-        self.lineas(lam, [(k, s) for s, k in SECTORES.items()], X_UNO, ANCHO_UNO, "IMCE por sectores",
-                    "IMCE sectores", desde="2011-01-01", meses=12, nota=NOTA_50)
+        def gp(nombre, titulo, hoja, nota_extra="", **kw):
+            df, nota = self.promedio(nombre)
+            return dict(df=df, vineta=self.vineta(titulo, df), titulo=titulo, hoja=hoja,
+                        nota=f"{nota} {nota_extra}".strip(), **kw)
 
-        lam = self.lamina("Presiones de salarios, costos y precios")
-        comun = dict(desde="2012-01-01", meses=24, tam=TAM_TRES)
-        self.lineas(lam, [("con_salarios", "Construcción"), ("ind_salarios", "Industria")], TRES[0], ANCHO_TRES,
-                    "Expectativas de salarios", "Salarios", nota="Comercio no informa salarios.", **comun)
-        self.lineas(lam, [("com_costos", "Comercio"), ("con_costos", "Construcción"), ("ind_costos", "Industria")],
-                    TRES[1], ANCHO_TRES, "Expectativas de costos", "Costos", **comun)
-        self.lineas(lam, [("com_precios", "Comercio"), ("con_precios", "Construcción"), ("ind_precios", "Industria")],
-                    TRES[2], ANCHO_TRES, "Expectativas de precios", "Precios", **comun)
+        df = self.serie([("total", "IMCE total"), ("sin_mineria", "IMCE sin minería")], desde="2004-01-01")
+        self.lamina_graficos("IMCE total y sin minería", [
+            g("Índices", df, titulo="IMCE total y sin minería", hoja="IMCE total",
+              nota=NOTA_50 + " Oct-19: estallido social; mar-20: Covid-19.")])
 
-        self.promedios()
+        df = self.serie([(k, s) for s, k in SECTORES.items() if s != "Minería"], desde="2011-01-01")
+        self.lamina_graficos("IMCE por sectores", [
+            g("IMCE por sectores", df, titulo="IMCE por sectores", hoja="IMCE sectores", meses_entre_etiquetas=12,
+              nota=NOTA_50)])
 
-        lam = self.lamina("Expectativas de empleo")
-        self.lineas(lam, [("com_empleo", "Comercio"), ("con_empleo", "Construcción"), ("ind_empleo", "Industria")],
-                    X_UNO, ANCHO_UNO, "Expectativas de empleo por sector", "Empleo", desde="2011-01-01", meses=12,
-                    nota=NOTA_50)
+        self.lamina_graficos("Presiones de salarios, costos y precios", [
+            g("Expectativas de salarios", self.serie([("con_salarios", "Construcción"), ("ind_salarios", "Industria")]),
+              titulo="Expectativas de salarios", hoja="Salarios", nota="Comercio no informa salarios."),
+            g("Expectativas de costos", self.serie([("com_costos", "Comercio"), ("con_costos", "Construcción"),
+                                                    ("ind_costos", "Industria")]),
+              titulo="Expectativas de costos", hoja="Costos"),
+            g("Expectativas de precios", self.serie([("com_precios", "Comercio"), ("con_precios", "Construcción"),
+                                                     ("ind_precios", "Industria")]),
+              titulo="Expectativas de precios", hoja="Precios")])
 
-        lam = self.lamina("Situación actual de inventarios y demanda")
-        self.lineas(lam, [("com_inventarios", "Comercio"), ("ind_inventarios", "Industria")], DOS[0], ANCHO_DOS,
-                    "Situación actual de inventarios", "Inventarios", desde="2011-01-01")
-        self.lineas(lam, [("com_demanda", "Comercio"), ("ind_demanda", "Industria"), ("con_demanda", "Construcción")],
-                    DOS[1], ANCHO_DOS, "Situación actual de la demanda", "Demanda SA", desde="2011-01-01", sa=True,
-                    unidad="(Índice, desestacionalizado)", nota=di.NOTA_SA)
+        self.lamina_graficos("Presiones de salarios, costos y precios: promedio de los sectores", [
+            gp("Salarios", "Expectativas de salarios (promedio)", "Promedio salarios"),
+            gp("Costos", "Expectativas de costos (promedio)", "Promedio costos"),
+            gp("Precios", "Expectativas de precios (promedio)", "Promedio precios")])
 
-        lam = self.lamina("Expectativas de inversión, ventas y producción")
-        self.lineas(lam, [("com_inversion", "Comercio"), ("ind_inversion", "Industria")], DOS[0], ANCHO_DOS,
-                    "Expectativas de inversión", "Inversion", nota=NOTA_50)
-        self.lineas(lam, [("com_ventas", "Comercio: ventas"), ("ind_prod_esp", "Industria: producción")],
-                    DOS[1], ANCHO_DOS, "Expectativas de ventas y producción", "Ventas y produccion SA", sa=True,
-                    unidad="(Índice, desestacionalizado)", nota=di.NOTA_SA)
+        self.lamina_graficos("Expectativas de empleo", [
+            g("Expectativas de empleo", self.serie([("com_empleo", "Comercio"), ("con_empleo", "Construcción"),
+                                                    ("ind_empleo", "Industria")], desde="2011-01-01"),
+              titulo="Expectativas de empleo por sector", hoja="Empleo", meses_entre_etiquetas=12, nota=NOTA_50)])
 
-    def promedios(self):
-        """Índices promedio (simple) de comercio, construcción e industria: precios, demanda y costos."""
-        lam = self.lamina("Índices promedio: precios, demanda y costos")
-        textos = []
-        for k, (nombre, _, sa) in PROMEDIOS.items():
-            s = self.prom[k][0]
-            textos.append(f"{nombre.lower()}{' (desest.)' if sa else ''} {num(s[self.t])} "
-                          f"({signo(self._dmc(s))} p. m/m; {signo(s[self.t] - s[self.t - pd.DateOffset(months=12)])} p. a/a)")
-        fg._caja_texto(lam, f"En {self.mes}, el promedio de comercio, construcción e industria fue: "
-                       + ", ".join(textos[:-1]) + " y " + textos[-1] + ".", Cm(1.3), Cm(2.6), Cm(31), Cm(1.3),
-                       fg.tipografia("fuente"), 14, color=fg.GRIS_TEXTO)
-        for x, (k, (nombre, _, sa)) in zip(TRES, PROMEDIOS.items()):
-            s, nota = self.prom[k]
-            df = s[s.index >= "2012-01-01"].to_frame()
-            y_min, y_max = _limites(df)
-            self.grafico(lam, df, x, ANCHO_TRES, f"Promedio {nombre.lower()}", y=Cm(5.3), alto=Cm(9.7),
-                         titulo=f"{nombre}: índice promedio", tam=TAM_TRES,
-                         unidad="(Índice, desestacionalizado)" if sa else "(Índice)", posicion_unidad="arriba",
-                         y_min=y_min, y_max=y_max, y_paso=10, linea_ref=50, meses_entre_etiquetas=24,
-                         formato_fecha="yyyy",
-                         nota=(f"{nota} {di.NOTA_SA}" if sa else nota) + " " + NOTA_50)
+        self.lamina_graficos("Expectativas de empleo: promedio de los sectores", [
+            gp("Empleo", "Expectativas de empleo (promedio)", "Promedio empleo", NOTA_50, meses_entre_etiquetas=12)])
+
+        self.lamina_graficos("Situación actual de inventarios y demanda", [
+            g("Inventarios", self.serie([("com_inventarios", "Comercio"), ("ind_inventarios", "Industria")],
+                                        desde="2011-01-01"),
+              titulo="Situación actual de inventarios", hoja="Inventarios"),
+            g("Demanda (desest.)", self.serie([("com_demanda", "Comercio"), ("ind_demanda", "Industria"),
+                                               ("con_demanda", "Construcción")], sa=True, desde="2011-01-01"),
+              titulo="Situación actual de la demanda", hoja="Demanda SA", unidad="(Índice, desestacionalizado)",
+              nota=di.NOTA_SA)])
+
+        self.lamina_graficos("Situación actual de inventarios y demanda: promedio de los sectores", [
+            gp("Inventarios", "Inventarios (promedio)", "Promedio inventarios"),
+            gp("Demanda (desest.)", "Demanda (promedio, desest.)", "Promedio demanda SA", di.NOTA_SA,
+               unidad="(Índice, desestacionalizado)")])
+
+        self.lamina_graficos("Expectativas de inversión, ventas y producción", [
+            g("Expectativas de inversión", self.serie([("com_inversion", "Comercio"), ("ind_inversion", "Industria")]),
+              titulo="Expectativas de inversión", hoja="Inversion", nota=NOTA_50),
+            g("Ventas y producción (desest.)", self.serie([("com_ventas", "Comercio: ventas"),
+                                                           ("ind_prod_esp", "Industria: producción")], sa=True),
+              titulo="Expectativas de ventas y producción", hoja="Ventas y produccion SA",
+              unidad="(Índice, desestacionalizado)", nota=di.NOTA_SA)])
 
     def compuestos(self):
         nombres = di.NOMBRES_COMPUESTOS
-        nota = ("Columnas: contribución de cada sector. Basado en Chanut, Marcel y Medel (2018), con las fórmulas de Coordinación Macroeconómica "
-                "(Hacienda): promedio de índices de difusión desestacionalizados (STL) menos 50 de cada sector, "
-                "ponderado por su peso en el PIB 2018 (comercio 41%, construcción 24%, industria 35%).")
+        pesos = ", ".join(f"{s.lower()} {num(100 * p, 0)}%" for s, p in di.PESOS.items())
+        nota = ("Columnas: contribución de cada sector. Basado en Chanut, Marcel y Medel (2018): promedio de "
+                "índices de difusión desestacionalizados (STL) menos 50 de cada sector, ponderado por su "
+                f"participación en el PIB 2018 ({pesos}).")
         for par, titulo in ((("OCSI", "PCSI"), "Índices compuestos: situación actual"),
                             (("CFEI", "OFEI"), "Índices compuestos: expectativas")):
-            textos = []
+            graficos = []
             for k in par:
                 c, tot = self.comp[k]
                 d = self._dmc(tot)
                 dc = c.loc[self.t] - c.loc[self.t - pd.DateOffset(months=1)]
                 motor = dc.idxmax() if d > 0 else dc.idxmin()
-                textos.append(f"{nombres[k].lower()} ({k}) {'mejoró' if d > 0 else 'empeoró'} {num(abs(d))} p., "
-                              f"principalmente por {motor.lower()}")
-            lam = self.lamina(titulo)
-            fg._caja_texto(lam, f"En {self.mes}, el índice de {textos[0]}; el de {textos[1]}.", Cm(1.3), Cm(2.6),
-                           Cm(31), Cm(1.3), fg.tipografia("fuente"), 14, color=fg.GRIS_TEXTO)
-            for x, k in zip(DOS, par):
-                c, tot = self.comp[k]
+                pos = "por sobre" if d > 0.05 else "por debajo de" if d < -0.05 else "igual a"
+                vineta = (f"{nombres[k]} ({k}): {num(tot[self.t])} en {self.mes}, {pos} {self.mes_ant} "
+                          f"({signo(d)} p.), principalmente por {motor.lower()}.")
                 df = pd.concat([tot.rename(f"IMCE {k}"), c[di.SECTORES]], axis=1)
                 df = df[df.index >= "2018-09-01"].dropna(how="all")
                 y_min, y_max, paso = _limites_apilado(df)
-                self.grafico(lam, df, x, ANCHO_DOS, k, y=Cm(5.0), alto=Cm(10.0), nota=nota, apilado=True,
-                             titulo=f"IMCE: {nombres[k]} ({k})",
-                             unidad="(Índice 50 = 0, desestacionalizado)",
-                             posicion_unidad="arriba", barras=di.SECTORES, etiqueta_ultimo=[f"IMCE {k}"],
-                             y_min=y_min, y_max=y_max, y_paso=paso, meses_entre_etiquetas=12,
-                             formato_fecha="yyyy", tam=11)
+                graficos.append(dict(df=df, vineta=vineta, hoja=k, apilado=True, nota=nota,
+                                     titulo=f"IMCE: {nombres[k]} ({k})",
+                                     unidad="(Índice 50 = 0, desestacionalizado)", posicion_unidad="arriba",
+                                     barras=di.SECTORES, y_min=y_min, y_max=y_max, y_paso=paso,
+                                     meses_entre_etiquetas=12, formato_fecha="yyyy", tam=11))
+            self.lamina_graficos(titulo, graficos)
 
     # ---- armar y guardar
     def construir(self):
         OUT.mkdir(exist_ok=True)
+        _archivar_anteriores()
         self.portada()
         self.resumen()
         self.resumen_sin_mineria()
         self.resultados()
         self.graficos()
         self.compuestos()
-        nombre = f"{self.hoy:%Y%m%d}_Minuta_IMCE"
+        nombre = f"Presentación_{TITULO}_{self.mes}_{self.t.year}"
         pptx = OUT / f"{nombre}.pptx"
+        datos_xlsx = OUT / f"{nombre}_datos.xlsx"
         try:
             self.prs.save(pptx)
-            with pd.ExcelWriter(OUT / f"{nombre}_datos.xlsx") as xl:
+            with pd.ExcelWriter(datos_xlsx) as xl:
                 for hoja, df in self.datos.items():
                     df.rename_axis(df.index.name or "Fecha").to_excel(xl, sheet_name=hoja[:31])
         except PermissionError as e:
             sys.exit(f"No pude guardar {e.filename}: está abierto. Ciérralo y vuelve a correr.")
         print(f"  ✅ PPTX: {pptx} ({self.n} láminas; datos a {self.mes} de {self.t.year})")
-        print(f"  ✅ Datos de los gráficos: {OUT / f'{nombre}_datos.xlsx'}")
+        print(f"  ✅ Datos de los gráficos: {datos_xlsx}")
         pdf = fg.exportar_pdf(pptx)
         if pdf:
             print(f"  ✅ PDF:  {pdf}")
         return pptx
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# archivo de presentaciones anteriores
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _archivar_anteriores():
+    """Mueve las presentaciones anteriores (PPTX, PDF y su _datos.xlsx sueltos en Outputs) a Outputs/<año>/, con
+    la fecha al inicio del nombre (AAAAMMDD_<nombre>): la que el nombre ya traiga o, si no tiene, la de su
+    última modificación. Base_IMCE.xlsx se queda en Outputs."""
+    import re
+    for archivo in sorted(OUT.iterdir()):
+        if (not archivo.is_file() or archivo.name.startswith("~$") or archivo == di.EXCEL
+                or not (archivo.suffix.lower() in (".pdf", ".pptx") or archivo.name.endswith("_datos.xlsx"))):
+            continue
+        fecha_nombre = re.match(r"(\d{8})_", archivo.name)
+        if fecha_nombre:
+            fecha, nombre = pd.to_datetime(fecha_nombre.group(1), format="%Y%m%d", errors="coerce"), archivo.name
+        else:
+            fecha = pd.Timestamp(dt.datetime.fromtimestamp(archivo.stat().st_mtime))
+            nombre = f"{fecha:%Y%m%d}_{archivo.name}"
+        if pd.isna(fecha):
+            continue
+        destino = OUT / str(fecha.year) / nombre
+        destino.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            archivo.replace(destino)
+            print(f"  📁 {archivo.name} → {destino.parent.name}/{destino.name}")
+        except PermissionError:
+            print(f"  ⚠️ No pude mover {archivo.name}: está abierto. Ciérralo y vuelve a correr.")
 
 
 # ─────────────────────────────────────────────────────────────────────────────

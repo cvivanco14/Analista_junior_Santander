@@ -1,22 +1,44 @@
 # IMCE: proceso mensual
 
-## Minuta IMCE (`Code/`, `Inputs/`, `Outputs/`)
+## Minuta IMCE (`run_minuta_imce.py`, `Code/`, `Inputs/`, `Outputs/`)
 
-Minuta mensual de 14 láminas (resumen con textos automáticos, resultados, gráficos por sector,
-índices promedio de comercio, construcción e industria para precios, demanda y costos, e
-índices compuestos OCSI/PCSI/CFEI/OFEI), en PPTX con gráficos nativos editables y en PDF, con
-`formato_graficos.py`. Misma estructura que el chartpack de Expectativas:
+Presentación mensual de 16 láminas en PPTX (gráficos nativos editables, con sus datos en "Editar
+datos") y PDF, con `formato_graficos.py`. Misma estructura que la Minuta de Remuneraciones:
 
-| Carpeta | Contenido |
+| Carpeta / archivo | Contenido |
 |---|---|
-| `Code/` | `datos_imce.py` (descarga y Excel de bases) y `minuta_imce.py` (arma la minuta). |
-| `Inputs/` | `imce.csv` (series descargadas de la API del BCCh), `Base_IMCE_plantilla.xlsx` (planilla IMCE con sus hojas `IMCE` y `Grafs`) y `hacienda_imce_sa.csv` (compuestos de Hacienda, referencia). |
-| `Outputs/` | `Base_IMCE.xlsx` (bases y cálculos; siempre con ese nombre) y `AAAAMMDD_Minuta_IMCE.pptx`, `.pdf` y `_datos.xlsx` (datos de cada gráfico). |
+| `run_minuta_imce.py` | Lanzador: corre `Code/minuta_imce.py` (F5 en Spyder). `SIN_DESCARGA = True` usa el `Inputs/imce.csv` existente. |
+| `Code/` | `minuta_imce.py` (arma la presentación y antes corre `datos_imce.py`) y `datos_imce.py` (descarga y Excel de bases). |
+| `Inputs/` | `imce.csv` (series de la API del BCCh), `Base_IMCE_plantilla.xlsx` (planilla IMCE con hojas `IMCE` y `Grafs`) y `hacienda_imce_sa.csv` (referencia). |
+| `Outputs/` | `Base_IMCE.xlsx` y `Presentación_IMCE_<mes>_<año>.pptx`, `.pdf` y `_datos.xlsx` (datos de cada gráfico). Al empezar, las presentaciones anteriores pasan a `Outputs/<año>/` con la fecha al inicio del nombre; `Base_IMCE.xlsx` no se mueve. |
 
 ```bash
-cd imce/Code
-python minuta_imce.py     # todo: descarga, actualiza Base_IMCE.xlsx y genera la minuta en Outputs
+python imce/run_minuta_imce.py
 ```
+
+**Láminas.** Portada; resumen y resumen sin minería (con gráfico por mes calendario); principales
+resultados (2); y luego, cada lámina de gráficos con una viñeta por gráfico con el dato del mes y su
+diferencia con el mes anterior (por sobre / por debajo), sin el número al final de las líneas:
+
+| Lámina | Gráficos |
+|---|---|
+| 6 | IMCE total y sin minería |
+| 7 | IMCE por sectores (comercio, industria y construcción) |
+| 8 | Expectativas de salarios, costos y precios por sector |
+| 9 | Promedio simple de los sectores: salarios (construcción e industria), costos y precios |
+| 10 | Expectativas de empleo por sector |
+| 11 | Promedio simple de expectativas de empleo |
+| 12 | Situación actual de inventarios y demanda (desest.) por sector |
+| 13 | Promedio simple de inventarios (comercio e industria) y de demanda (desest.) |
+| 14 | Expectativas de inversión, ventas y producción |
+| 15 y 16 | Índices compuestos OCSI/PCSI y CFEI/OFEI con contribuciones por sector |
+
+**Pesos de los índices compuestos.** Participación en el PIB 2018 (BCCh, cuentas nacionales
+referencia 2018): comercio 9,2%, construcción 6,5% e industria 9,6%, normalizada entre los tres
+sectores (36,4%, 25,7% y 37,9%). La planilla de Hacienda usaba "Comercio, restaurantes y hoteles"
+(11,4%), que daba 41,4% / 23,6% / 35,0%; pero el IMCE comercio no encuesta restaurantes ni hoteles.
+Referencia: el IMCE sin minería que publica ICARE pondera fijo comercio 31,1%, construcción 22,7% e
+industria 46,2% (se verifica exacto en toda la serie). Los pesos están en `PIB_2018` de `datos_imce.py`.
 
 - `Base_IMCE.xlsx` se actualiza en cada corrida. Si no existe, se crea copiando
   `Inputs/Base_IMCE_plantilla.xlsx` (o, si falta, la ubicación anterior `IMCE\Base\IMCE.xlsx`).
@@ -26,9 +48,9 @@ python minuta_imce.py     # todo: descarga, actualiza Base_IMCE.xlsx y genera la
   hojas y gráficos propios se conservan; los gráficos (hoja `Grafs` y el de la hoja `IMCE`) se
   extienden hasta el último mes.
 - Hojas que agrega: `SA` (desestacionalizadas con STL), `Pesos` (se crea una vez; si cambias los
-  pesos, se respetan), `Compuestos` (OCSI/PCSI/CFEI/OFEI con fórmulas sobre `SA` y `Pesos`),
-  `Promedios` (promedio simple de comercio, construcción e industria de precios, costos, demanda y
-  demanda desestacionalizada, con fórmulas `=AVERAGE(...)` sobre `IMCE` y `SA`) y `Léeme`.
+  pesos, se respetan; los pesos anteriores de Hacienda se reemplazan solos), `Compuestos` (OCSI/PCSI/CFEI/OFEI con fórmulas sobre `SA` y `Pesos`),
+  `Promedios` (promedio simple de los sectores de precios, costos, demanda, demanda desestacionalizada,
+  salarios, empleo e inventarios, con fórmulas `=AVERAGE(...)` sobre `IMCE` y `SA`) y `Léeme`.
 - Si el archivo se guardó con Excel y tiene gráficos, se actualiza con Excel mediante `xlwings`; si
   `xlwings` no está, se actualiza con openpyxl (conserva los gráficos, pero puede simplificar parte de
   su formato) y deja un respaldo en `Outputs/respaldo/`.
@@ -36,7 +58,8 @@ python minuta_imce.py     # todo: descarga, actualiza Base_IMCE.xlsx y genera la
   (en Spyder: `runfile('minuta_imce.py', args='--sin-descarga')`). `datos_imce.py` se puede correr
   solo para actualizar únicamente los datos y el Excel.
 - `datos_imce.py --sin-descarga` rehace `Base_IMCE.xlsx` con el `Inputs/imce.csv` existente.
-- `formato_graficos.py` se busca como en el chartpack: subiendo desde `Code`, en OneDrive/SharePoint y en la carpeta Santander de iCloud Drive (o `FORMATO_GRAFICOS_DIR`). Usa la versión con portada roja y pie de lámina.
+- `formato_graficos.py` se busca en `00_Administrativos\Manual de Estilo` (o en `Administrativos`, el
+  nombre anterior): subiendo desde `Code`, en OneDrive/SharePoint y en la carpeta Santander de iCloud Drive (o `FORMATO_GRAFICOS_DIR`). Usa la versión con portada roja y pie de lámina.
 - Las credenciales del BCCh las maneja `formato_graficos.py` (variable de entorno o Llavero; ver README
   principal). No hay credenciales en el código.
 
