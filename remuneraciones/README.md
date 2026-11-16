@@ -63,9 +63,9 @@ Cuadro 1 y en la hoja `Léeme` de `IRL_Base.xlsx`. Las URLs están en `URLS`, al
 | 9 | Velocidad de los salarios: IR nominal e IR real |
 | 10 | Velocidad de la masa salarial real y de horas × salario real |
 
-Velocidad: variación del promedio de los últimos 3 meses de la serie desestacionalizada frente al de los
-3 meses anteriores (trimestre móvil contra trimestre móvil), anualizada (`VELOCIDAD_ANUALIZADA` al inicio
-del script), con su promedio histórico en líneas punteadas. Los gráficos parten cuatro años atrás para que
+Velocidad: `TM_t / TM_t-1 × 100 − 100`, donde `TM_t` es el promedio de los índices desestacionalizados de
+los últimos 3 meses (trimestre móvil) y `TM_t-1` el del mes anterior; con su promedio histórico en líneas
+punteadas. Los gráficos parten cuatro años atrás para que
 el Covid no aplaste la escala.
 
 ## Presentación `Presentación_Remuneraciones_<mes>_<año>.pptx`

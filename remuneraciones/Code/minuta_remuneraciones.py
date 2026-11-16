@@ -557,7 +557,6 @@ ICLOUD = Path.home() / "Library" / "Mobile Documents" / "com~apple~CloudDocs"
 TITULO = "Remuneraciones"
 AUTOR = "Gerencia de Estudios"   # aparece en el documento, la portada y el pie de las láminas
 ANIO_PROM = 2010                 # inicio de los promedios históricos del mes
-VELOCIDAD_ANUALIZADA = True     # velocidad: variación trimestral móvil anualizada (False: sin anualizar)
 MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre",
          "octubre", "noviembre", "diciembre"]
 MESES_CORTOS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
@@ -674,17 +673,15 @@ def _del_mes(s, mes, hasta):
 
 
 def _velocidad(s):
-    """Velocidad: variación % del promedio móvil de 3 meses de la serie desestacionalizada frente al de
-    los 3 meses anteriores (trimestre móvil contra trimestre móvil), anualizada si VELOCIDAD_ANUALIZADA."""
-    m3 = s.astype(float).rolling(3).mean()
-    razon = m3 / m3.shift(3)
-    return 100 * (razon ** 4 - 1) if VELOCIDAD_ANUALIZADA else 100 * (razon - 1)
+    """Velocidad: variación del trimestre móvil de la serie desestacionalizada (índice) respecto del trimestre
+    móvil del mes anterior: TM_t / TM_t-1 × 100 − 100, con TM_t = promedio de los índices de t, t-1 y t-2."""
+    tm = s.astype(float).rolling(3).mean()
+    return tm / tm.shift(1) * 100 - 100
 
 
-UNIDAD_VELOCIDAD = ("(var. % trimestral móvil anualizada, series desestacionalizadas)" if VELOCIDAD_ANUALIZADA
-                    else "(var. % trimestral móvil, series desestacionalizadas)")
-NOTA_VELOCIDAD = ("Velocidad: promedio de los últimos 3 meses frente a los 3 meses anteriores"
-                  + (", anualizada" if VELOCIDAD_ANUALIZADA else "") + "; punteadas: promedio histórico")
+UNIDAD_VELOCIDAD = "(var. % del trimestre móvil respecto del mes anterior, series desestacionalizadas)"
+NOTA_VELOCIDAD = ("Velocidad: TM_t / TM_t-1 × 100 − 100, con TM_t = promedio de los índices de los últimos "
+                  "3 meses; punteadas: promedio histórico")
 
 
 def _vs_anterior(x, x_ant, mes_ant, dec=1):
@@ -1339,12 +1336,10 @@ class Minuta:
         prom9, prom10 = vel_ir.mean().to_dict(), vel_ms.mean().to_dict()
         self.figs += [
             (9, "Velocidad de los salarios", UNIDAD_VELOCIDAD,
-             _figura_lineas(f9, [C_ROJO, C_TURQUESA], r / "Figura_9_velocidad_salarios.png", promedios=prom9,
-                            paso_y=2),
+             _figura_lineas(f9, [C_ROJO, C_TURQUESA], r / "Figura_9_velocidad_salarios.png", promedios=prom9),
              f"INE. {NOTA_VELOCIDAD}", f9.assign(**{f"Prom. {k}": v for k, v in prom9.items()})),
             (10, "Velocidad de la masa salarial real", UNIDAD_VELOCIDAD,
-             _figura_lineas(f10, [C_ROJO, C_NEGRO], r / "Figura_10_velocidad_masa_salarial.png", promedios=prom10,
-                            paso_y=2),
+             _figura_lineas(f10, [C_ROJO, C_NEGRO], r / "Figura_10_velocidad_masa_salarial.png", promedios=prom10),
              f"{fuente_masa}. {NOTA_VELOCIDAD}", f10.assign(**{f"Prom. {k}": v for k, v in prom10.items()})),
         ]
         # especificación de cada figura para el gráfico nativo (editable) de la presentación
@@ -1354,8 +1349,8 @@ class Minuta:
             3: dict(tipo="contribuciones", total=f7.iloc[:, 0], barras=f7.iloc[:, 1:],
                     colores=[C_ROJO, C_GRIS, C_TURQUESA], promedio=ms[MASA_AA].mean()),
             4: dict(tipo="lineas", df=f8, colores=[C_ROJO, C_NEGRO]),
-            9: dict(tipo="lineas", df=f9, colores=[C_ROJO, C_TURQUESA], promedios=prom9, paso_y=2),
-            10: dict(tipo="lineas", df=f10, colores=[C_ROJO, C_NEGRO], promedios=prom10, paso_y=2),
+            9: dict(tipo="lineas", df=f9, colores=[C_ROJO, C_TURQUESA], promedios=prom9),
+            10: dict(tipo="lineas", df=f10, colores=[C_ROJO, C_NEGRO], promedios=prom10),
         }
         for k, (datos_est, rango) in estacionales.items():
             self.nativos[k] = dict(tipo="estacional", datos=datos_est, t=t, rango=rango)
