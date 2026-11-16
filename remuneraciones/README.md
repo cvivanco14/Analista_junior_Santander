@@ -71,7 +71,8 @@ el Covid no aplaste la escala.
 ## Presentación `Presentación_Remuneraciones_<mes>_<año>.pptx`
 
 Los mismos contenidos del documento: portada, principales resultados, Cuadro 1 (tabla editable) y las
-diez figuras (las mismas imágenes), dos por lámina. `formato_graficos.py` se busca como en la minuta IMCE
+diez figuras, dos por lámina, como **gráficos nativos de PowerPoint** (editables, con sus datos en
+"Editar datos"): los mismos datos, colores, ejes y promedios que las figuras del documento. `formato_graficos.py` se busca como en la minuta IMCE
 (o en `FORMATO_GRAFICOS_DIR`); si no se encuentra, se generan igual el documento y `IRL_Base.xlsx`.
 
 ## Archivo de minutas anteriores

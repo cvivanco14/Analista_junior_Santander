@@ -824,6 +824,200 @@ def _figura_estacional(datos, t, rango, ruta):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# gráficos nativos de PowerPoint (editables) para la presentación: replican las figuras del documento
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _rgb(color):
+    from pptx.dml.color import RGBColor
+    return RGBColor.from_string(color.lstrip("#"))
+
+
+def _limites_eje(valores, paso=None):
+    """(mín, máx, paso) del eje Y: múltiplos de 'paso' o, si no se da, los mismos de las figuras PNG."""
+    v = np.asarray(valores, dtype=float).ravel()
+    v = v[np.isfinite(v)]
+    lo, hi = float(v.min()), float(v.max())
+    if paso:
+        return paso * np.floor(lo / paso), paso * np.ceil(hi / paso), paso
+    from matplotlib.ticker import MaxNLocator
+    ticks = MaxNLocator(nbins=6, steps=[1, 2, 5, 10]).tick_values(lo, hi)
+    return float(ticks[0]), float(ticks[-1]), float(ticks[1] - ticks[0])
+
+
+def _valores(s):
+    return [None if pd.isna(x) else float(x) for x in s]
+
+
+def _grafico_nativo(lam, x, y, w, h, categorias, series, limites, formato_y="0.0", fechas=True, fuente="Arial",
+                    etiqueta_ultimo=None):
+    """Gráfico nativo combinado. 'series': lista de dicts con nombre, valores, tipo ('linea', 'barra' o 'area'),
+    color, y opcionales ancho (pt), guiones, marcador ('rombo'), oculto (área transparente, fuera de la leyenda).
+    Barras y áreas se apilan y quedan detrás de las líneas. 'etiqueta_ultimo': nombre de la serie a etiquetar."""
+    from pptx.chart.data import CategoryChartData
+    from pptx.enum.chart import XL_CHART_TYPE, XL_LEGEND_POSITION, XL_MARKER_STYLE, XL_TICK_LABEL_POSITION
+    from pptx.enum.chart import XL_TICK_MARK
+    from pptx.enum.dml import MSO_LINE_DASH_STYLE
+    from pptx.oxml.ns import qn
+    from pptx.util import Pt
+
+    datos = CategoryChartData(number_format=formato_y)
+    datos.categories = [c.date() if isinstance(c, pd.Timestamp) else c for c in categorias]
+    for s in series:
+        datos.add_series(s["nombre"], _valores(s["valores"]))
+    chart = lam.shapes.add_chart(XL_CHART_TYPE.LINE, x, y, w, h, datos).chart
+    chart.has_title = False   # el título va en la lámina (con una sola serie, PowerPoint pondría su nombre)
+    chart.font.name = fuente
+    chart.font.size = Pt(9)
+    chart.font.color.rgb = _rgb("#333333")
+
+    for ser, s in zip(chart.plots[0].series, series):
+        ser.smooth = False
+        if s["tipo"] == "linea":
+            ln = ser.format.line
+            ln.width = Pt(s.get("ancho", 2.0))
+            if s.get("marcador") == "rombo":
+                ln.fill.background()
+                ser.marker.style = XL_MARKER_STYLE.DIAMOND
+                ser.marker.size = 7
+                ser.marker.format.fill.solid()
+                ser.marker.format.fill.fore_color.rgb = _rgb(s["color"])
+                ser.marker.format.line.fill.background()
+            else:
+                ln.color.rgb = _rgb(s["color"])
+                if s.get("guiones"):
+                    ln.dash_style = MSO_LINE_DASH_STYLE.DASH
+        else:
+            if s.get("oculto"):
+                ser.format.fill.background()
+            else:
+                ser.format.fill.solid()
+                ser.format.fill.fore_color.rgb = _rgb(s["color"])
+            ser.format.line.fill.background()
+
+    # barras y áreas: se mueven a su propio grupo (apilado), detrás de las líneas, con los mismos ejes
+    area_graf = chart._chartSpace.find(qn("c:chart")).find(qn("c:plotArea"))
+    linea_xml = area_graf.find(qn("c:lineChart"))
+    ejes = [e.get("val") for e in linea_xml.findall(qn("c:axId"))]
+    sers = linea_xml.findall(qn("c:ser"))
+    for tipo, tag in (("area", "c:areaChart"), ("barra", "c:barChart")):
+        mover = [sx for sx, s in zip(sers, series) if s["tipo"] == tipo]
+        if not mover:
+            continue
+        grupo = linea_xml.makeelement(qn(tag), {})
+        if tipo == "barra":
+            grupo.append(grupo.makeelement(qn("c:barDir"), {"val": "col"}))
+        grupo.append(grupo.makeelement(qn("c:grouping"), {"val": "stacked"}))
+        grupo.append(grupo.makeelement(qn("c:varyColors"), {"val": "0"}))
+        for sx in mover:
+            for hijo in (qn("c:marker"), qn("c:smooth")):
+                for e in sx.findall(hijo):
+                    sx.remove(e)
+            if tipo == "barra":
+                sppr = sx.find(qn("c:spPr"))
+                sppr.addnext(sx.makeelement(qn("c:invertIfNegative"), {"val": "0"}))
+            grupo.append(sx)
+        if tipo == "barra":
+            grupo.append(grupo.makeelement(qn("c:gapWidth"), {"val": "30"}))
+            grupo.append(grupo.makeelement(qn("c:overlap"), {"val": "100"}))
+        for eje in ejes:
+            grupo.append(grupo.makeelement(qn("c:axId"), {"val": eje}))
+        linea_xml.addprevious(grupo)
+
+    # eje Y
+    y_min, y_max, paso = limites
+    va = chart.value_axis
+    va.minimum_scale, va.maximum_scale, va.major_unit = y_min, y_max, paso
+    va.has_major_gridlines = True
+    va.major_gridlines.format.line.color.rgb = _rgb(C_GRILLA)
+    va.major_gridlines.format.line.width = Pt(0.75)
+    va.format.line.fill.background()
+    va.major_tick_mark = XL_TICK_MARK.NONE
+    va.tick_labels.number_format = formato_y
+    va.tick_labels.number_format_is_linked = False
+    va.tick_labels.font.size = Pt(9)
+    # eje X (cruza en 0: hace de línea del cero; etiquetas abajo)
+    ca = chart.category_axis
+    ca.format.line.color.rgb = _rgb(C_GRIS)
+    ca.major_tick_mark = XL_TICK_MARK.NONE
+    ca.tick_label_position = XL_TICK_LABEL_POSITION.LOW
+    ca.tick_labels.font.size = Pt(9)
+    if fechas:
+        ca.tick_labels.number_format = "yyyy"
+        ca.tick_labels.number_format_is_linked = False
+        eje_x = area_graf.find(qn("c:dateAx"))
+        base = eje_x.find(qn("c:baseTimeUnit"))
+        base.set("val", "months")
+        mayor = base.makeelement(qn("c:majorUnit"), {"val": "1"})
+        base.addnext(mayor)
+        mayor.addnext(base.makeelement(qn("c:majorTimeUnit"), {"val": "years"}))
+
+    # leyenda arriba, sin las series ocultas
+    chart.has_legend = True
+    chart.legend.position = XL_LEGEND_POSITION.TOP
+    chart.legend.include_in_layout = False
+    chart.legend.font.size = Pt(9)
+    leyenda = chart._chartSpace.find(qn("c:chart")).find(qn("c:legend"))
+    pos = leyenda.find(qn("c:legendPos"))
+    for i, s in reversed(list(enumerate(series))):
+        if s.get("oculto"):
+            entrada = leyenda.makeelement(qn("c:legendEntry"), {})
+            entrada.append(entrada.makeelement(qn("c:idx"), {"val": str(i)}))
+            entrada.append(entrada.makeelement(qn("c:delete"), {"val": "1"}))
+            pos.addnext(entrada)
+
+    if etiqueta_ultimo:
+        i = next(k for k, s in enumerate(series) if s["nombre"] == etiqueta_ultimo)
+        vals = _valores(series[i]["valores"])
+        j = max(k for k, v in enumerate(vals) if v is not None)
+        from pptx.enum.chart import XL_LABEL_POSITION
+        etiqueta = chart.plots[-1].series[[s["tipo"] for s in series][:i].count("linea")].points[j].data_label
+        etiqueta.has_text_frame = True
+        etiqueta.text_frame.text = num(vals[j], 1)
+        etiqueta.position = XL_LABEL_POSITION.RIGHT
+        etiqueta.font.size = Pt(9)
+        etiqueta.font.bold = True
+    return chart
+
+
+def _grafico_figura(lam, spec, x, y, w, h, fuente="Arial"):
+    """Gráfico nativo de una figura de la minuta, según su especificación (ver Minuta.figuras)."""
+    if spec["tipo"] == "lineas":
+        df, colores = spec["df"], spec["colores"]
+        series = [dict(nombre=c, valores=df[c], tipo="linea", color=col) for c, col in zip(df.columns, colores)]
+        for (c, valor), col in zip((spec.get("promedios") or {}).items(), colores):
+            series.append(dict(nombre=f"Prom. {c}", valores=[valor] * len(df), tipo="linea", color=col,
+                               ancho=1.25, guiones=True))
+        limites = _limites_eje(np.r_[df.to_numpy(dtype=float).ravel(), list((spec.get("promedios") or {}).values())],
+                               spec.get("paso_y"))
+        return _grafico_nativo(lam, x, y, w, h, list(df.index), series, limites,
+                               formato_y="0" if spec.get("paso_y") else "0.0", fuente=fuente)
+    if spec["tipo"] == "contribuciones":
+        total, barras, colores = spec["total"], spec["barras"], spec["colores"]
+        series = [dict(nombre=c, valores=barras[c], tipo="barra", color=col) for c, col in zip(barras.columns, colores)]
+        series.append(dict(nombre=total.name, valores=total, tipo="linea", color=C_NEGRO, ancho=1.75))
+        if spec.get("promedio") is not None:
+            series.append(dict(nombre="Prom. histórico", valores=[spec["promedio"]] * len(total), tipo="linea",
+                               color=C_NEGRO, ancho=1.25, guiones=True))
+        apilado = np.r_[barras.clip(lower=0).sum(axis=1), barras.clip(upper=0).sum(axis=1), total.to_numpy()]
+        return _grafico_nativo(lam, x, y, w, h, list(total.index), series, _limites_eje(apilado), fuente=fuente,
+                               etiqueta_ultimo=total.name)
+    if spec["tipo"] == "estacional":
+        d, t = spec["datos"], spec["t"]
+        a0, a1 = spec["rango"]
+        series = [dict(nombre=d.columns[0], valores=d.iloc[:, 0], tipo="area", color=C_BANDA, oculto=True),
+                  dict(nombre=f"Mín-Máx {a0}-{a1}", valores=d.iloc[:, 1] - d.iloc[:, 0], tipo="area", color=C_BANDA),
+                  dict(nombre=d.columns[2], valores=d.iloc[:, 2], tipo="linea", color=C_TURQUESA)]
+        for a, color in ((t.year - 2, C_NEGRO), (t.year - 1, C_AMARILLO)):
+            if str(a) in d:
+                series.append(dict(nombre=str(a), valores=d[str(a)], tipo="linea", color=color, ancho=1.5))
+        if str(t.year) in d:
+            series.append(dict(nombre=str(t.year), valores=d[str(t.year)], tipo="linea", color=C_ROJO, marcador="rombo"))
+        return _grafico_nativo(lam, x, y, w, h, list(d.index), series, _limites_eje(d.to_numpy()), fechas=False,
+                               fuente=fuente)
+    raise ValueError(spec["tipo"])
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # IRL_Base.xlsx: escribe solo en sus columnas (conserva el resto del libro)
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -1126,10 +1320,12 @@ class Minuta:
              fuente_masa,
              f7.assign(**{"Prom. histórico": ms[MASA_AA].mean()})),
         ]
+        estacionales = {}   # número de figura -> (datos, rango), para el gráfico nativo de la presentación
         n = 5
         for b, nombre in ((IR, "nominal"), (IR_REAL, "real")):
             for tipo, desc in (("sa", "serie desestacionalizada"), ("nsa", "serie original")):
                 datos, rango = est[(b, tipo)]
+                estacionales[n] = (datos, rango)
                 png = _figura_estacional(datos, t, rango, r / f"Figura_{n}_IR_{nombre}_mm_{tipo}.png")
                 self.figs.append((n, f"Índice de Remuneraciones {nombre} ({tipo})", f"(var. % m/m, {desc})",
                                   png, "INE", datos))
@@ -1151,6 +1347,18 @@ class Minuta:
                             paso_y=2),
              f"{fuente_masa}. {NOTA_VELOCIDAD}", f10.assign(**{f"Prom. {k}": v for k, v in prom10.items()})),
         ]
+        # especificación de cada figura para el gráfico nativo (editable) de la presentación
+        self.nativos = {
+            1: dict(tipo="lineas", df=f1, colores=[C_ROJO]),
+            2: dict(tipo="lineas", df=f2, colores=[C_ROJO, C_NEGRO, C_TURQUESA], promedios=prom_aa),
+            3: dict(tipo="contribuciones", total=f7.iloc[:, 0], barras=f7.iloc[:, 1:],
+                    colores=[C_ROJO, C_GRIS, C_TURQUESA], promedio=ms[MASA_AA].mean()),
+            4: dict(tipo="lineas", df=f8, colores=[C_ROJO, C_NEGRO]),
+            9: dict(tipo="lineas", df=f9, colores=[C_ROJO, C_TURQUESA], promedios=prom9, paso_y=2),
+            10: dict(tipo="lineas", df=f10, colores=[C_ROJO, C_NEGRO], promedios=prom10, paso_y=2),
+        }
+        for k, (datos_est, rango) in estacionales.items():
+            self.nativos[k] = dict(tipo="estacional", datos=datos_est, t=t, rango=rango)
 
     # ================================================================ documento PDF
     def documento(self):
@@ -1328,7 +1536,11 @@ class Minuta:
                f"{self.nota_sa}. Promedio: variación promedio del mismo mes calendario, {ANIO_PROM}-{self.t.year}.",
                h=Cm(1.4))
 
-        # figuras: dos por lámina, las mismas imágenes del documento
+        # figuras: dos por lámina, como gráficos nativos (editables) con los mismos datos del documento
+        try:
+            fuente_ejes = fg.tipografia("ejes")
+        except Exception:  # noqa: BLE001
+            fuente_ejes = "Arial"
         titulos = {1: "Índice de Remuneraciones", 4: "Masa salarial real", 9: "Velocidad",
                    5: "Índice de Remuneraciones nominal: variación mensual",
                    7: "Índice de Remuneraciones real: variación mensual"}
@@ -1340,7 +1552,7 @@ class Minuta:
                                fg.tipografia("titulo"), 14, negrita=True)
                 fg._caja_texto(lam, uni, x, Cm(3.35), Cm(15), Cm(0.7), fg.tipografia("fuente"), 10,
                                color=gris_txt)
-                lam.shapes.add_picture(str(png), x, Cm(4.1), width=Cm(15))
+                _grafico_figura(lam, self.nativos[num_fig], x, Cm(4.1), Cm(15), Cm(9.1), fuente=fuente_ejes)
                 fg.pie(lam, x, Cm(13.4), Cm(15), fuente, h=Cm(1.2))
 
         pptx = OUT / f"Presentación_Remuneraciones_{self.mes}_{self.t.year}.pptx"
