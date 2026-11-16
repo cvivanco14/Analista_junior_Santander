@@ -557,6 +557,7 @@ ICLOUD = Path.home() / "Library" / "Mobile Documents" / "com~apple~CloudDocs"
 TITULO = "Remuneraciones"
 AUTOR = "Gerencia de Estudios"   # aparece en el documento, la portada y el pie de las láminas
 ANIO_PROM = 2010                 # inicio de los promedios históricos del mes
+VELOCIDAD_ANUALIZADA = True     # velocidad: variación trimestral móvil anualizada (False: sin anualizar)
 MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre",
          "octubre", "noviembre", "diciembre"]
 MESES_CORTOS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
@@ -670,6 +671,28 @@ def _del_mes(s, mes, hasta):
     """Valores de la serie en el mes calendario 'mes', de ANIO_PROM al año 'hasta'."""
     s = s.dropna()
     return s[(s.index.month == mes) & (s.index.year >= ANIO_PROM) & (s.index.year <= hasta)]
+
+
+def _velocidad(s):
+    """Velocidad: variación % del promedio móvil de 3 meses de la serie desestacionalizada frente al de
+    los 3 meses anteriores (trimestre móvil contra trimestre móvil), anualizada si VELOCIDAD_ANUALIZADA."""
+    m3 = s.astype(float).rolling(3).mean()
+    razon = m3 / m3.shift(3)
+    return 100 * (razon ** 4 - 1) if VELOCIDAD_ANUALIZADA else 100 * (razon - 1)
+
+
+UNIDAD_VELOCIDAD = ("(var. % trimestral móvil anualizada, series desestacionalizadas)" if VELOCIDAD_ANUALIZADA
+                    else "(var. % trimestral móvil, series desestacionalizadas)")
+NOTA_VELOCIDAD = ("Velocidad: promedio de los últimos 3 meses frente a los 3 meses anteriores"
+                  + (", anualizada" if VELOCIDAD_ANUALIZADA else "") + "; punteadas: promedio histórico")
+
+
+def _vs_anterior(x, x_ant, mes_ant, dec=1):
+    """'0,4 pp más que en agosto (-0,4%)' / '... menos ...' / 'igual que en agosto (-0,4%)'."""
+    d = round(x, dec) - round(x_ant, dec)
+    if round(d, dec) == 0:
+        return f"igual que en {mes_ant} ({_pct(x_ant, dec)})"
+    return f"{num(abs(d), dec)} pp {'más' if d > 0 else 'menos'} que en {mes_ant} ({_pct(x_ant, dec)})"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -941,6 +964,8 @@ class Minuta:
         self.mm_nsa = {b: 100 * (s / s.shift(1) - 1) for b, s in self.nsa.items()}
         self.aa = {b: 100 * (s / s.shift(12) - 1) for b, s in self.nsa.items()}
         self.ms = masa_salarial(datos)
+        self.vel = {b: _velocidad(s) for b, s in self.sa.items()}
+        self.vel_masa, self.vel_hs = _velocidad(self.ms[MASA]), _velocidad(self.ms[MASA_HS])
         self.tm = self.ms.dropna(subset=[MASA_AA]).index.max()
         self.t = self.nsa[IR].dropna().index.max()
         self.ant = self.t - pd.DateOffset(months=1)
@@ -995,9 +1020,12 @@ class Minuta:
         inflacion = 100 * ((1 + aa_ir / 100) / (1 + r_aa / 100) - 1)
         racha = _racha(self.aa[IR_REAL][self.aa[IR_REAL].index <= t])
         b2 = (f"<b>Los salarios reales registraron {_movimiento(r_mm, 'un alza')} m/m (sa) en {self.mes}.</b> "
-              f"El IR real {self.normalidad(IR_REAL)}. En términos anuales, considerando una inflación de "
+              f"En la serie original (nsa), el IR real varió {_pct(v(self.mm_nsa[IR_REAL]))} m/m, "
+              f"{_vs_anterior(v(self.mm_nsa[IR_REAL]), v(self.mm_nsa[IR_REAL], self.ant), self.mes_ant)}. "
+              f"En términos anuales, considerando una inflación de "
               f"{_pct(inflacion)} (IPC implícito en el IR real del INE), los salarios reales se "
-              f"{'expandieron' if r_aa >= 0 else 'contrajeron'} {_pct(abs(r_aa))}, con lo que acumulan {racha} "
+              f"{'expandieron' if r_aa >= 0 else 'contrajeron'} {_pct(abs(r_aa))}, "
+              f"{_vs_anterior(r_aa, v(self.aa[IR_REAL], self.ant), self.mes_ant)}, con lo que acumulan {racha} "
               f"{'mes consecutivo' if racha == 1 else 'meses consecutivos'} de "
               f"{'alzas' if r_aa >= 0 else 'caídas'} anuales.")
         ms, tm = self.ms, self.tm
@@ -1077,6 +1105,21 @@ class Minuta:
                 self.figs.append((n, f"Índice de Remuneraciones {nombre} ({tipo})", f"(var. % m/m, {desc})",
                                   png, "INE", datos))
                 n += 1
+        # velocidad (variación trimestral móvil de las series desestacionalizadas)
+        vel_ir = pd.DataFrame({"IR nominal": self.vel[IR], "IR real": self.vel[IR_REAL]})
+        vel_ms = pd.DataFrame({"Masa salarial real": self.vel_masa, "Horas × salario real": self.vel_hs})
+        desde_vel = pd.Timestamp(year=t.year - 4, month=1, day=1)   # sin el Covid, que aplasta la escala
+        f9 = vel_ir[vel_ir.index >= desde_vel].dropna(how="all")
+        f10 = vel_ms[vel_ms.index >= desde_vel].dropna(how="all")
+        prom9, prom10 = vel_ir.mean().to_dict(), vel_ms.mean().to_dict()
+        self.figs += [
+            (9, "Velocidad de los salarios", UNIDAD_VELOCIDAD,
+             _figura_lineas(f9, [C_ROJO, C_TURQUESA], r / "Figura_9_velocidad_salarios.png", promedios=prom9),
+             f"INE. {NOTA_VELOCIDAD}", f9.assign(**{f"Prom. {k}": v for k, v in prom9.items()})),
+            (10, "Velocidad de la masa salarial real", UNIDAD_VELOCIDAD,
+             _figura_lineas(f10, [C_ROJO, C_NEGRO], r / "Figura_10_velocidad_masa_salarial.png", promedios=prom10),
+             f"{fuente_masa}. {NOTA_VELOCIDAD}", f10.assign(**{f"Prom. {k}": v for k, v in prom10.items()})),
+        ]
 
     # ================================================================ documento PDF
     def documento(self):
@@ -1255,7 +1298,7 @@ class Minuta:
                h=Cm(1.4))
 
         # figuras: dos por lámina, las mismas imágenes del documento
-        titulos = {1: "Índice de Remuneraciones", 4: "Masa salarial real",
+        titulos = {1: "Índice de Remuneraciones", 4: "Masa salarial real", 9: "Velocidad",
                    5: "Índice de Remuneraciones nominal: variación mensual",
                    7: "Índice de Remuneraciones real: variación mensual"}
         for k in range(0, len(self.figs), 2):
@@ -1297,6 +1340,11 @@ class Minuta:
         masa = self.ms[[OCUPADOS, HORAS, MASA, MASA_AA, *CONTRIB.values(), MASA_HS,
                         MASA_HS_AA]]
         datos = datos.join(masa, how="outer").rename_axis("Periodo")
+        # velocidades al final, para no mover las columnas anteriores
+        for b, nombre in NOMBRES.items():
+            datos[f"{nombre} velocidad (%)"] = self.vel[b]
+        datos["Masa salarial real velocidad (%)"] = self.vel_masa
+        datos["Horas × salario real velocidad (%)"] = self.vel_hs
         hojas = {"Datos": datos, "Cuadro 1": self.cuadro_df}
         for num_fig, tit, _, _, _, df in self.figs:
             hojas[f"Figura {num_fig}"] = df.rename_axis(df.index.name or "Periodo")

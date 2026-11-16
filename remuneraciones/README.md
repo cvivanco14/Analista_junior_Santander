@@ -8,19 +8,20 @@ que la minuta IMCE, todo en un solo script: `minuta_remuneraciones.py`.
 masa salarial real = ocupados (sa INE) × horas habituales semanales (sa STL) × IR real (sa INE)
 ```
 
-| Carpeta | Contenido |
+| Carpeta / archivo | Contenido |
 |---|---|
+| `run_minuta_remuneraciones.py` | Lanzador: corre `Code/minuta_remuneraciones.py` (F5 en Spyder). |
 | `Code/` | `minuta_remuneraciones.py`: descarga del INE, cálculos, bases, documento, presentación e `IRL_Base.xlsx`. |
 | `Inputs/` | Archivos del INE, bases intermedias (`Masa_salarial_Base.xlsx`, `Cifras_empleo.xlsx`) y `Figuras/` (imágenes de las figuras). |
 | `Outputs/` | `IRL_Base.xlsx`, documento `Minuta_Remuneraciones_<mes>_<año>.pdf` y presentación `AAAAMMDD_Minuta_Remuneraciones.pptx` / `.pdf`. |
 
-```bash
-cd remuneraciones/Code
-python minuta_remuneraciones.py                 # descarga del INE y arma todo
-python minuta_remuneraciones.py --sin-descarga  # usa los archivos que ya están en Inputs
-```
+En Spyder: abre `run_minuta_remuneraciones.py` (en la carpeta `remuneraciones`) y presiona F5. Para
+usar los archivos del INE que ya están en `Inputs`, sin descargar, pon `SIN_DESCARGA = True` al inicio de
+ese archivo. Desde la terminal:
 
-En Spyder: abre `minuta_remuneraciones.py` y córrelo con F5.
+```bash
+python remuneraciones/run_minuta_remuneraciones.py
+```
 
 ## Datos que se descargan del INE
 
@@ -44,8 +45,9 @@ Cuadro 1 y en la hoja `Léeme` de `IRL_Base.xlsx`. Las URLs están en `URLS`, al
 - Título con el resultado del mes (salarios reales m/m sa y a/a), fecha y autor (Gerencia de Estudios).
 - **Principales resultados**: IR nominal, ICL e IR real en m/m (sa) y a/a, y su variación m/m en la
   serie original (nsa) frente al promedio 2010-año actual del mismo mes y su rango histórico (para ver
-  si el dato está en su normalidad); inflación implícita y meses consecutivos de alzas; masa salarial
-  real con sus contribuciones.
+  si el dato está en su normalidad); para el IR real, la variación nsa m/m y la a/a se comparan con las
+  del mes anterior; inflación implícita y meses consecutivos de alzas; masa salarial real con sus
+  contribuciones.
 - **Cuadro 1**: m/m (sa), m/m (nsa) y a/a de IR nominal, ICL nominal e IR real (mes anterior y actual),
   con una fila de promedio histórico del mismo mes (2010-año actual) bajo cada índice.
 - **Figuras** (también en `Inputs/Figuras`):
@@ -58,18 +60,26 @@ Cuadro 1 y en la hoja `Léeme` de `IRL_Base.xlsx`. Las URLs están en `URLS`, al
 | 4 | Masa salarial real (ocupados × horas × salario real) y horas × salario real, en nivel |
 | 5 y 6 | IR nominal m/m por mes calendario, sa y nsa: banda mín-máx y promedio 2010 a tres años antes, dos años anteriores y año en curso |
 | 7 y 8 | Lo mismo para el IR real, sa y nsa |
+| 9 | Velocidad de los salarios: IR nominal e IR real |
+| 10 | Velocidad de la masa salarial real y de horas × salario real |
+
+Velocidad: variación del promedio de los últimos 3 meses de la serie desestacionalizada frente al de los
+3 meses anteriores (trimestre móvil contra trimestre móvil), anualizada (`VELOCIDAD_ANUALIZADA` al inicio
+del script), con su promedio histórico en líneas punteadas. Los gráficos parten cuatro años atrás para que
+el Covid no aplaste la escala.
 
 ## Presentación `AAAAMMDD_Minuta_Remuneraciones.pptx`
 
 Los mismos contenidos del documento: portada, principales resultados, Cuadro 1 (tabla editable) y las
-ocho figuras (las mismas imágenes), dos por lámina. `formato_graficos.py` se busca como en la minuta IMCE
+diez figuras (las mismas imágenes), dos por lámina. `formato_graficos.py` se busca como en la minuta IMCE
 (o en `FORMATO_GRAFICOS_DIR`); si no se encuentra, se generan igual el documento y `IRL_Base.xlsx`.
 
 ## `Outputs/IRL_Base.xlsx`
 
 - **Datos**: toda la historia disponible: IR, ICL e IR real (nsa y sa), sus variaciones m/m (nsa y sa) y
-  a/a, y la masa salarial (componentes, índice, a/a, contribuciones y horas × salario real).
-- **Cuadro 1** y **Figura 1** a **Figura 8**: los datos de cada cuadro y figura.
+  a/a, la masa salarial (componentes, índice, a/a, contribuciones y horas × salario real) y, en las
+  últimas columnas, las velocidades.
+- **Cuadro 1** y **Figura 1** a **Figura 10**: los datos de cada cuadro y figura.
 - **Léeme**: contenido y origen de cada serie desestacionalizada.
 
 El script **solo escribe en sus columnas** (desde A1 de cada hoja): las demás columnas, hojas, fórmulas
