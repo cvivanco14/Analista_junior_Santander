@@ -13,7 +13,7 @@ masa salarial real = ocupados (sa INE) × horas habituales semanales (sa STL) ×
 | `run_minuta_remuneraciones.py` | Lanzador: corre `Code/minuta_remuneraciones.py` (F5 en Spyder). |
 | `Code/` | `minuta_remuneraciones.py`: descarga del INE, cálculos, bases, documento, presentación e `IRL_Base.xlsx`. |
 | `Inputs/` | Archivos del INE, bases intermedias (`Masa_salarial_Base.xlsx`, `Cifras_empleo.xlsx`) y `Figuras/` (imágenes de las figuras). |
-| `Outputs/` | `IRL_Base.xlsx`, documento `Minuta_Remuneraciones_<mes>_<año>.pdf` y presentación `AAAAMMDD_Minuta_Remuneraciones.pptx` / `.pdf`. |
+| `Outputs/` | `IRL_Base.xlsx`, documento `Minuta_Remuneraciones_<mes>_<año>.pdf` y presentación `Presentación_Remuneraciones_<mes>_<año>.pptx` / `.pdf`. En `Outputs/<año>/` quedan las minutas y presentaciones anteriores, con la fecha al inicio del nombre. |
 
 En Spyder: abre `run_minuta_remuneraciones.py` (en la carpeta `remuneraciones`) y presiona F5. Para
 usar los archivos del INE que ya están en `Inputs`, sin descargar, pon `SIN_DESCARGA = True` al inicio de
@@ -68,11 +68,18 @@ Velocidad: variación del promedio de los últimos 3 meses de la serie desestaci
 del script), con su promedio histórico en líneas punteadas. Los gráficos parten cuatro años atrás para que
 el Covid no aplaste la escala.
 
-## Presentación `AAAAMMDD_Minuta_Remuneraciones.pptx`
+## Presentación `Presentación_Remuneraciones_<mes>_<año>.pptx`
 
 Los mismos contenidos del documento: portada, principales resultados, Cuadro 1 (tabla editable) y las
 diez figuras (las mismas imágenes), dos por lámina. `formato_graficos.py` se busca como en la minuta IMCE
 (o en `FORMATO_GRAFICOS_DIR`); si no se encuentra, se generan igual el documento y `IRL_Base.xlsx`.
+
+## Archivo de minutas anteriores
+
+Al empezar cada corrida, los PDF y PPTX que estén sueltos en `Outputs` se mueven a `Outputs/<año>/` con la
+fecha al inicio del nombre (`AAAAMMDD_<nombre>`): la que el nombre ya traiga o, si no tiene, la de su
+última modificación. Así en `Outputs` quedan solo la minuta y la presentación del mes, más
+`IRL_Base.xlsx`, que no se mueve.
 
 ## `Outputs/IRL_Base.xlsx`
 

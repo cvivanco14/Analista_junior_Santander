@@ -740,8 +740,9 @@ def _guardar(fig, ruta):
 TAM_FIG = (3.45, 2.1)
 
 
-def _figura_lineas(df, colores, ruta, leyenda=True, promedios=None):
-    """Líneas; 'promedios' {columna: valor} agrega líneas horizontales punteadas del mismo color."""
+def _figura_lineas(df, colores, ruta, leyenda=True, promedios=None, paso_y=None):
+    """Líneas; 'promedios' {columna: valor} agrega líneas horizontales punteadas del mismo color.
+    'paso_y': distancia fija entre las líneas del eje Y, con etiquetas sin decimales (p. ej. 2)."""
     plt = _plt()
     fig, ax = plt.subplots(figsize=TAM_FIG)
     for col, color in zip(df.columns, colores):
@@ -751,6 +752,10 @@ def _figura_lineas(df, colores, ruta, leyenda=True, promedios=None):
             ax.axhline(valor, color=color, lw=0.9, ls=(0, (4, 2)))
         ax.plot([], [], color=C_TEXTO, lw=0.9, ls=(0, (4, 2)), label="Prom. histórico")
     _estilo_ejes(ax)
+    if paso_y:
+        from matplotlib.ticker import FuncFormatter, MultipleLocator
+        ax.yaxis.set_major_locator(MultipleLocator(paso_y))
+        ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: num(v, 0)))
     _eje_anios(ax, df.index)
     if df.min().min() < 0 < df.max().max():
         ax.axhline(0, color=C_GRIS, lw=0.8)
@@ -950,6 +955,30 @@ def escribir_irl_base(hojas, ruta=IRL_BASE):
 # Minuta
 # ─────────────────────────────────────────────────────────────────────────────
 
+def _archivar_anteriores():
+    """Mueve las minutas y presentaciones anteriores (PDF y PPTX sueltos en Outputs) a Outputs/<año>/, con la
+    fecha al inicio del nombre (AAAAMMDD_<nombre>). Usa la fecha que el nombre ya traiga al inicio o, si no
+    tiene, la de la última modificación del archivo. IRL_Base.xlsx se queda en Outputs."""
+    for archivo in sorted(OUT.iterdir()):
+        if not archivo.is_file() or archivo.suffix.lower() not in (".pdf", ".pptx") or archivo.name.startswith("~$"):
+            continue
+        fecha_nombre = re.match(r"(\d{8})_", archivo.name)
+        if fecha_nombre:
+            fecha, nombre = pd.to_datetime(fecha_nombre.group(1), format="%Y%m%d", errors="coerce"), archivo.name
+        else:
+            fecha = pd.Timestamp(dt.datetime.fromtimestamp(archivo.stat().st_mtime))
+            nombre = f"{fecha:%Y%m%d}_{archivo.name}"
+        if pd.isna(fecha):
+            continue
+        destino = OUT / str(fecha.year) / nombre
+        destino.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            archivo.replace(destino)
+            print(f"  📁 {archivo.name} → {destino.parent.name}/{destino.name}")
+        except PermissionError:
+            print(f"  ⚠️ No pude mover {archivo.name}: está abierto. Ciérralo y vuelve a correr.")
+
+
 class Minuta:
     def __init__(self, datos=None, hoy=None):
         if datos is None:
@@ -1114,10 +1143,12 @@ class Minuta:
         prom9, prom10 = vel_ir.mean().to_dict(), vel_ms.mean().to_dict()
         self.figs += [
             (9, "Velocidad de los salarios", UNIDAD_VELOCIDAD,
-             _figura_lineas(f9, [C_ROJO, C_TURQUESA], r / "Figura_9_velocidad_salarios.png", promedios=prom9),
+             _figura_lineas(f9, [C_ROJO, C_TURQUESA], r / "Figura_9_velocidad_salarios.png", promedios=prom9,
+                            paso_y=2),
              f"INE. {NOTA_VELOCIDAD}", f9.assign(**{f"Prom. {k}": v for k, v in prom9.items()})),
             (10, "Velocidad de la masa salarial real", UNIDAD_VELOCIDAD,
-             _figura_lineas(f10, [C_ROJO, C_NEGRO], r / "Figura_10_velocidad_masa_salarial.png", promedios=prom10),
+             _figura_lineas(f10, [C_ROJO, C_NEGRO], r / "Figura_10_velocidad_masa_salarial.png", promedios=prom10,
+                            paso_y=2),
              f"{fuente_masa}. {NOTA_VELOCIDAD}", f10.assign(**{f"Prom. {k}": v for k, v in prom10.items()})),
         ]
 
@@ -1312,7 +1343,7 @@ class Minuta:
                 lam.shapes.add_picture(str(png), x, Cm(4.1), width=Cm(15))
                 fg.pie(lam, x, Cm(13.4), Cm(15), fuente, h=Cm(1.2))
 
-        pptx = OUT / f"{self.hoy:%Y%m%d}_Minuta_Remuneraciones.pptx"
+        pptx = OUT / f"Presentación_Remuneraciones_{self.mes}_{self.t.year}.pptx"
         try:
             prs.save(pptx)
         except PermissionError:
@@ -1361,6 +1392,7 @@ class Minuta:
     # ---- armar y guardar
     def construir(self):
         OUT.mkdir(parents=True, exist_ok=True)
+        _archivar_anteriores()
         print(f"  ✅ Figuras: {FIGURAS}")
         print(f"  ✅ Documento: {self.documento()}")
         self.presentacion()
