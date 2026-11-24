@@ -261,6 +261,9 @@ def eee_serie():
 
 
 def actualizar_eee():
+    if not any((EEE_DIR / "raw").glob("*.xls*")):
+        print(f"  EEE: no hay planillas en {EEE_DIR / 'raw'}; se mantiene {EEE_XLSX.name} como está.")
+        return
     serie = eee_serie()
     with pd.ExcelWriter(EEE_XLSX, datetime_format="yyyy-mm") as xl:
         serie.to_excel(xl, sheet_name="deciles", index=False)
@@ -382,6 +385,9 @@ def eof_mensual(serie):
 
 
 def actualizar_eof():
+    if not any((EOF_DIR / "raw").glob("*.xls*")):
+        print(f"  EOF: no hay planillas en {EOF_DIR / 'raw'}; se mantiene {EOF_XLSX.name} como está.")
+        return
     serie = eof_serie()
     mensual = eof_mensual(serie)
     with pd.ExcelWriter(EOF_XLSX, datetime_format="yyyy-mm-dd") as xl:

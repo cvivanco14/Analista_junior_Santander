@@ -10,6 +10,7 @@ para el hogar (IPEC) e IMCE vs Imacec no minero.
 
 | Carpeta | Contenido |
 |---|---|
+| (raíz) | `run_chartpack_expectativas.py`: corre los dos scripts de `Code/` en orden. |
 | `Code/` | `encuestas_bcch.py` (descarga y procesa la EEE y la EOF) y `build_chartpack.py` (arma el chartpack). |
 | `Inputs/eee/` | Planillas de la EEE (`raw/`) y el Excel resultante `eee_inflacion_deciles.xlsx`. |
 | `Inputs/eof/` | Planillas de la EOF (`raw/`) y el Excel resultante `eof_inflacion_2a_umbrales.xlsx` (hojas `mensual` y `por_encuesta`). |
@@ -34,6 +35,14 @@ del usuario (Windows o macOS) o en la carpeta `Santander` de iCloud Drive (macOS
 de usuario. También se puede indicar con la variable `FORMATO_GRAFICOS_DIR`.
 
 ## Uso (no hay que editar nada)
+
+Lo más simple: abrir `run_chartpack_expectativas.py` (en la carpeta Expectativas, junto a `Code/`,
+`Inputs/` y `Outputs/`) en Spyder o VS Code y presionar F5 / Run. Corre los dos scripts en orden:
+primero `encuestas_bcch.py` y después `build_chartpack.py`. Con `SIN_DESCARGA_ENCUESTAS = True` no
+descarga planillas EEE/EOF. Si las encuestas fallan, el chartpack se arma igual con los Excel que ya
+hay en `Inputs`.
+
+También se pueden correr por separado:
 
 ```bash
 cd chartpack_expectativas/Code
