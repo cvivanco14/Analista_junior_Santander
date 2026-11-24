@@ -8,4 +8,5 @@
 - La Minuta IMCE vive en `imce/` (lanzador `imce/run_minuta_imce.py`; scripts `imce/Code/minuta_imce.py` y `datos_imce.py`).
 - El Chartpack de Expectativas vive en `chartpack_expectativas/` (`Code/encuestas_bcch.py` descarga EEE/EOF; `Code/build_chartpack.py` arma el chartpack y actualiza `Chartpack_Expectativas.xlsx`).
 - La Proyección del IPC vive en `proyeccion_ipc/` (script único: `proyeccion_ipc/Code/proyeccion_ipc.py`).
+- El módulo común `formato_graficos.py` vive en `formato/` (versión vigente; subir `VERSION` al cambiarlo y entregarlo para copiarlo a `00_Administrativos\Manual de Estilo` en SharePoint).
 - Al terminar, entregar también el código para descargar.

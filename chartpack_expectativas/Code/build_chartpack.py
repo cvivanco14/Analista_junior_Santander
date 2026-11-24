@@ -115,7 +115,7 @@ def _carpeta_formato() -> Path:
 sys.path.insert(0, str(_carpeta_formato()))
 import formato_graficos as fg  # noqa: E402
 
-print(f"Formato: {fg.__file__}")
+print(f"Formato: {fg.__file__} (versión {getattr(fg, 'VERSION', 'anterior a 2026-11-24')})")
 import inspect  # noqa: E402
 _OPCIONES_GRAFICO = set(inspect.signature(fg.agregar_grafico).parameters)
 _AVISADAS = set()

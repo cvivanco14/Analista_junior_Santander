@@ -5,15 +5,17 @@ independiente con su propio README:
 
 | Carpeta | Qué hace |
 |---|---|
+| [`formato/`](formato/) | `formato_graficos.py`, versión vigente del módulo común de datos y formato (gráficos nativos, plantilla de presentación, acceso al BDE). En SharePoint debe haber una copia idéntica en `00_Administrativos\Manual de Estilo`. |
 | [`imce/`](imce/) | Minuta mensual del IMCE (`run_minuta_imce.py`; PPTX/PDF con gráficos nativos), con `Code/`, `Inputs/` y `Outputs/` (incluye el Excel de bases `Base_IMCE.xlsx`); y el chartbook anterior `imce_principal.py`. |
 | [`minuta_ipc/`](minuta_ipc/) | Minuta IPC mensual en PDF (agregados con y sin volátiles, CBA, difusión y anexo de subclases), con `Code/`, `Inputs/` y `Outputs/`. |
 | [`remuneraciones/`](remuneraciones/) | Minuta de Remuneraciones (INE), un solo script: `minuta_remuneraciones.py` descarga del INE (series originales y desestacionalizadas), deja las bases en `Inputs/` y arma el documento PDF, la presentación PPTX/PDF y `Outputs/IRL_Base.xlsx` (IR, ICL, IR real y masa salarial real). |
 | [`chartpack_expectativas/`](chartpack_expectativas/) | Chartpack de Expectativas (PPTX/PDF con gráficos nativos): IMCE, EEE/EOF, compensaciones, EDEP, tipo de cambio, SPC, IPEC y más, con `Code/` (`encuestas_bcch.py` y `build_chartpack.py`), `Inputs/` y `Outputs/`; la base `Chartpack_Expectativas.xlsx` se actualiza sin perder fórmulas ni gráficos. |
 | [`proyeccion_ipc/`](proyeccion_ipc/) | Proyección del IPC 2026-2027: un solo script (`Code/proyeccion_ipc.py`) que descarga INE y BDE, corre el modelo por bloques (Carlomagno) y el de 172 subclases, el nowcast de combustibles (ENAP) y la evaluación fuera de muestra, y genera `Outputs/IPC_Chile_Proyecciones.xlsx` (con fórmulas) y un reporte HTML. |
 
-El formato común (`formato_graficos.py`) vive en SharePoint, en
-`Estudios - Documentos\General\00_Administrativos\Manual de Estilo`; los scripts lo encuentran solos
-(o con la variable `FORMATO_GRAFICOS_DIR`).
+El formato común (`formato_graficos.py`) se usa desde SharePoint, en
+`Estudios - Documentos\General\00_Administrativos\Manual de Estilo`; la versión vigente está en
+[`formato/`](formato/) y esa copia de SharePoint debe reemplazarse cada vez que cambie. Los scripts lo
+encuentran solos (o con la variable `FORMATO_GRAFICOS_DIR`) y muestran qué copia usan.
 
 ```bash
 python -m pip install -r requirements.txt
