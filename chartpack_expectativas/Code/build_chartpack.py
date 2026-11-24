@@ -115,6 +115,11 @@ def _carpeta_formato() -> Path:
 sys.path.insert(0, str(_carpeta_formato()))
 import formato_graficos as fg  # noqa: E402
 
+print(f"Formato: {fg.__file__}")
+import inspect  # noqa: E402
+_OPCIONES_GRAFICO = set(inspect.signature(fg.agregar_grafico).parameters)
+_AVISADAS = set()
+
 BCCH = "Banco Central de Chile"
 IPEC_FUENTE = "GfK Adimark, publicado por el Banco Central de Chile"
 TITULO = "Chartpack de Expectativas"
@@ -144,6 +149,14 @@ def lamina(prs, titulo):
 
 def graficar(lam, df, x, w, hoja, fuente=BCCH, nota=None, **kw):
     """Grafico + pie (nota y fuente) bajo el grafico; guarda los datos para el Excel."""
+    # con una version anterior de formato_graficos.py se omiten las opciones que no conoce (ej. zonas)
+    faltan = [k for k in kw if k not in _OPCIONES_GRAFICO]
+    for k in faltan:
+        kw.pop(k)
+        if k not in _AVISADAS:
+            _AVISADAS.add(k)
+            print(f"  ⚠️ El formato_graficos.py en uso no tiene la opción '{k}': se omite. Reemplázalo por la "
+                  f"versión nueva en 00_Administrativos\\Manual de Estilo ({fg.__file__}).")
     fg.agregar_grafico(lam, df, x, Y0, w, ALTO, **kw)
     fg.pie(lam, x, Y0 + ALTO + Cm(0.15), w, fuente, nota, h=Cm(1.6))
     DATOS[hoja[:31]] = df
