@@ -6,5 +6,6 @@
 - La Minuta IPC vive en `minuta_ipc/` (script principal: `minuta_ipc/Code/minuta_ipc.py`).
 - La Minuta de Remuneraciones vive en `remuneraciones/` (un solo script: `remuneraciones/Code/minuta_remuneraciones.py`, que también descarga los datos).
 - La Minuta IMCE vive en `imce/` (lanzador `imce/run_minuta_imce.py`; scripts `imce/Code/minuta_imce.py` y `datos_imce.py`).
+- El Chartpack de Expectativas vive en `chartpack_expectativas/` (`Code/encuestas_bcch.py` descarga EEE/EOF; `Code/build_chartpack.py` arma el chartpack y actualiza `Chartpack_Expectativas.xlsx`).
 - La Proyección del IPC vive en `proyeccion_ipc/` (script único: `proyeccion_ipc/Code/proyeccion_ipc.py`).
 - Al terminar, entregar también el código para descargar.
